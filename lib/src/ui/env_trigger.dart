@@ -23,7 +23,7 @@ sealed class EnvTrigger {
   /// (within an 800 ms window).
   ///
   /// Defaults to 7 taps, which is unlikely to trigger accidentally.
-  const factory EnvTrigger.tap({int count}) = _TapTrigger;
+  const factory EnvTrigger.tap({int count = 7}) = _TapTrigger;
 
   /// Open the panel by shaking the device.
   ///
@@ -43,7 +43,14 @@ sealed class EnvTrigger {
 
   /// Wraps [child] in a gesture-detecting widget that calls [onOpen] when the
   /// configured trigger fires.
-  Widget build({required Widget child, required VoidCallback onOpen});
+  ///
+  /// [isActive] should be true when the trigger is actively listening (e.g.
+  /// when the panel is closed).
+  Widget build({
+    required Widget child,
+    required VoidCallback onOpen,
+    bool isActive = true,
+  });
 }
 
 // ── Tap trigger ───────────────────────────────────────────────────────────────
@@ -53,19 +60,30 @@ final class _TapTrigger extends EnvTrigger {
   const _TapTrigger({this.count = 7}) : super();
 
   @override
-  Widget build({required Widget child, required VoidCallback onOpen}) {
-    return _TapTriggerWidget(count: count, onOpen: onOpen, child: child);
+  Widget build({
+    required Widget child,
+    required VoidCallback onOpen,
+    bool isActive = true,
+  }) {
+    return _TapTriggerWidget(
+      count: count,
+      onOpen: onOpen,
+      isActive: isActive,
+      child: child,
+    );
   }
 }
 
 class _TapTriggerWidget extends StatefulWidget {
   final int count;
   final VoidCallback onOpen;
+  final bool isActive;
   final Widget child;
 
   const _TapTriggerWidget({
     required this.count,
     required this.onOpen,
+    required this.isActive,
     required this.child,
   });
 
@@ -78,6 +96,8 @@ class _TapTriggerWidgetState extends State<_TapTriggerWidget> {
   Timer? _resetTimer;
 
   void _onTap() {
+    if (!widget.isActive) return;
+
     _tapCount++;
     _resetTimer?.cancel();
     if (_tapCount >= widget.count) {
@@ -113,20 +133,30 @@ final class _ShakeTrigger extends EnvTrigger {
   const _ShakeTrigger({this.threshold = 15.0}) : super();
 
   @override
-  Widget build({required Widget child, required VoidCallback onOpen}) {
+  Widget build({
+    required Widget child,
+    required VoidCallback onOpen,
+    bool isActive = true,
+  }) {
     return _ShakeTriggerWidget(
-        threshold: threshold, onOpen: onOpen, child: child);
+      threshold: threshold,
+      onOpen: onOpen,
+      isActive: isActive,
+      child: child,
+    );
   }
 }
 
 class _ShakeTriggerWidget extends StatefulWidget {
   final double threshold;
   final VoidCallback onOpen;
+  final bool isActive;
   final Widget child;
 
   const _ShakeTriggerWidget({
     required this.threshold,
     required this.onOpen,
+    required this.isActive,
     required this.child,
   });
 
@@ -149,10 +179,11 @@ class _ShakeTriggerWidgetState extends State<_ShakeTriggerWidget> {
       event.x * event.x + event.y * event.y + event.z * event.z,
     );
 
+    if (!widget.isActive) return;
+
     if (magnitude > widget.threshold) {
       final DateTime now = DateTime.now();
-      if (_lastTrigger == null ||
-          now.difference(_lastTrigger!) > const Duration(seconds: 2)) {
+      if (_lastTrigger == null || now.difference(_lastTrigger!) > const Duration(seconds: 2)) {
         _lastTrigger = now;
         widget.onOpen();
       }
@@ -176,33 +207,46 @@ final class _EdgeSwipeTrigger extends EnvTrigger {
   const _EdgeSwipeTrigger({this.edgeWidth = 20.0}) : super();
 
   @override
-  Widget build({required Widget child, required VoidCallback onOpen}) {
+  Widget build({
+    required Widget child,
+    required VoidCallback onOpen,
+    bool isActive = true,
+  }) {
     return _EdgeSwipeTriggerWidget(
-        edgeWidth: edgeWidth, onOpen: onOpen, child: child);
+      edgeWidth: edgeWidth,
+      onOpen: onOpen,
+      isActive: isActive,
+      child: child,
+    );
   }
 }
 
 class _EdgeSwipeTriggerWidget extends StatefulWidget {
   final double edgeWidth;
   final VoidCallback onOpen;
+  final bool isActive;
   final Widget child;
 
   const _EdgeSwipeTriggerWidget({
     required this.edgeWidth,
     required this.onOpen,
+    required this.isActive,
     required this.child,
   });
 
   @override
-  State<_EdgeSwipeTriggerWidget> createState() =>
-      _EdgeSwipeTriggerWidgetState();
+  State<_EdgeSwipeTriggerWidget> createState() => _EdgeSwipeTriggerWidgetState();
 }
 
 class _EdgeSwipeTriggerWidgetState extends State<_EdgeSwipeTriggerWidget> {
   Offset? _pointerDownPosition;
   bool _startedInEdge = false;
 
-  void _onPointerDown(PointerDownEvent event) {
+   void _onPointerDown(PointerDownEvent event) {
+    if (!widget.isActive) {
+      _startedInEdge = false;
+      return;
+    }
     _pointerDownPosition = event.localPosition;
     final double screenWidth = MediaQuery.sizeOf(context).width;
     _startedInEdge = event.localPosition.dx >= screenWidth - widget.edgeWidth;

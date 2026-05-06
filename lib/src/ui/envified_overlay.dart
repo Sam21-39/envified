@@ -76,6 +76,12 @@ class EnvifiedOverlay extends StatefulWidget {
   /// Defaults to 7 rapid taps anywhere on the child widget tree.
   final EnvTrigger trigger;
 
+  /// Whether to show the floating 🌿 button in the bottom-right corner.
+  ///
+  /// Defaults to `true`. Set to `false` to use the [trigger] as the exclusive
+  /// way to open the panel (stealth mode).
+  final bool showFab;
+
   /// Creates an [EnvifiedOverlay].
   const EnvifiedOverlay({
     super.key,
@@ -85,6 +91,7 @@ class EnvifiedOverlay extends StatefulWidget {
     this.onApply,
     this.gate,
     this.trigger = const EnvTrigger.tap(count: 7),
+    this.showFab = true,
   });
 
   @override
@@ -104,6 +111,7 @@ class _EnvifiedOverlayState extends State<EnvifiedOverlay> {
         onApply: widget.onApply,
         gate: widget.gate,
         trigger: widget.trigger,
+        showFab: widget.showFab,
       ),
     );
   }
@@ -136,6 +144,7 @@ class _OverlayContent extends StatefulWidget {
   final VoidCallback? onApply;
   final EnvGate? gate;
   final EnvTrigger trigger;
+  final bool showFab;
 
   const _OverlayContent({
     required this.service,
@@ -143,6 +152,7 @@ class _OverlayContent extends StatefulWidget {
     this.onApply,
     this.gate,
     required this.trigger,
+    required this.showFab,
   });
 
   @override
@@ -208,6 +218,7 @@ class _OverlayContentState extends State<_OverlayContent> {
   Widget build(BuildContext context) {
     return widget.trigger.build(
       onOpen: _requestOpen,
+      isActive: !_isOpen,
       child: Stack(
         children: [
           widget.appChild,
@@ -245,15 +256,16 @@ class _OverlayContentState extends State<_OverlayContent> {
                 ),
               ),
             ),
-          Positioned(
-            bottom: 24,
-            right: 16,
-            child: _EnvFab(
-              service: widget.service,
-              isOpen: _isOpen,
-              onTap: _requestOpen,
+          if (widget.showFab)
+            Positioned(
+              bottom: 24,
+              right: 16,
+              child: _EnvFab(
+                service: widget.service,
+                isOpen: _isOpen,
+                onTap: _requestOpen,
+              ),
             ),
-          ),
         ],
       ),
     );
