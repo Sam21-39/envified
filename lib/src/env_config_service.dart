@@ -197,9 +197,7 @@ class EnvConfigService {
     _assertInitialised();
 
     // Block leaving prod when locked.
-    if (!_allowProdSwitch &&
-        current.value.env == Env.prod &&
-        env != Env.prod) {
+    if (!_allowProdSwitch && current.value.env == Env.prod && env != Env.prod) {
       throw const EnvifiedLockException(
         'Cannot switch away from production when allowProdSwitch is false.',
       );
@@ -322,8 +320,7 @@ class EnvConfigService {
   // ── Internal helpers ──────────────────────────────────────────────────────
 
   /// Whether the prod-lock is currently active for the calling operation.
-  bool get isProdLocked =>
-      !_allowProdSwitch && current.value.env == Env.prod;
+  bool get isProdLocked => !_allowProdSwitch && current.value.env == Env.prod;
 
   /// Whether [allowProdSwitch] was set to `true` during [init].
   bool get allowProdSwitch => _allowProdSwitch;

@@ -186,8 +186,7 @@ class EnvConfig {
   int get hashCode => Object.hash(env, baseUrl, values, isBaseUrlOverridden);
 
   @override
-  String toString() =>
-      'EnvConfig(env: ${env.name}, baseUrl: $baseUrl, '
+  String toString() => 'EnvConfig(env: ${env.name}, baseUrl: $baseUrl, '
       'isBaseUrlOverridden: $isBaseUrlOverridden, '
       'valueCount: ${values.length})';
 }

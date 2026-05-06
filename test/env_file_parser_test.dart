@@ -126,8 +126,7 @@ void main() {
 void _registerAsset(String key, String content) {
   TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
       .setMockMessageHandler('flutter/assets', (ByteData? message) async {
-    final String assetKey =
-        const StringCodec().decodeMessage(message) ?? '';
+    final String assetKey = const StringCodec().decodeMessage(message) ?? '';
     if (assetKey == key) {
       return const StringCodec().encodeMessage(content);
     }

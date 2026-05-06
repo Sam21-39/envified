@@ -38,8 +38,9 @@ void main() {
     });
 
     test('loadConfig restores EnvConfig from valid JSON', () async {
-      const json = '{"env":"staging","baseUrl":"https://staging.api.com","values":{"TIMEOUT":"5000"},"isBaseUrlOverridden":true}';
-      
+      const json =
+          '{"env":"staging","baseUrl":"https://staging.api.com","values":{"TIMEOUT":"5000"},"isBaseUrlOverridden":true}';
+
       when(() => mockSecureStorage.read(key: 'envified_config'))
           .thenAnswer((_) async => json);
 
@@ -58,7 +59,9 @@ void main() {
       expect(await storage.loadConfig(), isNull);
     });
 
-    test('loadConfig returns null and handles errors gracefully on malformed JSON', () async {
+    test(
+        'loadConfig returns null and handles errors gracefully on malformed JSON',
+        () async {
       when(() => mockSecureStorage.read(key: any(named: 'key')))
           .thenAnswer((_) async => '{invalid_json}');
 

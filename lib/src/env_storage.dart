@@ -8,7 +8,7 @@ import 'env_model.dart';
 /// even runtime configuration overrides are stored securely.
 class EnvStorage {
   static const String _keyConfig = 'envified_config';
-  
+
   final FlutterSecureStorage _storage;
 
   /// Creates an [EnvStorage] instance.
@@ -29,7 +29,7 @@ class EnvStorage {
     try {
       final String? json = await _storage.read(key: _keyConfig);
       if (json == null || json.isEmpty) return null;
-      
+
       final dynamic map = jsonDecode(json);
       if (map is Map<String, dynamic>) {
         return EnvConfig.fromJson(map);

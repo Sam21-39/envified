@@ -124,25 +124,31 @@ void main() {
     });
 
     test('restores persisted env on second init()', () async {
-      await svc.init(defaultEnv: Env.dev, persistSelection: true, storage: envStorage);
+      await svc.init(
+          defaultEnv: Env.dev, persistSelection: true, storage: envStorage);
       await svc.switchTo(Env.staging);
 
-      await svc.init(defaultEnv: Env.dev, persistSelection: true, storage: envStorage);
+      await svc.init(
+          defaultEnv: Env.dev, persistSelection: true, storage: envStorage);
       expect(svc.current.value.env, Env.staging);
     });
 
-    test('does not restore persisted env when persistSelection is false', () async {
-      await svc.init(defaultEnv: Env.dev, persistSelection: true, storage: envStorage);
+    test('does not restore persisted env when persistSelection is false',
+        () async {
+      await svc.init(
+          defaultEnv: Env.dev, persistSelection: true, storage: envStorage);
       await svc.switchTo(Env.staging);
 
-      await svc.init(defaultEnv: Env.dev, persistSelection: false, storage: envStorage);
+      await svc.init(
+          defaultEnv: Env.dev, persistSelection: false, storage: envStorage);
       expect(svc.current.value.env, Env.dev);
     });
   });
 
   group('EnvConfigService.switchTo()', () {
     setUp(() async {
-      await svc.init(defaultEnv: Env.dev, allowProdSwitch: false, storage: envStorage);
+      await svc.init(
+          defaultEnv: Env.dev, allowProdSwitch: false, storage: envStorage);
     });
 
     test('updates current.value to the new env', () async {
@@ -171,7 +177,8 @@ void main() {
 
   group('EnvConfigService.setBaseUrl()', () {
     setUp(() async {
-      await svc.init(defaultEnv: Env.dev, allowProdSwitch: false, storage: envStorage);
+      await svc.init(
+          defaultEnv: Env.dev, allowProdSwitch: false, storage: envStorage);
     });
 
     test('sets isBaseUrlOverridden to true', () async {
@@ -187,14 +194,16 @@ void main() {
 
   group('EnvConfigService.reset()', () {
     test('returns to defaultEnv', () async {
-      await svc.init(defaultEnv: Env.dev, persistSelection: true, storage: envStorage);
+      await svc.init(
+          defaultEnv: Env.dev, persistSelection: true, storage: envStorage);
       await svc.switchTo(Env.staging);
       await svc.reset();
       expect(svc.current.value.env, Env.dev);
     });
 
     test('clears persisted storage', () async {
-      await svc.init(defaultEnv: Env.dev, persistSelection: true, storage: envStorage);
+      await svc.init(
+          defaultEnv: Env.dev, persistSelection: true, storage: envStorage);
       await svc.switchTo(Env.staging);
       await svc.reset();
 
@@ -204,13 +213,16 @@ void main() {
   });
 
   group('EnvConfigService Security', () {
-    test('isProdLocked returns true when in prod and allowProdSwitch is false', () async {
-      await svc.init(defaultEnv: Env.prod, allowProdSwitch: false, storage: envStorage);
+    test('isProdLocked returns true when in prod and allowProdSwitch is false',
+        () async {
+      await svc.init(
+          defaultEnv: Env.prod, allowProdSwitch: false, storage: envStorage);
       expect(svc.isProdLocked, isTrue);
     });
 
     test('isProdLocked returns false when in dev', () async {
-      await svc.init(defaultEnv: Env.dev, allowProdSwitch: false, storage: envStorage);
+      await svc.init(
+          defaultEnv: Env.dev, allowProdSwitch: false, storage: envStorage);
       expect(svc.isProdLocked, isFalse);
     });
 
