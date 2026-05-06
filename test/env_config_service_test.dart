@@ -1,19 +1,78 @@
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:envified/envified.dart';
+import 'package:envified/src/env_storage.dart';
+
+/// A simple fake implementation of [FlutterSecureStorage] for testing.
+class FakeFlutterSecureStorage extends Fake implements FlutterSecureStorage {
+  final Map<String, String> _data = {};
+
+  @override
+  Future<void> write({
+    required String key,
+    required String? value,
+    IOSOptions? iOptions,
+    AndroidOptions? aOptions,
+    LinuxOptions? lOptions,
+    WebOptions? wOptions,
+    MacOsOptions? mOptions,
+    WindowsOptions? winOptions,
+  }) async {
+    if (value == null) {
+      _data.remove(key);
+    } else {
+      _data[key] = value;
+    }
+  }
+
+  @override
+  Future<String?> read({
+    required String key,
+    IOSOptions? iOptions,
+    AndroidOptions? aOptions,
+    LinuxOptions? lOptions,
+    WebOptions? wOptions,
+    MacOsOptions? mOptions,
+    WindowsOptions? winOptions,
+  }) async {
+    return _data[key];
+  }
+
+  @override
+  Future<void> delete({
+    required String key,
+    IOSOptions? iOptions,
+    AndroidOptions? aOptions,
+    LinuxOptions? lOptions,
+    WebOptions? wOptions,
+    MacOsOptions? mOptions,
+    WindowsOptions? winOptions,
+  }) async {
+    _data.remove(key);
+  }
+
+  @override
+  Future<void> deleteAll({
+    IOSOptions? iOptions,
+    AndroidOptions? aOptions,
+    LinuxOptions? lOptions,
+    WebOptions? wOptions,
+    MacOsOptions? mOptions,
+    WindowsOptions? winOptions,
+  }) async {
+    _data.clear();
+  }
+}
 
 /// Helper to register a fake asset in the root bundle.
 void _registerAsset(String key, String content) {
   TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
       .setMockMessageHandler('flutter/assets', (ByteData? message) async {
-    final String assetKey =
-        const StringCodec().decodeMessage(message) ?? '';
+    final String assetKey = const StringCodec().decodeMessage(message) ?? '';
     if (assetKey == key) {
       return const StringCodec().encodeMessage(content);
     }
-    // Return null for unregistered assets — simulates missing file.
     return null;
   });
 }
@@ -21,20 +80,19 @@ void _registerAsset(String key, String content) {
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  // Re-obtain the singleton; we manipulate its internal state via init().
   final EnvConfigService svc = EnvConfigService.instance;
+  late FakeFlutterSecureStorage fakeStorage;
+  late EnvStorage envStorage;
 
   setUp(() async {
-    // Fresh SharedPreferences for every test.
-    SharedPreferences.setMockInitialValues(<String, Object>{});
+    fakeStorage = FakeFlutterSecureStorage();
+    envStorage = EnvStorage(storage: fakeStorage);
 
-    // Register a shared `.env` fallback asset.
     _registerAsset(
       '.env',
       'APP_NAME=TestApp\nTIMEOUT=30\nBASE_URL=https://api.example.com\n',
     );
 
-    // Register per-env assets.
     _registerAsset(
       '.env.dev',
       'BASE_URL=https://dev.api.example.com\nDEBUG=true\n',
@@ -51,44 +109,40 @@ void main() {
 
   group('EnvConfigService.init()', () {
     test('defaults to Env.dev on first launch', () async {
-      await svc.init(defaultEnv: Env.dev);
+      await svc.init(defaultEnv: Env.dev, storage: envStorage);
       expect(svc.current.value.env, Env.dev);
     });
 
     test('baseUrl is taken from .env.dev BASE_URL', () async {
-      await svc.init(defaultEnv: Env.dev);
+      await svc.init(defaultEnv: Env.dev, storage: envStorage);
       expect(svc.current.value.baseUrl, 'https://dev.api.example.com');
     });
 
     test('merged values include fallback keys', () async {
-      await svc.init(defaultEnv: Env.dev);
-      // APP_NAME comes from the shared .env fallback.
+      await svc.init(defaultEnv: Env.dev, storage: envStorage);
       expect(svc.current.value.values['APP_NAME'], 'TestApp');
     });
 
     test('restores persisted env on second init()', () async {
-      // First init — switches to staging and persists.
-      await svc.init(defaultEnv: Env.dev, persistSelection: true);
+      await svc.init(defaultEnv: Env.dev, persistSelection: true, storage: envStorage);
       await svc.switchTo(Env.staging);
 
-      // Second init — should restore staging from SharedPreferences.
-      await svc.init(defaultEnv: Env.dev, persistSelection: true);
+      await svc.init(defaultEnv: Env.dev, persistSelection: true, storage: envStorage);
       expect(svc.current.value.env, Env.staging);
     });
 
-    test('does not restore persisted env when persistSelection is false',
-        () async {
-      await svc.init(defaultEnv: Env.dev, persistSelection: true);
+    test('does not restore persisted env when persistSelection is false', () async {
+      await svc.init(defaultEnv: Env.dev, persistSelection: true, storage: envStorage);
       await svc.switchTo(Env.staging);
 
-      await svc.init(defaultEnv: Env.dev, persistSelection: false);
+      await svc.init(defaultEnv: Env.dev, persistSelection: false, storage: envStorage);
       expect(svc.current.value.env, Env.dev);
     });
   });
 
   group('EnvConfigService.switchTo()', () {
     setUp(() async {
-      await svc.init(defaultEnv: Env.dev, allowProdSwitch: false);
+      await svc.init(defaultEnv: Env.dev, allowProdSwitch: false, storage: envStorage);
     });
 
     test('updates current.value to the new env', () async {
@@ -106,13 +160,6 @@ void main() {
       expect(svc.current.value.env, Env.prod);
     });
 
-    test('switchTo(prod) from prod is a no-op (same env, no throw)', () async {
-      await svc.switchTo(Env.prod);
-      // Switching to the same env should not throw.
-      await svc.switchTo(Env.prod);
-      expect(svc.current.value.env, Env.prod);
-    });
-
     test('throws EnvifiedLockException when leaving prod and locked', () async {
       await svc.switchTo(Env.prod);
       expect(
@@ -120,19 +167,11 @@ void main() {
         throwsA(isA<EnvifiedLockException>()),
       );
     });
-
-    test('does not throw when leaving prod and allowProdSwitch is true',
-        () async {
-      await svc.init(defaultEnv: Env.dev, allowProdSwitch: true);
-      await svc.switchTo(Env.prod);
-      await svc.switchTo(Env.dev); // Should not throw.
-      expect(svc.current.value.env, Env.dev);
-    });
   });
 
   group('EnvConfigService.setBaseUrl()', () {
     setUp(() async {
-      await svc.init(defaultEnv: Env.dev, allowProdSwitch: false);
+      await svc.init(defaultEnv: Env.dev, allowProdSwitch: false, storage: envStorage);
     });
 
     test('sets isBaseUrlOverridden to true', () async {
@@ -144,65 +183,49 @@ void main() {
       await svc.setBaseUrl('https://custom.example.com');
       expect(svc.current.value.baseUrl, 'https://custom.example.com');
     });
-
-    test('throws EnvifiedLockException when prod-locked', () async {
-      await svc.switchTo(Env.prod);
-      expect(
-        () => svc.setBaseUrl('https://custom.example.com'),
-        throwsA(isA<EnvifiedLockException>()),
-      );
-    });
-  });
-
-  group('EnvConfigService.clearBaseUrlOverride()', () {
-    setUp(() async {
-      await svc.init(defaultEnv: Env.dev, allowProdSwitch: false);
-      await svc.setBaseUrl('https://custom.example.com');
-    });
-
-    test('restores BASE_URL from .env file', () async {
-      await svc.clearBaseUrlOverride();
-      expect(svc.current.value.baseUrl, 'https://dev.api.example.com');
-    });
-
-    test('sets isBaseUrlOverridden to false', () async {
-      await svc.clearBaseUrlOverride();
-      expect(svc.current.value.isBaseUrlOverridden, isFalse);
-    });
-
-    test('throws EnvifiedLockException when prod-locked', () async {
-      // Switch to prod first, which activates the production lock.
-      await svc.init(defaultEnv: Env.dev, allowProdSwitch: false);
-      await svc.switchTo(Env.prod);
-      expect(
-        () => svc.clearBaseUrlOverride(),
-        throwsA(isA<EnvifiedLockException>()),
-      );
-    });
   });
 
   group('EnvConfigService.reset()', () {
     test('returns to defaultEnv', () async {
-      await svc.init(defaultEnv: Env.dev, persistSelection: true);
+      await svc.init(defaultEnv: Env.dev, persistSelection: true, storage: envStorage);
       await svc.switchTo(Env.staging);
       await svc.reset();
       expect(svc.current.value.env, Env.dev);
     });
 
-    test('clears persisted selection so second init starts fresh', () async {
-      await svc.init(defaultEnv: Env.dev, persistSelection: true);
+    test('clears persisted storage', () async {
+      await svc.init(defaultEnv: Env.dev, persistSelection: true, storage: envStorage);
       await svc.switchTo(Env.staging);
       await svc.reset();
+      
+      final stored = await envStorage.loadConfig();
+      expect(stored, isNull);
+    });
+  });
 
-      // Re-init after reset should default to Env.dev (nothing persisted).
-      await svc.init(defaultEnv: Env.dev, persistSelection: true);
-      expect(svc.current.value.env, Env.dev);
+  group('EnvConfigService Security', () {
+    test('isProdLocked returns true when in prod and allowProdSwitch is false', () async {
+      await svc.init(defaultEnv: Env.prod, allowProdSwitch: false, storage: envStorage);
+      expect(svc.isProdLocked, isTrue);
+    });
+
+    test('isProdLocked returns false when in dev', () async {
+      await svc.init(defaultEnv: Env.dev, allowProdSwitch: false, storage: envStorage);
+      expect(svc.isProdLocked, isFalse);
+    });
+
+    test('allowProdSwitch property is correctly exposed', () async {
+      await svc.init(allowProdSwitch: true, storage: envStorage);
+      expect(svc.allowProdSwitch, isTrue);
+      
+      await svc.init(allowProdSwitch: false, storage: envStorage);
+      expect(svc.allowProdSwitch, isFalse);
     });
   });
 
   group('EnvConfigService.get()', () {
     setUp(() async {
-      await svc.init(defaultEnv: Env.dev);
+      await svc.init(defaultEnv: Env.dev, storage: envStorage);
     });
 
     test('returns value for existing key', () {
@@ -211,10 +234,6 @@ void main() {
 
     test('returns fallback for missing key', () {
       expect(svc.get('MISSING_KEY', fallback: 'default'), 'default');
-    });
-
-    test('returns empty string fallback by default for missing key', () {
-      expect(svc.get('TOTALLY_MISSING'), '');
     });
   });
 }

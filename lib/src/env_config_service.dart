@@ -122,13 +122,14 @@ class EnvConfigService {
     Env defaultEnv = Env.dev,
     bool persistSelection = true,
     bool allowProdSwitch = false,
+    EnvStorage? storage,
   }) async {
     _defaultEnv = defaultEnv;
     _persistSelection = persistSelection;
     _allowProdSwitch = allowProdSwitch;
 
     // Initialise storage (uses FlutterSecureStorage internally).
-    _storage = const EnvStorage();
+    _storage = storage ?? const EnvStorage();
 
     // Load the shared fallback `.env` file.
     _fallbackValues = await _parser.parse('.env');

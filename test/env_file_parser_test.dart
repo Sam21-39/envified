@@ -66,6 +66,31 @@ void main() {
       expect(result['KEY'], 'VALUE');
     });
 
+    test('trims keys and values', () async {
+      _registerAsset('.env.test_trim', '  KEY  =  VALUE  \n');
+      final result = await parser.parse('.env.test_trim');
+      expect(result['KEY'], 'VALUE');
+    });
+
+    test('handles values containing equals signs', () async {
+      _registerAsset('.env.test_multieq', 'KEY=VALUE=WITH=EQUALS\n');
+      final result = await parser.parse('.env.test_multieq');
+      expect(result['KEY'], 'VALUE=WITH=EQUALS');
+    });
+
+    test('strips single quotes', () async {
+      _registerAsset('.env.test_single', "KEY='single quoted'\n");
+      final result = await parser.parse('.env.test_single');
+      expect(result['KEY'], 'single quoted');
+    });
+
+    test('handles UTF-8 characters', () async {
+      _registerAsset('.env.test_utf8', 'EMOJI=🌿\nCHINESE=你好\n');
+      final result = await parser.parse('.env.test_utf8');
+      expect(result['EMOJI'], '🌿');
+      expect(result['CHINESE'], '你好');
+    });
+
     // ── merge() ──────────────────────────────────────────────────────────────
 
     test('merge() returns union of fallback and specific', () {
