@@ -128,7 +128,7 @@ class EnvConfigService {
   ///   persistent selection exists). Defaults to [Env.dev].
   /// - [persistSelection]: When `true` (the default), the active [Env]
   ///   selection and any base URL override are written to
-  ///   [FlutterSecureStorage] and restored on subsequent launches.
+  ///   encrypted storage (`flutter_secure_storage`) and restored on subsequent launches.
   /// - [allowProdSwitch]: When `false` (the default), switching away from
   ///   [Env.prod] or overriding the base URL while in production is blocked.
   ///   See [EnvifiedLockException].
@@ -232,7 +232,7 @@ class EnvConfigService {
   /// The [current] notifier is updated synchronously after the async load
   /// completes, triggering any listening [ValueListenableBuilder] widgets.
   ///
-  /// Persists the new selection to [FlutterSecureStorage] if `persistSelection`
+  /// Persists the new selection to encrypted storage (`flutter_secure_storage`) if `persistSelection`
   /// was `true` during [init].
   ///
   /// Lifecycle hooks:
@@ -387,7 +387,7 @@ class EnvConfigService {
   /// Overrides the active [EnvConfig.baseUrl] with [url].
   ///
   /// Sets [EnvConfig.isBaseUrlOverridden] to `true` and persists the override
-  /// in [FlutterSecureStorage] if `persistSelection` was `true` during [init].
+  /// in encrypted storage (`flutter_secure_storage`) if `persistSelection` was `true` during [init].
   ///
   /// When [allowedUrls] was supplied to [init], [url] must start with at least
   /// one of the listed prefixes, otherwise [EnvifiedUrlNotAllowedException] is

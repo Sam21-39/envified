@@ -31,11 +31,8 @@ class EnvifiedLockException implements Exception {
 
 /// Exception thrown when an `.env*` asset file fails an integrity check.
 ///
-/// [EnvFileParser.verifyIntegrity] computes a SHA-256 hash of each `.env*`
-/// file on first load and stores it securely. On subsequent loads the hash is
-/// recomputed and compared. If the hashes differ this exception is thrown,
-/// indicating that the file was modified after the app was first run —
-/// a potential sign of tampering.
+/// Thrown when a `.env` file's contents differ from the hash recorded
+/// on first load, indicating possible tampering.
 ///
 /// Example:
 /// ```dart

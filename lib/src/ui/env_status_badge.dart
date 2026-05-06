@@ -13,7 +13,7 @@ import '../env_model.dart';
 /// When [EnvConfig.isBaseUrlOverridden] is `true`, a ⚡ prefix is added and
 /// the badge pulses gently (opacity 1.0 ↔ 0.7, 1.5 s period) to draw
 /// attention to the custom URL. The animation respects the user's
-/// `prefers-reduced-motion` system setting via [MediaQuery.disableAnimations].
+/// `prefers-reduced-motion` system setting via `MediaQuery.of(context).disableAnimations`.
 ///
 /// ## Colour mapping
 ///
