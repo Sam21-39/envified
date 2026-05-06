@@ -1,143 +1,220 @@
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
 import 'package:envified/envified.dart';
 
-final _urls = {
-  Env.dev: 'https://dev.api.appamania.in',
-  Env.staging: 'https://staging.api.appamania.in',
-  Env.prod: 'https://api.appamania.in',
-};
-
-final _vars = {
-  'API_KEY': 'test-key-123',
-  'APP_NAME': 'TestApp',
-};
-
-final _varsByEnv = {
-  Env.dev: {'LOG_LEVEL': 'verbose', 'FEATURE_X': 'true'},
-  Env.staging: {'LOG_LEVEL': 'info', 'FEATURE_X': 'true'},
-  Env.prod: {'LOG_LEVEL': 'error', 'FEATURE_X': 'false'},
-};
+/// Helper to register a fake asset in the root bundle.
+void _registerAsset(String key, String content) {
+  TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+      .setMockMessageHandler('flutter/assets', (ByteData? message) async {
+    final String assetKey =
+        const StringCodec().decodeMessage(message) ?? '';
+    if (assetKey == key) {
+      return const StringCodec().encodeMessage(content);
+    }
+    // Return null for unregistered assets — simulates missing file.
+    return null;
+  });
+}
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  setUp(() {
-    FlutterSecureStorage.setMockInitialValues({});
+  // Re-obtain the singleton; we manipulate its internal state via init().
+  final EnvConfigService svc = EnvConfigService.instance;
+
+  setUp(() async {
+    // Fresh SharedPreferences for every test.
+    SharedPreferences.setMockInitialValues(<String, Object>{});
+
+    // Register a shared `.env` fallback asset.
+    _registerAsset(
+      '.env',
+      'APP_NAME=TestApp\nTIMEOUT=30\nBASE_URL=https://api.example.com\n',
+    );
+
+    // Register per-env assets.
+    _registerAsset(
+      '.env.dev',
+      'BASE_URL=https://dev.api.example.com\nDEBUG=true\n',
+    );
+    _registerAsset(
+      '.env.staging',
+      'BASE_URL=https://staging.api.example.com\nDEBUG=true\n',
+    );
+    _registerAsset(
+      '.env.prod',
+      'BASE_URL=https://api.example.com\nDEBUG=false\n',
+    );
   });
 
-  final svc = EnvConfigService.instance;
-
-  group('init', () {
-    test('defaults to dev env', () async {
-      await svc.init(urls: _urls, vars: _vars, varsByEnv: _varsByEnv);
+  group('EnvConfigService.init()', () {
+    test('defaults to Env.dev on first launch', () async {
+      await svc.init(defaultEnv: Env.dev);
       expect(svc.current.value.env, Env.dev);
-      expect(svc.current.value.baseUrl, _urls[Env.dev]);
     });
 
-    test('BASE_URL is auto-injected and matches baseUrl', () async {
-      await svc.init(urls: _urls, vars: _vars, varsByEnv: _varsByEnv);
-      expect(svc.get('BASE_URL'), _urls[Env.dev]);
+    test('baseUrl is taken from .env.dev BASE_URL', () async {
+      await svc.init(defaultEnv: Env.dev);
+      expect(svc.current.value.baseUrl, 'https://dev.api.example.com');
     });
 
-    test('global vars are available after init', () async {
-      await svc.init(urls: _urls, vars: _vars, varsByEnv: _varsByEnv);
-      expect(svc.get('API_KEY'), 'test-key-123');
-      expect(svc.get('APP_NAME'), 'TestApp');
+    test('merged values include fallback keys', () async {
+      await svc.init(defaultEnv: Env.dev);
+      // APP_NAME comes from the shared .env fallback.
+      expect(svc.current.value.values['APP_NAME'], 'TestApp');
     });
 
-    test('per-env vars are resolved for default env', () async {
-      await svc.init(urls: _urls, vars: _vars, varsByEnv: _varsByEnv);
-      expect(svc.get('LOG_LEVEL'), 'verbose');
-      expect(svc.get('FEATURE_X'), 'true');
+    test('restores persisted env on second init()', () async {
+      // First init — switches to staging and persists.
+      await svc.init(defaultEnv: Env.dev, persistSelection: true);
+      await svc.switchTo(Env.staging);
+
+      // Second init — should restore staging from SharedPreferences.
+      await svc.init(defaultEnv: Env.dev, persistSelection: true);
+      expect(svc.current.value.env, Env.staging);
+    });
+
+    test('does not restore persisted env when persistSelection is false',
+        () async {
+      await svc.init(defaultEnv: Env.dev, persistSelection: true);
+      await svc.switchTo(Env.staging);
+
+      await svc.init(defaultEnv: Env.dev, persistSelection: false);
+      expect(svc.current.value.env, Env.dev);
     });
   });
 
-  group('switchTo', () {
-    test('changes env and url', () async {
-      await svc.init(urls: _urls, vars: _vars, varsByEnv: _varsByEnv);
+  group('EnvConfigService.switchTo()', () {
+    setUp(() async {
+      await svc.init(defaultEnv: Env.dev, allowProdSwitch: false);
+    });
+
+    test('updates current.value to the new env', () async {
+      await svc.switchTo(Env.staging);
+      expect(svc.current.value.env, Env.staging);
+    });
+
+    test('updates baseUrl to the new env BASE_URL', () async {
+      await svc.switchTo(Env.staging);
+      expect(svc.current.value.baseUrl, 'https://staging.api.example.com');
+    });
+
+    test('switching to prod is allowed from dev', () async {
       await svc.switchTo(Env.prod);
       expect(svc.current.value.env, Env.prod);
-      expect(svc.current.value.baseUrl, _urls[Env.prod]);
     });
 
-    test('BASE_URL updates to match new env url', () async {
-      await svc.init(urls: _urls, vars: _vars, varsByEnv: _varsByEnv);
-      await svc.switchTo(Env.staging);
-      expect(svc.get('BASE_URL'), _urls[Env.staging]);
-    });
-
-    test('re-resolves per-env vars on switch', () async {
-      await svc.init(urls: _urls, vars: _vars, varsByEnv: _varsByEnv);
+    test('switchTo(prod) from prod is a no-op (same env, no throw)', () async {
       await svc.switchTo(Env.prod);
-      // prod env should have error log level and feature disabled
-      expect(svc.get('LOG_LEVEL'), 'error');
-      expect(svc.get('FEATURE_X'), 'false');
-    });
-
-    test('global vars are still accessible after switch', () async {
-      await svc.init(urls: _urls, vars: _vars, varsByEnv: _varsByEnv);
+      // Switching to the same env should not throw.
       await svc.switchTo(Env.prod);
-      // Global vars are merged, so still available
-      expect(svc.get('API_KEY'), 'test-key-123');
+      expect(svc.current.value.env, Env.prod);
     });
 
-    test('per-env vars take priority over global vars', () async {
-      // Global has LOG_LEVEL, env override also has LOG_LEVEL
-      await svc.init(
-        urls: _urls,
-        vars: {'LOG_LEVEL': 'global-default'},
-        varsByEnv: {
-          Env.dev: {'LOG_LEVEL': 'verbose-dev'}
-        },
+    test('throws EnvifiedLockException when leaving prod and locked', () async {
+      await svc.switchTo(Env.prod);
+      expect(
+        () => svc.switchTo(Env.dev),
+        throwsA(isA<EnvifiedLockException>()),
       );
-      expect(svc.get('LOG_LEVEL'), 'verbose-dev');
-    });
-  });
-
-  group('setCustomUrl', () {
-    test('sets Env.custom', () async {
-      await svc.init(urls: _urls, vars: _vars, varsByEnv: _varsByEnv);
-      await svc.setCustomUrl('https://ngrok.io/test');
-      expect(svc.current.value.env, Env.custom);
-      expect(svc.current.value.baseUrl, 'https://ngrok.io/test');
     });
 
-    test('BASE_URL is updated to match custom URL', () async {
-      await svc.init(urls: _urls, vars: _vars, varsByEnv: _varsByEnv);
-      await svc.setCustomUrl('https://my-custom-server.com/api');
-      expect(svc.get('BASE_URL'), 'https://my-custom-server.com/api');
-    });
-  });
-
-  group('reset', () {
-    test('returns to dev env', () async {
-      await svc.init(urls: _urls, vars: _vars, varsByEnv: _varsByEnv);
+    test('does not throw when leaving prod and allowProdSwitch is true',
+        () async {
+      await svc.init(defaultEnv: Env.dev, allowProdSwitch: true);
       await svc.switchTo(Env.prod);
+      await svc.switchTo(Env.dev); // Should not throw.
+      expect(svc.current.value.env, Env.dev);
+    });
+  });
+
+  group('EnvConfigService.setBaseUrl()', () {
+    setUp(() async {
+      await svc.init(defaultEnv: Env.dev, allowProdSwitch: false);
+    });
+
+    test('sets isBaseUrlOverridden to true', () async {
+      await svc.setBaseUrl('https://custom.example.com');
+      expect(svc.current.value.isBaseUrlOverridden, isTrue);
+    });
+
+    test('updates baseUrl to the provided URL', () async {
+      await svc.setBaseUrl('https://custom.example.com');
+      expect(svc.current.value.baseUrl, 'https://custom.example.com');
+    });
+
+    test('throws EnvifiedLockException when prod-locked', () async {
+      await svc.switchTo(Env.prod);
+      expect(
+        () => svc.setBaseUrl('https://custom.example.com'),
+        throwsA(isA<EnvifiedLockException>()),
+      );
+    });
+  });
+
+  group('EnvConfigService.clearBaseUrlOverride()', () {
+    setUp(() async {
+      await svc.init(defaultEnv: Env.dev, allowProdSwitch: false);
+      await svc.setBaseUrl('https://custom.example.com');
+    });
+
+    test('restores BASE_URL from .env file', () async {
+      await svc.clearBaseUrlOverride();
+      expect(svc.current.value.baseUrl, 'https://dev.api.example.com');
+    });
+
+    test('sets isBaseUrlOverridden to false', () async {
+      await svc.clearBaseUrlOverride();
+      expect(svc.current.value.isBaseUrlOverridden, isFalse);
+    });
+
+    test('throws EnvifiedLockException when prod-locked', () async {
+      // Switch to prod first, which activates the production lock.
+      await svc.init(defaultEnv: Env.dev, allowProdSwitch: false);
+      await svc.switchTo(Env.prod);
+      expect(
+        () => svc.clearBaseUrlOverride(),
+        throwsA(isA<EnvifiedLockException>()),
+      );
+    });
+  });
+
+  group('EnvConfigService.reset()', () {
+    test('returns to defaultEnv', () async {
+      await svc.init(defaultEnv: Env.dev, persistSelection: true);
+      await svc.switchTo(Env.staging);
       await svc.reset();
       expect(svc.current.value.env, Env.dev);
     });
+
+    test('clears persisted selection so second init starts fresh', () async {
+      await svc.init(defaultEnv: Env.dev, persistSelection: true);
+      await svc.switchTo(Env.staging);
+      await svc.reset();
+
+      // Re-init after reset should default to Env.dev (nothing persisted).
+      await svc.init(defaultEnv: Env.dev, persistSelection: true);
+      expect(svc.current.value.env, Env.dev);
+    });
   });
 
-  group('get / maybeGet', () {
-    test('get returns value for existing key', () async {
-      await svc.init(urls: _urls, vars: _vars, varsByEnv: _varsByEnv);
-      expect(svc.get('API_KEY'), 'test-key-123');
+  group('EnvConfigService.get()', () {
+    setUp(() async {
+      await svc.init(defaultEnv: Env.dev);
     });
 
-    test('get throws StateError for missing key', () async {
-      await svc.init(urls: _urls, vars: _vars, varsByEnv: _varsByEnv);
-      expect(() => svc.get('NONEXISTENT_KEY'), throwsStateError);
+    test('returns value for existing key', () {
+      expect(svc.get('APP_NAME'), 'TestApp');
     });
 
-    test('maybeGet returns value for existing key', () async {
-      await svc.init(urls: _urls, vars: _vars, varsByEnv: _varsByEnv);
-      expect(svc.maybeGet('API_KEY'), 'test-key-123');
+    test('returns fallback for missing key', () {
+      expect(svc.get('MISSING_KEY', fallback: 'default'), 'default');
     });
 
-    test('maybeGet returns null for missing key', () async {
-      await svc.init(urls: _urls, vars: _vars, varsByEnv: _varsByEnv);
-      expect(svc.maybeGet('NONEXISTENT_KEY'), isNull);
+    test('returns empty string fallback by default for missing key', () {
+      expect(svc.get('TOTALLY_MISSING'), '');
     });
   });
 }

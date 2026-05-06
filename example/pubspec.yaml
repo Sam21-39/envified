@@ -1,11 +1,10 @@
 name: envified_example
-description: Demonstrates how to use the envified package.
+description: Demonstrates the envified package — runtime environment switching for Flutter.
 publish_to: 'none'
-
-version: 1.0.0+1
+version: 0.1.0
 
 environment:
-  sdk: '>=3.0.0 <4.0.0'
+  sdk: ">=3.0.0 <4.0.0"
   flutter: ">=3.10.0"
 
 dependencies:
@@ -13,7 +12,6 @@ dependencies:
     sdk: flutter
   envified:
     path: ../
-  http: ^1.2.0
 
 dev_dependencies:
   flutter_test:
@@ -21,7 +19,9 @@ dev_dependencies:
   flutter_lints: ^3.0.0
 
 flutter:
+  uses-material-design: true
   assets:
-    - assets/.env.dev.json
-    - assets/.env.staging.json
-    - assets/.env.prod.json
+    - .env
+    - .env.dev
+    - .env.staging
+    - .env.prod

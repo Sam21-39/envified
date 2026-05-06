@@ -1,61 +1,17 @@
-import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
 import 'package:envified/envified.dart';
-
-// ---------------------------------------------------------------------------
-// SECURE DOTENV ALTERNATIVE DEMO
-//
-// TWO approaches shown here:
-//
-// APPROACH A - Asset-based (non-sensitive config only):
-//   .env.dev.json / .env.staging.json / .env.prod.json are bundled as Flutter
-//   assets and loaded at runtime. These can be extracted from the APK, so
-//   only use them for non-sensitive config (feature flags, log levels, etc).
-//
-// APPROACH B - Compile-time secrets (sensitive values):
-//   Injected via --dart-define-from-file at build time. Baked into the binary,
-//   cannot be extracted as a file. Use for API keys, DSNs, tokens, etc.
-//
-//   flutter run --dart-define=API_KEY=your-secret --dart-define=APP_NAME=MyApp
-// ---------------------------------------------------------------------------
-
-// Approach B: compile-time secrets (String.fromEnvironment)
-const _apiKey = String.fromEnvironment('API_KEY', defaultValue: 'demo-key');
-const _appName =
-    String.fromEnvironment('APP_NAME', defaultValue: 'Envified Demo');
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Approach A: load per-env config directly from .env.*.json asset files
-  final devVars = await EnvFileReader.fromJsonAsset('assets/.env.dev.json');
-  final stagingVars =
-      await EnvFileReader.fromJsonAsset('assets/.env.staging.json');
-  final prodVars = await EnvFileReader.fromJsonAsset('assets/.env.prod.json');
-
+  // Initialise envified before runApp. This loads all .env* asset files,
+  // restores the previously selected environment from storage, and sets up
+  // the production lock.
   await EnvConfigService.instance.init(
-    urls: {
-      Env.dev: 'https://jsonplaceholder.typicode.com',
-      Env.staging: 'https://dummyjson.com',
-      Env.prod: 'https://reqres.in/api',
-    },
     defaultEnv: Env.dev,
-
-    // Approach B: global compile-time secrets (all envs)
-    vars: {
-      'API_KEY': _apiKey,
-      'APP_NAME': _appName,
-    },
-
-    // Approach A: per-env non-sensitive config from asset files
-    // These are merged on top of global vars; per-env values take priority.
-    // BASE_URL is always auto-injected and kept in sync automatically.
-    varsByEnv: {
-      Env.dev: devVars,
-      Env.staging: stagingVars,
-      Env.prod: prodVars,
-    },
+    persistSelection: true,
+    allowProdSwitch: false, // prod is locked by default
   );
 
   runApp(const MyApp());
@@ -66,283 +22,179 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return EnvifiedScope(
-      service: EnvConfigService.instance,
-      builder: (context, config) {
-        return MaterialApp(
-          title: EnvConfigService.instance.get('APP_NAME'),
-          theme: ThemeData(
-            colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
-            useMaterial3: true,
-          ),
-          darkTheme: ThemeData.dark(useMaterial3: true),
-          themeMode: ThemeMode.system,
-          home: const MyHomePage(),
-        );
-      },
+    return MaterialApp(
+      title: 'envified Example',
+      debugShowCheckedModeBanner: false,
+      // Use builder to inject the debug panel across all routes.
+      builder: (context, child) => EnvifiedOverlay(
+        service: EnvConfigService.instance,
+        enabled: kDebugMode, // remove the panel in release builds
+        child: child ?? const SizedBox.shrink(),
+      ),
+      theme: ThemeData(
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: const Color(0xFF1E88E5),
+          brightness: Brightness.dark,
+        ),
+        useMaterial3: true,
+      ),
+      home: const _HomePage(),
     );
   }
 }
 
-class MyHomePage extends StatefulWidget {
-  const MyHomePage({super.key});
+class _HomePage extends StatelessWidget {
+  const _HomePage();
 
   @override
-  State<MyHomePage> createState() => _MyHomePageState();
+  Widget build(BuildContext context) {
+    final EnvConfigService service = EnvConfigService.instance;
+
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('envified Example'),
+        centerTitle: true,
+      ),
+      body: ValueListenableBuilder<EnvConfig>(
+        valueListenable: service.current,
+        builder: (context, config, _) {
+          return SingleChildScrollView(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // ── Active env badge ─────────────────────────────────────
+                _SectionTitle('Active Environment'),
+                const SizedBox(height: 8),
+                _EnvBadge(env: config.env),
+
+                const SizedBox(height: 24),
+
+                // ── Base URL ─────────────────────────────────────────────
+                _SectionTitle('Base URL'),
+                const SizedBox(height: 8),
+                _InfoRow(
+                  label: 'Current',
+                  value: config.baseUrl,
+                  highlight: config.isBaseUrlOverridden,
+                ),
+                if (config.isBaseUrlOverridden)
+                  _InfoRow(
+                    label: 'From .env',
+                    value: config.values['BASE_URL'] ?? '(not set)',
+                  ),
+
+                const SizedBox(height: 24),
+
+                // ── Values ───────────────────────────────────────────────
+                _SectionTitle('All env values (${config.values.length})'),
+                const SizedBox(height: 8),
+                ...config.values.entries.map(
+                  (e) => _InfoRow(label: e.key, value: e.value),
+                ),
+
+                const SizedBox(height: 24),
+
+                // ── Quick switch buttons ──────────────────────────────────
+                _SectionTitle('Quick Switch'),
+                const SizedBox(height: 12),
+                _EnvSwitcher(service: service),
+
+                const SizedBox(height: 32),
+
+                // ── Tip ──────────────────────────────────────────────────
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.blueGrey.shade900,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: Colors.blueGrey.shade700,
+                    ),
+                  ),
+                  child: const Text(
+                    '💡 Tap the 🌿 button in the bottom-right corner to open '
+                    'the full envified debug panel.',
+                    style: TextStyle(fontSize: 13),
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
 }
 
-class _MyHomePageState extends State<MyHomePage> {
-  String _apiResult = 'No data fetched yet.';
-  bool _isLoading = false;
-  final _customUrlCtrl = TextEditingController();
+// ─────────────────────────────────────────────────────────────────────────────
+// Helper widgets
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _SectionTitle extends StatelessWidget {
+  final String text;
+  const _SectionTitle(this.text);
 
   @override
-  void dispose() {
-    _customUrlCtrl.dispose();
-    super.dispose();
+  Widget build(BuildContext context) {
+    return Text(
+      text,
+      style: Theme.of(context).textTheme.titleSmall?.copyWith(
+            color: Colors.blueGrey.shade400,
+            fontWeight: FontWeight.w600,
+            letterSpacing: 0.6,
+          ),
+    );
   }
+}
 
-  Future<void> _fetchData() async {
-    setState(() {
-      _isLoading = true;
-      _apiResult = 'Fetching...';
-    });
+class _EnvBadge extends StatelessWidget {
+  final Env env;
+  const _EnvBadge({required this.env});
 
-    try {
-      // BASE_URL is always auto-injected into vars - use either way:
-      final baseUrl = EnvConfigService.instance.get('BASE_URL');
-      final endpoint = baseUrl.contains('jsonplaceholder')
-          ? '/users/1'
-          : baseUrl.contains('dummyjson')
-              ? '/users/1'
-              : '/users/2';
-
-      final response = await http.get(Uri.parse('$baseUrl$endpoint'));
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        setState(() {
-          _apiResult =
-              'Success!\n\n${const JsonEncoder.withIndent('  ').convert(data)}';
-        });
-      } else {
-        setState(() => _apiResult = 'HTTP ${response.statusCode}');
-      }
-    } catch (e) {
-      setState(() => _apiResult = 'Exception: $e');
-    } finally {
-      setState(() => _isLoading = false);
+  Color _color() {
+    switch (env) {
+      case Env.dev:
+        return Colors.blue.shade400;
+      case Env.staging:
+        return Colors.orange.shade400;
+      case Env.prod:
+        return Colors.red.shade400;
+      case Env.custom:
+        return Colors.purple.shade400;
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final config = EnvifiedScope.of(context);
-    final service = EnvConfigService.instance;
-
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(service.get('APP_NAME')),
-        actions: [
-          Container(
-            margin: const EdgeInsets.only(right: 12),
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-            decoration: BoxDecoration(
-              color: _envColor(config.env).withValues(alpha: 0.2),
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: _envColor(config.env)),
-            ),
-            child: Text(
-              config.env.name.toUpperCase(),
-              style: TextStyle(
-                color: _envColor(config.env),
-                fontWeight: FontWeight.bold,
-                fontSize: 12,
-              ),
-            ),
-          ),
-        ],
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      decoration: BoxDecoration(
+        color: _color().withOpacity(0.15),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: _color(), width: 1.5),
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            const FlutterLogo(size: 64),
-            const SizedBox(height: 24),
-
-            // Active config
-            _SectionCard(
-              title: 'Active Configuration',
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _Row('Environment', config.env.name.toUpperCase()),
-                  _Row('Base URL', config.baseUrl),
-                  _Row('API Key', service.maybeGet('API_KEY') ?? '(not set)'),
-                ],
-              ),
-            ),
-            const SizedBox(height: 12),
-
-            // All resolved vars (including BASE_URL auto-injected)
-            _SectionCard(
-              title: 'Resolved Vars (from .env.*.json)',
-              subtitle:
-                  'BASE_URL is always auto-synced. Per-env values override global.',
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: config.vars.entries
-                    .map((e) => _Row(e.key, e.value))
-                    .toList(),
-              ),
-            ),
-            const SizedBox(height: 12),
-
-            // Env switcher
-            _SectionCard(
-              title: 'Switch Environment',
-              subtitle: 'Loads matching .env.*.json vars automatically',
-              child: Wrap(
-                spacing: 8,
-                children: [Env.dev, Env.staging, Env.prod].map((env) {
-                  final isActive = config.env == env;
-                  return FilledButton.tonal(
-                    style: isActive
-                        ? FilledButton.styleFrom(
-                            backgroundColor: _envColor(env),
-                            foregroundColor: Colors.white,
-                          )
-                        : null,
-                    onPressed: () => service.switchTo(env),
-                    child: Text(env.name.toUpperCase()),
-                  );
-                }).toList(),
-              ),
-            ),
-            const SizedBox(height: 12),
-
-            // Custom URL - BASE_URL var auto-syncs
-            _SectionCard(
-              title: 'Custom URL Override',
-              subtitle: 'BASE_URL var stays in sync automatically',
-              child: Row(
-                children: [
-                  Expanded(
-                    child: TextField(
-                      controller: _customUrlCtrl,
-                      decoration: const InputDecoration(
-                        hintText: 'https://my-local-server.com/api',
-                        isDense: true,
-                        border: OutlineInputBorder(),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  FilledButton(
-                    onPressed: () {
-                      final url = _customUrlCtrl.text.trim();
-                      if (url.isNotEmpty) service.setCustomUrl(url);
-                    },
-                    child: const Text('Set'),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 12),
-
-            // API fetch demo
-            _SectionCard(
-              title: 'Simulated API Fetcher',
-              subtitle: 'Uses BASE_URL from resolved vars',
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  ElevatedButton.icon(
-                    onPressed: _isLoading ? null : _fetchData,
-                    icon: _isLoading
-                        ? const SizedBox(
-                            width: 16,
-                            height: 16,
-                            child: CircularProgressIndicator(strokeWidth: 2))
-                        : const Icon(Icons.cloud_download_rounded),
-                    label: const Text('Fetch from Active Env'),
-                  ),
-                  if (_apiResult != 'No data fetched yet.') ...[
-                    const SizedBox(height: 12),
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: Theme.of(context).brightness == Brightness.dark
-                            ? Colors.black26
-                            : Colors.grey[100],
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Text(
-                        _apiResult,
-                        style: const TextStyle(
-                            fontFamily: 'monospace', fontSize: 11),
-                      ),
-                    ),
-                  ],
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Color _envColor(Env env) => switch (env) {
-        Env.dev => Colors.blue,
-        Env.staging => Colors.orange,
-        Env.prod => Colors.green,
-        Env.custom => Colors.purple,
-      };
-}
-
-class _SectionCard extends StatelessWidget {
-  final String title;
-  final String? subtitle;
-  final Widget child;
-
-  const _SectionCard({required this.title, this.subtitle, required this.child});
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(title,
-                style: Theme.of(context)
-                    .textTheme
-                    .titleSmall
-                    ?.copyWith(fontWeight: FontWeight.bold)),
-            if (subtitle != null) ...[
-              const SizedBox(height: 2),
-              Text(subtitle!,
-                  style: Theme.of(context)
-                      .textTheme
-                      .bodySmall
-                      ?.copyWith(color: Colors.grey)),
-            ],
-            const SizedBox(height: 12),
-            child,
-          ],
+      child: Text(
+        env.label,
+        style: TextStyle(
+          color: _color(),
+          fontWeight: FontWeight.bold,
+          fontSize: 16,
         ),
       ),
     );
   }
 }
 
-class _Row extends StatelessWidget {
+class _InfoRow extends StatelessWidget {
   final String label;
   final String value;
-
-  const _Row(this.label, this.value);
+  final bool highlight;
+  const _InfoRow({
+    required this.label,
+    required this.value,
+    this.highlight = false,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -352,20 +204,74 @@ class _Row extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           SizedBox(
-            width: 150,
-            child: Text('$label:',
-                style: const TextStyle(
-                    color: Colors.grey,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w500)),
+            width: 120,
+            child: Text(
+              label,
+              style: const TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                fontFamily: 'monospace',
+                color: Colors.blueGrey,
+              ),
+            ),
           ),
           Expanded(
-            child: Text(value,
-                style:
-                    const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+            child: Text(
+              value,
+              style: TextStyle(
+                fontSize: 12,
+                fontFamily: 'monospace',
+                color: highlight ? Colors.amber.shade400 : null,
+              ),
+            ),
           ),
         ],
       ),
+    );
+  }
+}
+
+class _EnvSwitcher extends StatelessWidget {
+  final EnvConfigService service;
+  const _EnvSwitcher({required this.service});
+
+  @override
+  Widget build(BuildContext context) {
+    return ValueListenableBuilder<EnvConfig>(
+      valueListenable: service.current,
+      builder: (context, config, _) {
+        final bool locked = service.isProdLocked;
+
+        return Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: Env.values.map((env) {
+            final bool isActive = config.env == env;
+            return Tooltip(
+              message: locked && env != Env.prod ? 'Locked in production' : '',
+              child: FilledButton(
+                onPressed: (locked && env != Env.prod)
+                    ? null
+                    : () async {
+                        try {
+                          await service.switchTo(env);
+                        } on EnvifiedLockException catch (e) {
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text(e.message)),
+                            );
+                          }
+                        }
+                      },
+                style: FilledButton.styleFrom(
+                  backgroundColor: isActive ? null : Colors.blueGrey.shade800,
+                ),
+                child: Text(env.label),
+              ),
+            );
+          }).toList(),
+        );
+      },
     );
   }
 }

@@ -1,11 +1,10 @@
 name: envified
 description: >-
-  Runtime environment switching for Flutter apps. Switch between dev,
-  staging, and prod without rebuilding. Supports manual URL override
-  and a built-in debug panel.
+  Runtime environment switching for Flutter. Load .env files, switch
+  dev/staging/prod/custom at runtime, override base URLs, and lock
+  production config — no rebuild required.
 version: 0.1.0
-
-# homepage: https://appamania.in
+homepage: https://appamania.in
 repository: https://github.com/Sam21-39/envified
 issue_tracker: https://github.com/Sam21-39/envified/issues
 documentation: https://pub.dev/documentation/envified/latest/
@@ -17,7 +16,7 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  flutter_secure_storage: ^9.0.0
+  shared_preferences: ^2.2.0
 
 dev_dependencies:
   flutter_test:
@@ -27,5 +26,5 @@ dev_dependencies:
 topics:
   - environment
   - configuration
+  - dotenv
   - debugging
-  - devtools
