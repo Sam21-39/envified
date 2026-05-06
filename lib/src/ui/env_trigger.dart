@@ -187,7 +187,8 @@ class _ShakeTriggerWidgetState extends State<_ShakeTriggerWidget> {
 
     if (magnitude > widget.threshold) {
       final DateTime now = DateTime.now();
-      if (_lastTrigger == null || now.difference(_lastTrigger!) > const Duration(seconds: 2)) {
+      if (_lastTrigger == null ||
+          now.difference(_lastTrigger!) > const Duration(seconds: 2)) {
         _lastTrigger = now;
         widget.onOpen();
       }
@@ -241,14 +242,15 @@ class _EdgeSwipeTriggerWidget extends StatefulWidget {
   });
 
   @override
-  State<_EdgeSwipeTriggerWidget> createState() => _EdgeSwipeTriggerWidgetState();
+  State<_EdgeSwipeTriggerWidget> createState() =>
+      _EdgeSwipeTriggerWidgetState();
 }
 
 class _EdgeSwipeTriggerWidgetState extends State<_EdgeSwipeTriggerWidget> {
   Offset? _pointerDownPosition;
   bool _startedInEdge = false;
 
-   void _onPointerDown(PointerDownEvent event) {
+  void _onPointerDown(PointerDownEvent event) {
     if (!widget.isActive) {
       _startedInEdge = false;
       return;
