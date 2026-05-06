@@ -111,9 +111,13 @@ class _HomePage extends StatelessWidget {
                 // ── Audit Log ──────────────────────────────────────────────
                 const _SectionTitle('Audit Log (Action History)'),
                 const SizedBox(height: 8),
-                ValueListenableBuilder<List<AuditEntry>>(
-                  valueListenable: service.auditLog,
-                  builder: (context, log, _) {
+                FutureBuilder<List<AuditEntry>>(
+                  future: service.auditLog,
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState == ConnectionState.waiting) {
+                      return const Text('Loading...', style: TextStyle(color: Colors.blueGrey));
+                    }
+                    final log = snapshot.data ?? [];
                     if (log.isEmpty) {
                       return const Text('No history yet.', style: TextStyle(color: Colors.blueGrey));
                     }
@@ -123,10 +127,13 @@ class _HomePage extends StatelessWidget {
                       itemCount: log.length,
                       itemBuilder: (context, index) {
                         final entry = log[index];
+                        final details = entry.action == 'switch'
+                            ? '${entry.fromEnv} -> ${entry.toEnv}'
+                            : (entry.url ?? '');
                         return Padding(
                           padding: const EdgeInsets.only(bottom: 6),
                           child: Text(
-                            '[${entry.timestamp.toIso8601String().substring(11, 19)}] ${entry.action.name}: ${entry.details}',
+                            '[${entry.timestamp.toIso8601String().substring(11, 19)}] ${entry.action} $details',
                             style: const TextStyle(fontSize: 12, fontFamily: 'monospace', color: Colors.blueGrey),
                           ),
                         );
