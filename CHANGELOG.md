@@ -5,6 +5,10 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.2] - 2026-05-07
+
+- Fix: widened constraints for `flutter_secure_storage` (v10), `local_auth` (v3), and `sensors_plus` (v7) to support the latest major versions without breaking backward compatibility.
+
 ## [2.0.1] - 2026-05-07
 
 - Fix: resolved dartdoc cross-reference warnings for internal symbols
