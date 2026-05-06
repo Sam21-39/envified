@@ -15,9 +15,9 @@
 `envified` ships with a premium, dark-luxury debug overlay. It stays invisible in production but pops up when you need it most.
 
 <p align="center">
-  <img src="example/assets/images/Simulator%20Screenshot%20-%20iPhone%2017%20Pro%20Max%20-%202026-05-06%20at%2023.13.56.png" width="300" alt="envified Floating Button" />
+  <img src="https://raw.githubusercontent.com/Sam21-39/envified/main/example/assets/images/Simulator%20Screenshot%20-%20iPhone%2017%20Pro%20Max%20-%202026-05-06%20at%2023.13.56.png" width="300" alt="envified Floating Button" />
   &nbsp;&nbsp;&nbsp;&nbsp;
-  <img src="example/assets/images/Simulator%20Screenshot%20-%20iPhone%2017%20Pro%20Max%20-%202026-05-06%20at%2023.13.51.png" width="300" alt="envified Debug Panel" />
+  <img src="https://raw.githubusercontent.com/Sam21-39/envified/main/example/assets/images/Simulator%20Screenshot%20-%20iPhone%2017%20Pro%20Max%20-%202026-05-06%20at%2023.13.51.png" width="300" alt="envified Debug Panel" />
 </p>
 
 ---
