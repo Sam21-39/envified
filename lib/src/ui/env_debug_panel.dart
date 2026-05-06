@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../audit_entry.dart';
 import '../env_config_service.dart';
 import '../env_model.dart';
 import '../envified_exception.dart';
@@ -14,11 +15,13 @@ import '../envified_exception.dart';
 /// ## Features
 ///
 /// - Displays the active [Env] with a lock indicator when prod-locked.
-/// - [SegmentedButton] for switching between [Env] values.
+/// - [ChoiceChip] row for switching between [Env] values.
 /// - Read-only label showing the `BASE_URL` from the current `.env*` file.
 /// - Text field for overriding the base URL at runtime.
+/// - URL history chip row (up to 5 recent URLs) with one-tap apply.
 /// - "Clear override" button to restore the `.env*` value.
 /// - Expandable key-value table of all entries in [EnvConfig.values].
+/// - Expandable activity log showing the last 10 audit entries.
 /// - Reset button to call [EnvConfigService.reset].
 /// - Optional [onApply] callback for "Apply & Restart" flows.
 ///
@@ -56,7 +59,11 @@ class EnvDebugPanel extends StatefulWidget {
 class _EnvDebugPanelState extends State<EnvDebugPanel> {
   final TextEditingController _urlController = TextEditingController();
   bool _kvExpanded = false;
+  bool _auditExpanded = false;
   String? _errorMessage;
+
+  List<String> _urlHistory = <String>[];
+  List<AuditEntry> _auditEntries = <AuditEntry>[];
 
   EnvConfigService get _svc => widget.service;
 
@@ -65,6 +72,8 @@ class _EnvDebugPanelState extends State<EnvDebugPanel> {
     super.initState();
     _svc.current.addListener(_onConfigChanged);
     _syncUrlController();
+    _loadHistory();
+    _loadAudit();
   }
 
   @override
@@ -80,6 +89,8 @@ class _EnvDebugPanelState extends State<EnvDebugPanel> {
         _syncUrlController();
         _errorMessage = null;
       });
+      _loadHistory();
+      _loadAudit();
     }
   }
 
@@ -92,6 +103,18 @@ class _EnvDebugPanelState extends State<EnvDebugPanel> {
     }
   }
 
+  Future<void> _loadHistory() async {
+    final List<String> history = await _svc.urlHistory;
+    if (mounted) setState(() => _urlHistory = history);
+  }
+
+  Future<void> _loadAudit() async {
+    final List<AuditEntry> entries = await _svc.auditLog;
+    if (mounted) {
+      setState(() => _auditEntries = entries.take(10).toList());
+    }
+  }
+
   Future<void> _switchEnv(Env env) async {
     try {
       await _svc.switchTo(env);
@@ -99,6 +122,7 @@ class _EnvDebugPanelState extends State<EnvDebugPanel> {
     } on EnvifiedLockException catch (e) {
       if (mounted) setState(() => _errorMessage = e.message);
     }
+    await _loadAudit();
   }
 
   Future<void> _applyUrlOverride() async {
@@ -109,7 +133,25 @@ class _EnvDebugPanelState extends State<EnvDebugPanel> {
       if (mounted) setState(() => _errorMessage = null);
     } on EnvifiedLockException catch (e) {
       if (mounted) setState(() => _errorMessage = e.message);
+    } on EnvifiedUrlNotAllowedException catch (e) {
+      if (mounted) setState(() => _errorMessage = e.toString());
     }
+    await _loadHistory();
+    await _loadAudit();
+  }
+
+  Future<void> _applyHistoryUrl(String url) async {
+    _urlController.text = url;
+    try {
+      await _svc.setBaseUrl(url);
+      if (mounted) setState(() => _errorMessage = null);
+    } on EnvifiedLockException catch (e) {
+      if (mounted) setState(() => _errorMessage = e.message);
+    } on EnvifiedUrlNotAllowedException catch (e) {
+      if (mounted) setState(() => _errorMessage = e.toString());
+    }
+    await _loadHistory();
+    await _loadAudit();
   }
 
   Future<void> _clearOverride() async {
@@ -119,11 +161,14 @@ class _EnvDebugPanelState extends State<EnvDebugPanel> {
     } on EnvifiedLockException catch (e) {
       if (mounted) setState(() => _errorMessage = e.message);
     }
+    await _loadAudit();
   }
 
   Future<void> _reset() async {
     await _svc.reset();
     if (mounted) setState(() => _errorMessage = null);
+    await _loadHistory();
+    await _loadAudit();
   }
 
   @override
@@ -158,6 +203,12 @@ class _EnvDebugPanelState extends State<EnvDebugPanel> {
             // ── URL override ──────────────────────────────────────────────
             _buildUrlOverrideField(config, locked),
 
+            // ── URL History chips ─────────────────────────────────────────
+            if (_urlHistory.isNotEmpty) ...[
+              const SizedBox(height: 10),
+              _buildUrlHistory(locked, cs),
+            ],
+
             if (config.isBaseUrlOverridden) ...[
               const SizedBox(height: 8),
               _buildClearOverrideButton(locked),
@@ -174,6 +225,11 @@ class _EnvDebugPanelState extends State<EnvDebugPanel> {
 
             // ── Key-value table ───────────────────────────────────────────
             _buildKvTable(config, cs),
+
+            const Divider(),
+
+            // ── Audit log ─────────────────────────────────────────────────
+            _buildAuditLog(cs),
 
             const Divider(),
             const SizedBox(height: 8),
@@ -351,6 +407,41 @@ class _EnvDebugPanelState extends State<EnvDebugPanel> {
     );
   }
 
+  Widget _buildUrlHistory(bool locked, ColorScheme cs) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Recent',
+          style: TextStyle(
+            fontSize: 12,
+            // ignore: deprecated_member_use
+            color: cs.onSurface.withOpacity(0.45),
+          ),
+        ),
+        const SizedBox(height: 6),
+        Wrap(
+          spacing: 6,
+          runSpacing: 4,
+          children: _urlHistory.map((url) {
+            final String truncated =
+                url.length > 35 ? '${url.substring(0, 35)}…' : url;
+            return ActionChip(
+              label: Text(
+                truncated,
+                style: const TextStyle(fontSize: 11),
+              ),
+              onPressed: locked ? null : () => _applyHistoryUrl(url),
+              materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              visualDensity: VisualDensity.compact,
+            );
+          }).toList(),
+        ),
+      ],
+    );
+  }
+
   Widget _buildClearOverrideButton(bool locked) {
     return Tooltip(
       message: locked ? 'Locked in production' : 'Restore .env value',
@@ -465,6 +556,125 @@ class _EnvDebugPanelState extends State<EnvDebugPanel> {
                 fontSize: 12,
                 fontFamily: 'monospace',
               ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAuditLog(ColorScheme cs) {
+    final int count = _auditEntries.length;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        InkWell(
+          onTap: () {
+            setState(() => _auditExpanded = !_auditExpanded);
+            if (_auditExpanded) _loadAudit();
+          },
+          borderRadius: BorderRadius.circular(4),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 8),
+            child: Row(
+              children: [
+                Icon(
+                  _auditExpanded
+                      ? Icons.keyboard_arrow_up
+                      : Icons.keyboard_arrow_down,
+                  size: 18,
+                  // ignore: deprecated_member_use
+                  color: cs.onSurface.withOpacity(0.6),
+                ),
+                const SizedBox(width: 4),
+                Text(
+                  'Activity log ($count entries)',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    // ignore: deprecated_member_use
+                    color: cs.onSurface.withOpacity(0.7),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        if (_auditExpanded)
+          Container(
+            decoration: BoxDecoration(
+              // ignore: deprecated_member_use
+              color: cs.surfaceContainerHighest.withOpacity(0.4),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: _auditEntries.isEmpty
+                ? const Padding(
+                    padding: EdgeInsets.all(12),
+                    child: Text(
+                      'No activity recorded yet.',
+                      style: TextStyle(fontSize: 12),
+                    ),
+                  )
+                : Column(
+                    children: _auditEntries
+                        .map((entry) => _buildAuditRow(entry, cs))
+                        .toList(),
+                  ),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildAuditRow(AuditEntry entry, ColorScheme cs) {
+    final String time =
+        '${entry.timestamp.toLocal().hour.toString().padLeft(2, '0')}:'
+        '${entry.timestamp.toLocal().minute.toString().padLeft(2, '0')}:'
+        '${entry.timestamp.toLocal().second.toString().padLeft(2, '0')}';
+
+    final String detail = switch (entry.action) {
+      'switch' => '${entry.fromEnv ?? '?'} → ${entry.toEnv ?? '?'}',
+      'setBaseUrl' => entry.url ?? '',
+      'clearOverride' => 'URL override cleared',
+      'reset' => 'Service reset',
+      _ => '',
+    };
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            time,
+            style: TextStyle(
+              fontSize: 11,
+              fontFamily: 'monospace',
+              // ignore: deprecated_member_use
+              color: cs.onSurface.withOpacity(0.55),
+            ),
+          ),
+          const SizedBox(width: 10),
+          Chip(
+            label: Text(
+              entry.action,
+              style: const TextStyle(fontSize: 10),
+            ),
+            padding: EdgeInsets.zero,
+            materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            visualDensity: VisualDensity.compact,
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              detail,
+              style: TextStyle(
+                fontSize: 11,
+                // ignore: deprecated_member_use
+                color: cs.onSurface.withOpacity(0.75),
+                fontFamily: 'monospace',
+                overflow: TextOverflow.ellipsis,
+              ),
+              maxLines: 1,
             ),
           ),
         ],

@@ -6,9 +6,7 @@
 
 ### Stop Rebuilding. Start Switching. 🚀
 
-Tired of waiting for Flutter to rebuild just to check your app against `staging`? Still hard-coding base URLs like it's 2015? 
-
-**envified** is the runtime brain for your Flutter app. Load your `.env` files, swap environments on the fly, and override your API URLs—all without a single `hot reload`.
+**envified** is the runtime brain for your Flutter app. Load your `.env` files, swap environments on the fly, override API URLs, authenticate access with a PIN or biometric, detect tampering, and keep a full audit trail — all without a single `hot reload`.
 
 ---
 
@@ -24,6 +22,22 @@ Tired of waiting for Flutter to rebuild just to check your app against `staging`
 
 ---
 
+## ✨ What's New in v2.0.0
+
+| # | Feature | Summary |
+|---|---------|---------|
+| 1 | **Tamper Detection** | SHA-256 hash every `.env*` file on first load; throw `EnvifiedTamperException` if modified |
+| 2 | **Access Gate** | PIN dialog or biometric auth before opening the debug panel |
+| 3 | **Typed Getters** | `getBool`, `getInt`, `getDouble`, `getUri`, `getList` |
+| 4 | **Lifecycle Hooks** | `onBeforeSwitch` / `onAfterSwitch` callbacks in `init()` |
+| 5 | **URL History** | Last 5 URLs auto-saved; one-tap chips in the debug panel |
+| 6 | **Status Badge** | `EnvStatusBadge` — colour-coded, pulsing when URL override is active |
+| 7 | **Gesture Trigger** | Tap N times, shake the device, or swipe from the right edge |
+| 8 | **Audit Log** | Encrypted, capped-at-50 activity log; visible in the debug panel |
+| + | **Auto-lock** | Panel closes and re-requires auth when app is backgrounded |
+
+---
+
 ## ✨ Why You'll Love It
 
 - ⚡️ **Switch in Seconds**: Swap from `dev` to `prod` in 0.2 seconds. No compilation, no coffee breaks.
@@ -31,14 +45,19 @@ Tired of waiting for Flutter to rebuild just to check your app against `staging`
 - 🧪 **API Mad Scientist Mode**: Override your base URL at runtime. Test against that local tunnel or a specific PR branch instantly.
 - 💾 **Memory Like an Elephant**: Your selections and URL overrides persist across app restarts.
 - ⚙️ **Ghost in the Machine**: The debug UI is stripped out completely in release builds. Zero overhead.
+- 🔍 **Tamper-Evident**: SHA-256 integrity checks catch any `.env` file modification after first launch.
+- 📋 **Full Audit Trail**: Every environment switch and URL change is logged securely.
 
 ---
 
-## 📦 What's Under the Hood? (Dependencies)
+## 📦 Dependencies
 
-We keep it lean and mean on security. `envified` only relies on:
-- `flutter_secure_storage`: To make sure your environment choices and sensitive URL overrides are encrypted and stored in the Keychain (iOS) or Keystore (Android). 🔒
-- `flutter`: Because, well, it's a Flutter package. 🐦
+| Package | Purpose |
+|---------|---------|
+| `flutter_secure_storage` | AES (Android) / Keychain (iOS) encrypted persistence |
+| `local_auth` | Biometric / device-credential authentication |
+| `sensors_plus` | Accelerometer for shake-to-open trigger |
+| `crypto` | SHA-256 hashing for tamper detection |
 
 ---
 
@@ -47,7 +66,7 @@ We keep it lean and mean on security. `envified` only relies on:
 ### 1. Grab the Package
 ```yaml
 dependencies:
-  envified: ^1.0.0
+  envified: ^2.0.0
 ```
 
 ### 2. Toss in your `.env` files
@@ -71,7 +90,14 @@ void main() async {
 
   await EnvConfigService.instance.init(
     defaultEnv: Env.dev,
-    allowProdSwitch: false, // Lock prod for safety!
+    allowProdSwitch: false,   // Lock prod for safety!
+    verifyIntegrity: true,    // Tamper detection
+    onBeforeSwitch: (from, to) async {
+      debugPrint('Switching: ${from.longLabel} → ${to.longLabel}');
+    },
+    onAfterSwitch: (config) {
+      debugPrint('Now on: ${config.baseUrl}');
+    },
   );
 
   runApp(const MyApp());
@@ -83,49 +109,168 @@ void main() async {
 ## 🪄 The Magic Sauce
 
 ### Injecting the Overlay
-Wrap your app using the `builder` pattern. This puts the 🌿 button on top of every screen.
+
+Wrap your app using the `builder` pattern. Configure the trigger and optional gate:
 
 ```dart
 MaterialApp(
   builder: (context, child) => EnvifiedOverlay(
     service: EnvConfigService.instance,
-    enabled: kDebugMode, // Only show in debug!
+    enabled: kDebugMode,             // Only show in debug!
+    gate: EnvGate(pin: '1234'),      // PIN protection
+    trigger: const EnvTrigger.tap(count: 7), // 7 rapid taps
     child: child ?? const SizedBox.shrink(),
   ),
   home: const MyAwesomeApp(),
 )
 ```
 
-### Grabbing Values
-It's as simple as reading a variable:
+### Adding the Status Badge
+
+Display a persistent env indicator anywhere in your UI:
 
 ```dart
-final config = EnvConfigService.instance.current.value;
-
-print(config.baseUrl);           // "https://api.example.com"
-print(config.values['API_KEY']); // "shhh_its_a_secret"
+Stack(
+  children: [
+    MyApp(),
+    if (kDebugMode)
+      EnvStatusBadge(service: EnvConfigService.instance),
+  ],
+)
 ```
+
+### Grabbing Values (Typed)
+
+```dart
+final svc = EnvConfigService.instance;
+
+// Raw string
+final name = svc.get('APP_NAME');
+
+// Typed helpers
+final timeout    = svc.getInt('TIMEOUT', fallback: 30);
+final isDebug    = svc.getBool('DEBUG');
+final rate       = svc.getDouble('RATE_LIMIT', fallback: 1.0);
+final webhook    = svc.getUri('WEBHOOK_URL');
+final allowHosts = svc.getList('ALLOWED_HOSTS');
+```
+
+---
+
+## 🔒 Access Gate
+
+Protect the debug panel with a PIN or biometrics:
+
+```dart
+// PIN only
+EnvGate(pin: '1234')
+
+// Biometric only (Face ID / fingerprint)
+EnvGate(biometric: true)
+
+// Either method works
+EnvGate(pin: '1234', biometric: true)
+```
+
+The gate is automatically cleared when the app is backgrounded, so the next open always requires re-authentication.
+
+---
+
+## 🎯 Gesture Triggers
+
+| Trigger | Constructor | Description |
+|---------|-------------|-------------|
+| Tap N times | `EnvTrigger.tap(count: 7)` | Tap any area 7 times within 800 ms |
+| Shake device | `EnvTrigger.shake(threshold: 15.0)` | Accelerometer shake (2 s debounce) |
+| Edge swipe | `EnvTrigger.edgeSwipe(edgeWidth: 20)` | Swipe inward from the right edge |
+
+---
+
+## 🔍 Tamper Detection
+
+```dart
+await EnvConfigService.instance.init(
+  verifyIntegrity: true,
+);
+```
+
+On first launch the SHA-256 hash of each `.env*` file is stored securely. On every subsequent launch the hash is recomputed. If a file has been modified an `EnvifiedTamperException` is thrown.
+
+---
+
+## 📋 Audit Log
+
+Every mutating action is logged automatically:
+
+```dart
+final entries = await EnvConfigService.instance.auditLog;
+for (final entry in entries) {
+  print('${entry.timestamp} — ${entry.action}');
+  // e.g. "2026-05-07T10:30:00Z — switch (dev → staging)"
+}
+```
+
+The log is stored in `flutter_secure_storage`, capped at 50 entries, and the last 10 entries are visible in the `EnvDebugPanel`.
 
 ---
 
 ## 🔒 Enterprise-Grade Security
 
-We don't take security lightly. Unlike other packages that use plain-text storage:
-
-1.  **Encrypted Persistence**: Every environment switch and URL override is persisted using **AES encryption** on Android and the **Secure Keychain** on iOS via `flutter_secure_storage`.
-2.  **Production Lock**: By setting `allowProdSwitch: false`, you ensure that no one (not even you!) can accidentally point your production app to a dev server.
-3.  **Zero-Leak Release**: The debug 🌿 button and panel code are completely optimized out in release builds.
+1. **Encrypted Persistence**: Every environment switch and URL override is persisted using **AES encryption** on Android and the **Secure Keychain** on iOS.
+2. **Production Lock**: `allowProdSwitch: false` prevents leaving production or overriding URLs.
+3. **URL Allowlist**: Supply `allowedUrls: ['https://api.myapp.com']` to reject unexpected base URLs.
+4. **Tamper Detection**: SHA-256 integrity checks on `.env*` files.
+5. **Zero-Leak Release**: The debug 🌿 button and panel are completely optimized out in release builds.
 
 ---
 
-## 🔒 Security: The "Prod Lock"
+## ⚙️ Platform Setup
 
-We've all been there. You accidentally hit a "Delete All" button while thinking you were in `dev`. `envified` stops the nightmare:
+### `local_auth` — Biometric Authentication
 
-- **Switching out of Prod?** Forbidden. 🚫
-- **Overriding a Prod URL?** Not on our watch. 👮‍♂️
+#### Android
+Add to `android/app/src/main/AndroidManifest.xml`:
+```xml
+<uses-permission android:name="android.permission.USE_BIOMETRIC"/>
+<uses-permission android:name="android.permission.USE_FINGERPRINT"/>
+```
 
-To unlock, you must explicitly change your initialization code.
+Also ensure your `MainActivity` extends `FlutterFragmentActivity`:
+```kotlin
+import io.flutter.embedding.android.FlutterFragmentActivity
+
+class MainActivity : FlutterFragmentActivity()
+```
+
+#### iOS
+Add to `ios/Runner/Info.plist`:
+```xml
+<key>NSFaceIDUsageDescription</key>
+<string>Used to authenticate access to the envified debug panel.</string>
+```
+
+### `sensors_plus` — Shake Trigger
+
+No additional setup required. Works out of the box on Android and iOS.
+
+---
+
+## 🔄 Migration from v1.0.0
+
+All new parameters in `init()` and `EnvifiedOverlay()` are **optional** with safe defaults. Your existing v1.0.0 code will compile and run without changes.
+
+```dart
+// v1.0.0 — still works unchanged
+await EnvConfigService.instance.init(defaultEnv: Env.dev);
+
+EnvifiedOverlay(
+  service: EnvConfigService.instance,
+  enabled: kDebugMode,
+  child: child!,
+)
+```
+
+The only **breaking change** is `EnvStorage.clear()` now also wipes URL history and the audit log (desired behaviour for a full reset). If you relied on clear() preserving history, use selective deletion instead.
 
 ---
 
@@ -133,12 +278,12 @@ To unlock, you must explicitly change your initialization code.
 
 Got an idea to make `envified` even more magical? We love PRs!
 
-1.  **Fork it**: Click that button at the top right.
-2.  **Branch it**: `git checkout -b feature/my-amazing-idea`.
-3.  **Code it**: Make your changes (and add tests, or the lint gods will be angry).
-4.  **Commit it**: `git commit -m 'Add some magic'`.
-5.  **Push it**: `git push origin feature/my-amazing-idea`.
-6.  **Open a PR**: And wait for the applause. 👏
+1. **Fork it**: Click that button at the top right.
+2. **Branch it**: `git checkout -b feature/my-amazing-idea`.
+3. **Code it**: Make your changes (and add tests, or the lint gods will be angry).
+4. **Commit it**: `git commit -m 'Add some magic'`.
+5. **Push it**: `git push origin feature/my-amazing-idea`.
+6. **Open a PR**: And wait for the applause. 👏
 
 ---
 
@@ -146,9 +291,9 @@ Got an idea to make `envified` even more magical? We love PRs!
 
 If something isn't working right, or you have a feature request that just can't wait:
 
-1.  Head over to the [Issue Tracker](https://github.com/Sam21-39/envified/issues).
-2.  Search if someone else already complained about it.
-3.  If not, open a new issue. Be descriptive! "It's broken" helps no one. "The leaf icon turned into a potato on iPhone 4" is much better.
+1. Head over to the [Issue Tracker](https://github.com/Sam21-39/envified/issues).
+2. Search if someone else already complained about it.
+3. If not, open a new issue. Be descriptive! "It's broken" helps no one.
 
 ---
 

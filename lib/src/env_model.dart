@@ -49,6 +49,7 @@ extension EnvX on Env {
     }
   }
 
+  /// Short display label used in the [EnvDebugPanel] chip row.
   String get label {
     switch (this) {
       case Env.dev:
@@ -62,13 +63,35 @@ extension EnvX on Env {
     }
   }
 
-  /// Parses a [Env] from its [name] string, returning [fallback] if not found.
+  /// Parses an [Env] from its [name] string, returning [fallback] if not found.
   static Env fromName(String name, {Env fallback = Env.dev}) {
     return Env.values.firstWhere(
       (e) => e.name == name,
       orElse: () => fallback,
     );
   }
+}
+
+/// Extension providing a human-readable long-form label for [Env].
+///
+/// Intended for display in audit logs, status badges, and other places
+/// where the short [EnvX.label] is not descriptive enough.
+///
+/// Example:
+/// ```dart
+/// print(Env.dev.longLabel);     // "Development"
+/// print(Env.staging.longLabel); // "Staging"
+/// print(Env.prod.longLabel);    // "Production"
+/// print(Env.custom.longLabel);  // "Custom"
+/// ```
+extension EnvName on Env {
+  /// Returns the full human-readable environment name.
+  String get longLabel => switch (this) {
+        Env.dev => 'Development',
+        Env.staging => 'Staging',
+        Env.prod => 'Production',
+        Env.custom => 'Custom',
+      };
 }
 
 /// An immutable snapshot of the active environment configuration.

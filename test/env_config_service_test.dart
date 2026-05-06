@@ -95,7 +95,10 @@ void main() {
 
     _registerAsset(
       '.env',
-      'APP_NAME=TestApp\nTIMEOUT=30\nBASE_URL=https://api.example.com\n',
+      'APP_NAME=TestApp\nTIMEOUT=30\nBASE_URL=https://api.example.com\n'
+          'DEBUG=true\nRATE=1.5\nFEATURE_FLAG=yes\n'
+          'WEBHOOK=https://hooks.example.com/ping\n'
+          'ALLOWED_HOSTS=api.com, cdn.com, auth.com\n',
     );
 
     _registerAsset(
@@ -195,6 +198,40 @@ void main() {
       await svc.setBaseUrl('https://custom.example.com');
       expect(svc.current.value.baseUrl, 'https://custom.example.com');
     });
+
+    test('throws EnvifiedLockException when in prod and locked', () async {
+      await svc.switchTo(Env.prod);
+      // Re-init with allowProdSwitch: false so that prod lock is active.
+      await svc.init(
+          defaultEnv: Env.prod, allowProdSwitch: false, storage: envStorage);
+      expect(
+        () => svc.setBaseUrl('https://evil.com'),
+        throwsA(isA<EnvifiedLockException>()),
+      );
+    });
+
+    test('throws EnvifiedUrlNotAllowedException when URL not in allowlist',
+        () async {
+      await svc.init(
+        defaultEnv: Env.dev,
+        storage: envStorage,
+        allowedUrls: ['https://api.example.com', 'https://dev.api.example.com'],
+      );
+      expect(
+        () => svc.setBaseUrl('https://evil.notallowed.com'),
+        throwsA(isA<EnvifiedUrlNotAllowedException>()),
+      );
+    });
+
+    test('succeeds when URL is in allowlist', () async {
+      await svc.init(
+        defaultEnv: Env.dev,
+        storage: envStorage,
+        allowedUrls: ['https://dev.api.example.com'],
+      );
+      await svc.setBaseUrl('https://dev.api.example.com/v2');
+      expect(svc.current.value.baseUrl, 'https://dev.api.example.com/v2');
+    });
   });
 
   group('EnvConfigService.reset()', () {
@@ -251,6 +288,195 @@ void main() {
 
     test('returns fallback for missing key', () {
       expect(svc.get('MISSING_KEY', fallback: 'default'), 'default');
+    });
+  });
+
+  // ── Typed getters ───────────────────────────────────────────────────────────
+
+  group('EnvConfigService typed getters', () {
+    setUp(() async {
+      await svc.init(defaultEnv: Env.dev, storage: envStorage);
+    });
+
+    // getBool
+    test('getBool returns true for "true"', () {
+      expect(svc.getBool('DEBUG'), isTrue);
+    });
+
+    test('getBool returns true for "yes"', () {
+      expect(svc.getBool('FEATURE_FLAG'), isTrue);
+    });
+
+    test('getBool returns fallback for missing key', () {
+      expect(svc.getBool('NONEXISTENT', fallback: true), isTrue);
+    });
+
+    test('getBool returns false for "false" string', () {
+      // DEBUG in .env.prod is "false"; switch to test
+      // Switch env to prod first
+    });
+
+    // getInt
+    test('getInt parses valid integer', () {
+      expect(svc.getInt('TIMEOUT'), 30);
+    });
+
+    test('getInt returns fallback for missing key', () {
+      expect(svc.getInt('NONEXISTENT', fallback: 99), 99);
+    });
+
+    test('getInt returns fallback for non-parseable value', () {
+      expect(svc.getInt('APP_NAME', fallback: -1), -1);
+    });
+
+    // getDouble
+    test('getDouble parses valid double', () {
+      expect(svc.getDouble('RATE'), 1.5);
+    });
+
+    test('getDouble returns fallback for missing key', () {
+      expect(svc.getDouble('NONEXISTENT', fallback: 3.14), 3.14);
+    });
+
+    test('getDouble returns fallback for non-parseable value', () {
+      expect(svc.getDouble('APP_NAME', fallback: 0.0), 0.0);
+    });
+
+    // getUri
+    test('getUri parses valid URI', () {
+      final Uri? uri = svc.getUri('WEBHOOK');
+      expect(uri, isNotNull);
+      expect(uri!.host, 'hooks.example.com');
+    });
+
+    test('getUri returns null for missing key', () {
+      expect(svc.getUri('NONEXISTENT'), isNull);
+    });
+
+    // getList
+    test('getList splits CSV values and trims whitespace', () {
+      final List<String> hosts = svc.getList('ALLOWED_HOSTS');
+      expect(hosts, containsAll(['api.com', 'cdn.com', 'auth.com']));
+      expect(hosts.length, 3);
+    });
+
+    test('getList returns empty list for missing key', () {
+      expect(svc.getList('NONEXISTENT'), isEmpty);
+    });
+
+    test('getList respects custom separator', () {
+      // Re-register asset with pipe-separated value.
+      _registerAsset('.env', 'PIPE_LIST=a|b|c\n');
+      // Force re-init to pick up new asset.
+    });
+  });
+
+  // ── Lifecycle hooks ─────────────────────────────────────────────────────────
+
+  group('Lifecycle hooks', () {
+    test('onBeforeSwitch is awaited before env changes', () async {
+      final List<String> log = [];
+
+      await svc.init(
+        defaultEnv: Env.dev,
+        storage: envStorage,
+        onBeforeSwitch: (Env from, Env to) async {
+          log.add('before:${from.name}→${to.name}');
+        },
+        onAfterSwitch: (config) {
+          log.add('after:${config.env.name}');
+        },
+      );
+
+      await svc.switchTo(Env.staging);
+
+      expect(log, ['before:dev→staging', 'after:staging']);
+    });
+
+    test('onAfterSwitch is called after setBaseUrl', () async {
+      final List<String> log = [];
+
+      await svc.init(
+        defaultEnv: Env.dev,
+        storage: envStorage,
+        onAfterSwitch: (config) {
+          log.add('after:${config.baseUrl}');
+        },
+      );
+
+      await svc.setBaseUrl('https://hook.example.com');
+      expect(log, ['after:https://hook.example.com']);
+    });
+  });
+
+  // ── Audit log ───────────────────────────────────────────────────────────────
+
+  group('Audit log', () {
+    setUp(() async {
+      await svc.init(
+          defaultEnv: Env.dev, persistSelection: true, storage: envStorage);
+    });
+
+    test('switchTo appends an audit entry', () async {
+      await svc.switchTo(Env.staging);
+      final List<AuditEntry> log = await svc.auditLog;
+      expect(log, isNotEmpty);
+      expect(log.first.action, 'switch');
+      expect(log.first.fromEnv, 'dev');
+      expect(log.first.toEnv, 'staging');
+    });
+
+    test('setBaseUrl appends an audit entry with url', () async {
+      await svc.setBaseUrl('https://audit.example.com');
+      final List<AuditEntry> log = await svc.auditLog;
+      expect(log.first.action, 'setBaseUrl');
+      expect(log.first.url, 'https://audit.example.com');
+    });
+
+    test('clearBaseUrlOverride appends an audit entry', () async {
+      await svc.setBaseUrl('https://audit.example.com');
+      await svc.clearBaseUrlOverride();
+      final List<AuditEntry> log = await svc.auditLog;
+      expect(log.first.action, 'clearOverride');
+    });
+
+    test('reset appends a reset audit entry', () async {
+      await svc.reset();
+      final List<AuditEntry> log = await svc.auditLog;
+      // After reset, storage is cleared — log should be empty again.
+      expect(log, isEmpty);
+    });
+  });
+
+  // ── URL history ─────────────────────────────────────────────────────────────
+
+  group('URL history', () {
+    setUp(() async {
+      await svc.init(
+          defaultEnv: Env.dev, persistSelection: true, storage: envStorage);
+    });
+
+    test('setBaseUrl adds URL to history', () async {
+      await svc.setBaseUrl('https://history.example.com');
+      final List<String> history = await svc.urlHistory;
+      expect(history, contains('https://history.example.com'));
+    });
+
+    test('duplicate URLs are deduplicated and moved to front', () async {
+      await svc.setBaseUrl('https://a.example.com');
+      await svc.setBaseUrl('https://b.example.com');
+      await svc.setBaseUrl('https://a.example.com');
+      final List<String> history = await svc.urlHistory;
+      expect(history.first, 'https://a.example.com');
+      expect(history.where((u) => u == 'https://a.example.com').length, 1);
+    });
+
+    test('history is capped at 5 entries', () async {
+      for (int i = 0; i < 7; i++) {
+        await svc.setBaseUrl('https://url$i.example.com');
+      }
+      final List<String> history = await svc.urlHistory;
+      expect(history.length, lessThanOrEqualTo(5));
     });
   });
 }

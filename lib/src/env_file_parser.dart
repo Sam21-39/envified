@@ -1,5 +1,9 @@
+import 'package:crypto/crypto.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
+
+import 'env_storage.dart';
+import 'envified_exception.dart';
 
 /// Internal parser for `.env*` asset files.
 ///
@@ -37,6 +41,45 @@ class EnvFileParser {
       return <String, String>{};
     }
     return _parseContent(content);
+  }
+
+  /// Verifies the integrity of the `.env*` file at [assetPath].
+  ///
+  /// On the **first load** of a given file the raw bytes are SHA-256 hashed
+  /// and the digest is persisted in [storage] under the key
+  /// `envified_hash_<sanitised-path>`.
+  ///
+  /// On **subsequent loads** the hash is recomputed and compared against the
+  /// stored value. If they differ an [EnvifiedTamperException] is thrown.
+  ///
+  /// If the asset does not exist (e.g. `.env.custom` is optional) this method
+  /// returns silently without storing a hash.
+  ///
+  /// @throws [EnvifiedTamperException] when the file hash does not match the
+  ///   stored baseline hash.
+  Future<void> verifyIntegrity(String assetPath, EnvStorage storage) async {
+    // Load raw bytes; bail out silently when the asset doesn't exist.
+    ByteData? data;
+    try {
+      data = await rootBundle.load(assetPath);
+    } on FlutterError {
+      return;
+    } catch (_) {
+      return;
+    }
+
+    final Uint8List bytes = data.buffer.asUint8List();
+    final String currentHash = sha256.convert(bytes).toString();
+
+    final String storageKey = 'envified_hash_${assetPath.replaceAll('/', '_')}';
+    final String? storedHash = await storage.readRaw(storageKey);
+
+    if (storedHash == null) {
+      // First load — persist the baseline.
+      await storage.writeRaw(storageKey, currentHash);
+    } else if (storedHash != currentHash) {
+      throw EnvifiedTamperException(assetPath);
+    }
   }
 
   /// Parses raw `.env` [content] into a key-value map.

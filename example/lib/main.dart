@@ -28,6 +28,8 @@ class MyApp extends StatelessWidget {
       // Use builder to inject the debug panel across all routes.
       builder: (context, child) => EnvifiedOverlay(
         service: EnvConfigService.instance,
+        gate: const EnvGate(pin: '1234'),
+        trigger: const EnvTrigger.tap(count: 2),
         enabled: kDebugMode, // remove the panel in release builds
         child: child ?? const SizedBox.shrink(),
       ),
@@ -113,9 +115,9 @@ class _HomePage extends StatelessWidget {
                     ),
                   ),
                   child: const Text(
-                    '💡 Tap the 🌿 button in the bottom-right corner to open '
-                    'the full envified debug panel.',
-                    style: TextStyle(fontSize: 13),
+                    '💡 Double-tap anywhere to open the debug panel.\n'
+                    '🔐 PIN is 1234 — or tap 🌿 in the bottom-right corner.',
+                    style: TextStyle(fontSize: 13, height: 1.6),
                   ),
                 ),
               ],
