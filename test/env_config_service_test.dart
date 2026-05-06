@@ -197,7 +197,7 @@ void main() {
       await svc.init(defaultEnv: Env.dev, persistSelection: true, storage: envStorage);
       await svc.switchTo(Env.staging);
       await svc.reset();
-      
+
       final stored = await envStorage.loadConfig();
       expect(stored, isNull);
     });
@@ -217,7 +217,7 @@ void main() {
     test('allowProdSwitch property is correctly exposed', () async {
       await svc.init(allowProdSwitch: true, storage: envStorage);
       expect(svc.allowProdSwitch, isTrue);
-      
+
       await svc.init(allowProdSwitch: false, storage: envStorage);
       expect(svc.allowProdSwitch, isFalse);
     });
