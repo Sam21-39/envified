@@ -119,6 +119,7 @@ MaterialApp(
     enabled: kDebugMode,             // Only show in debug!
     gate: EnvGate(pin: '1234'),      // PIN protection
     trigger: const EnvTrigger.tap(count: 7), // 7 rapid taps
+    showFab: true,                   // Set to false for "stealth mode"
     child: child ?? const SizedBox.shrink(),
   ),
   home: const MyAwesomeApp(),
@@ -183,6 +184,8 @@ The gate is automatically cleared when the app is backgrounded, so the next open
 | Tap N times | `EnvTrigger.tap(count: 7)` | Tap any area 7 times within 800 ms |
 | Shake device | `EnvTrigger.shake(threshold: 15.0)` | Accelerometer shake (2 s debounce) |
 | Edge swipe | `EnvTrigger.edgeSwipe(edgeWidth: 20)` | Swipe inward from the right edge |
+
+**Stealth Mode:** Set `showFab: false` on `EnvifiedOverlay` to completely hide the floating 🌿 button, making your chosen trigger the *only* way to access the debug panel.
 
 ---
 

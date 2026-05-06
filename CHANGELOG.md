@@ -53,6 +53,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `EnvTrigger.shake(threshold: 15.0)` — accelerometer shake via `sensors_plus`, 2 s debounce.
 - `EnvTrigger.edgeSwipe(edgeWidth: 20)` — right-edge inward swipe via `Listener`.
 - Pass `trigger:` to `EnvifiedOverlay`.
+- Added `showFab: false` option to `EnvifiedOverlay` to enable a true "stealth mode" where the floating 🌿 button is hidden and the trigger is the exclusive way to access the panel.
+- Fixed a bug where taps on the panel or FAB incorrectly advanced the hidden tap count, ensuring triggers accurately reflect gesture counts.
 
 #### 8. Audit Log
 - `AuditEntry` model (exported) with `timestamp`, `action`, `fromEnv`, `toEnv`, `url`.
@@ -95,6 +97,7 @@ EnvifiedOverlay(
   enabled: kDebugMode,
   gate: null,                              // optional
   trigger: const EnvTrigger.tap(count: 7), // default unchanged
+  showFab: true,                           // optional (set to false for stealth mode)
   child: child!,
 )
 ```
