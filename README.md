@@ -33,6 +33,14 @@ Tired of waiting for Flutter to rebuild just to check your app against `staging`
 
 ---
 
+## 📦 What's Under the Hood? (Dependencies)
+
+We keep it lean and mean on security. `envified` only relies on:
+- `flutter_secure_storage`: To make sure your environment choices and sensitive URL overrides are encrypted and stored in the Keychain (iOS) or Keystore (Android). 🔒
+- `flutter`: Because, well, it's a Flutter package. 🐦
+
+---
+
 ## 🛠 Quick Start (30 Seconds)
 
 ### 1. Grab the Package
@@ -99,15 +107,13 @@ print(config.values['API_KEY']); // "shhh_its_a_secret"
 
 ---
 
-## 🥊 envified vs. The Others
+## 🔒 Enterprise-Grade Security
 
-| Feature | `envified` | Traditional `.env` |
-| :--- | :---: | :---: |
-| Switch at runtime | ✅ Yes | ❌ No |
-| Change URL without rebuild | ✅ Yes | ❌ No |
-| Persistent overrides | ✅ Yes | ❌ No |
-| Production Lock | ✅ Yes | ❌ No |
-| **Happiness Levels** | 📈 Stonks | 📉 Sadness |
+We don't take security lightly. Unlike other packages that use plain-text storage:
+
+1.  **Encrypted Persistence**: Every environment switch and URL override is persisted using **AES encryption** on Android and the **Secure Keychain** on iOS via `flutter_secure_storage`.
+2.  **Production Lock**: By setting `allowProdSwitch: false`, you ensure that no one (not even you!) can accidentally point your production app to a dev server.
+3.  **Zero-Leak Release**: The debug 🌿 button and panel code are completely optimized out in release builds.
 
 ---
 
@@ -119,6 +125,29 @@ We've all been there. You accidentally hit a "Delete All" button while thinking 
 - **Overriding a Prod URL?** Not on our watch. 👮‍♂️
 
 To unlock, you must explicitly change your initialization code.
+
+---
+
+## 🤝 Contributing (Join the Cult! 🌿)
+
+Got an idea to make `envified` even more magical? We love PRs!
+
+1.  **Fork it**: Click that button at the top right.
+2.  **Branch it**: `git checkout -b feature/my-amazing-idea`.
+3.  **Code it**: Make your changes (and add tests, or the lint gods will be angry).
+4.  **Commit it**: `git commit -m 'Add some magic'`.
+5.  **Push it**: `git push origin feature/my-amazing-idea`.
+6.  **Open a PR**: And wait for the applause. 👏
+
+---
+
+## 🐛 Found a Bug? (The "Oh No!" Section)
+
+If something isn't working right, or you have a feature request that just can't wait:
+
+1.  Head over to the [Issue Tracker](https://github.com/Sam21-39/envified/issues).
+2.  Search if someone else already complained about it.
+3.  If not, open a new issue. Be descriptive! "It's broken" helps no one. "The leaf icon turned into a potato on iPhone 4" is much better.
 
 ---
 

@@ -127,29 +127,35 @@ class EnvConfigService {
     _persistSelection = persistSelection;
     _allowProdSwitch = allowProdSwitch;
 
-    // Initialise storage.
-    _storage = await EnvStorage.create();
+    // Initialise storage (uses FlutterSecureStorage internally).
+    _storage = const EnvStorage();
 
     // Load the shared fallback `.env` file.
     _fallbackValues = await _parser.parse('.env');
 
-    // Determine which env to activate.
+    // Restore persisted state if enabled.
     Env activeEnv = defaultEnv;
+    String? baseUrlOverride;
+
     if (_persistSelection) {
-      activeEnv = _storage.readEnv(fallback: defaultEnv);
+      final stored = await _storage.loadConfig();
+      if (stored != null) {
+        activeEnv = stored.env;
+        if (stored.isBaseUrlOverridden) {
+          baseUrlOverride = stored.baseUrl;
+        }
+      }
     }
 
     // Load the specific env file and merge with fallback.
     final merged = await _loadMerged(activeEnv);
 
-    // Determine base URL — prefer persisted override.
+    // Determine base URL — prefer restored override.
     final String baseUrl;
     final bool isOverridden;
-    final String? storedOverride =
-        _persistSelection ? _storage.readBaseUrlOverride() : null;
 
-    if (storedOverride != null && storedOverride.isNotEmpty) {
-      baseUrl = storedOverride;
+    if (baseUrlOverride != null && baseUrlOverride.isNotEmpty) {
+      baseUrl = baseUrlOverride;
       isOverridden = true;
     } else {
       baseUrl = merged['BASE_URL'] ?? '';
@@ -174,7 +180,7 @@ class EnvConfigService {
   /// The [current] notifier is updated synchronously after the async load
   /// completes, triggering any listening [ValueListenableBuilder] widgets.
   ///
-  /// Persists the new selection to [SharedPreferences] if `persistSelection`
+  /// Persists the new selection to [FlutterSecureStorage] if `persistSelection`
   /// was `true` during [init].
   ///
   /// @throws [EnvifiedLockException] if the current environment is [Env.prod],
@@ -204,19 +210,10 @@ class EnvConfigService {
     final String baseUrl;
     final bool isOverridden;
 
-    if (_persistSelection) {
-      final String? storedOverride = _storage.readBaseUrlOverride();
-      if (storedOverride != null && storedOverride.isNotEmpty) {
-        baseUrl = storedOverride;
-        isOverridden = true;
-      } else {
-        baseUrl = merged['BASE_URL'] ?? '';
-        isOverridden = false;
-      }
-    } else {
-      baseUrl = merged['BASE_URL'] ?? '';
-      isOverridden = false;
-    }
+    // Reset override when switching environments, unless it's explicitly handled.
+    // In this package, we clear the override on env switch to ensure consistency.
+    baseUrl = merged['BASE_URL'] ?? '';
+    isOverridden = false;
 
     current.value = EnvConfig(
       env: env,
@@ -226,7 +223,7 @@ class EnvConfigService {
     );
 
     if (_persistSelection) {
-      await _storage.writeEnv(env);
+      await _storage.saveConfig(current.value);
     }
   }
 
@@ -249,7 +246,7 @@ class EnvConfigService {
   /// Overrides the active [EnvConfig.baseUrl] with [url].
   ///
   /// Sets [EnvConfig.isBaseUrlOverridden] to `true` and persists the override
-  /// in [SharedPreferences] if `persistSelection` was `true` during [init].
+  /// in [FlutterSecureStorage] if `persistSelection` was `true` during [init].
   ///
   /// @throws [EnvifiedLockException] if the current environment is [Env.prod]
   /// and `allowProdSwitch` is `false`.
@@ -267,10 +264,7 @@ class EnvConfigService {
     );
 
     if (_persistSelection) {
-      if (current.value.env == Env.custom) {
-        await _storage.writeCustomUrl(url);
-      }
-      await _storage.writeBaseUrlOverride(url);
+      await _storage.saveConfig(current.value);
     }
   }
 
@@ -295,7 +289,7 @@ class EnvConfigService {
     );
 
     if (_persistSelection) {
-      await _storage.clearBaseUrlOverride();
+      await _storage.saveConfig(current.value);
     }
   }
 
@@ -314,7 +308,7 @@ class EnvConfigService {
     _assertInitialised();
 
     if (_persistSelection) {
-      await _storage.clearAll();
+      await _storage.clear();
     }
 
     await init(
