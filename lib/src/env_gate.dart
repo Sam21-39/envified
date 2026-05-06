@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:local_auth/local_auth.dart';
 import 'package:local_auth_android/local_auth_android.dart';
@@ -58,10 +59,9 @@ class EnvGate {
       final localAuth = LocalAuthentication();
 
       // Check if device supports biometric
-      final canAuthenticateWithBiometrics =
-          await localAuth.canCheckBiometrics;
-      final canAuthenticate = canAuthenticateWithBiometrics ||
-          await localAuth.isDeviceSupported();
+      final canAuthenticateWithBiometrics = await localAuth.canCheckBiometrics;
+      final canAuthenticate =
+          canAuthenticateWithBiometrics || await localAuth.isDeviceSupported();
 
       if (!canAuthenticate) {
         return false;
@@ -90,45 +90,61 @@ class EnvGate {
     }
   }
 
-  /// Show PIN entry dialog.
+  /// Show PIN entry dialog using Overlay to avoid Navigator dependency.
   Future<bool> _showPinDialog(BuildContext context) async {
+    final completer = Completer<bool>();
     final pinController = TextEditingController();
     final pinFocusNode = FocusNode();
 
-    return await showDialog<bool>(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => AlertDialog(
-        title: const Text('Enter PIN'),
-        content: TextField(
-          controller: pinController,
-          focusNode: pinFocusNode,
-          obscureText: true,
-          keyboardType: TextInputType.number,
-          maxLength: 6,
-          decoration: const InputDecoration(
-            hintText: '••••',
-            border: OutlineInputBorder(),
-            counterText: '',
+    late OverlayEntry entry;
+
+    void close(bool result) {
+      if (!completer.isCompleted) {
+        entry.remove();
+        completer.complete(result);
+      }
+    }
+
+    entry = OverlayEntry(
+      builder: (context) => Material(
+        color: Colors.black54,
+        child: Center(
+          child: AlertDialog(
+            title: const Text('Enter PIN'),
+            content: TextField(
+              controller: pinController,
+              focusNode: pinFocusNode,
+              autofocus: true,
+              obscureText: true,
+              keyboardType: TextInputType.number,
+              maxLength: 6,
+              decoration: const InputDecoration(
+                hintText: '••••',
+                border: OutlineInputBorder(),
+                counterText: '',
+              ),
+              onSubmitted: (_) {
+                close(pinController.text == _pin);
+              },
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => close(false),
+                child: const Text('Cancel'),
+              ),
+              ElevatedButton(
+                onPressed: () {
+                  close(pinController.text == _pin);
+                },
+                child: const Text('Submit'),
+              ),
+            ],
           ),
-          onSubmitted: (_) {
-            Navigator.of(context).pop(pinController.text == _pin);
-          },
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              final correct = pinController.text == _pin;
-              Navigator.of(context).pop(correct);
-            },
-            child: const Text('Submit'),
-          ),
-        ],
       ),
-    ).then((result) => result ?? false);
+    );
+
+    Overlay.of(context).insert(entry);
+    return completer.future;
   }
 }
