@@ -131,8 +131,7 @@ class _PinOverlay extends StatefulWidget {
 class _PinOverlayState extends State<_PinOverlay> {
   final List<TextEditingController> _controllers =
       List.generate(4, (_) => TextEditingController());
-  final List<FocusNode> _focusNodes =
-      List.generate(4, (_) => FocusNode());
+  final List<FocusNode> _focusNodes = List.generate(4, (_) => FocusNode());
 
   @override
   void initState() {
@@ -208,8 +207,11 @@ class _PinOverlayState extends State<_PinOverlay> {
                     const Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(Icons.lock_outline,
-                            size: 20, color: Colors.white70),
+                        Icon(
+                          Icons.lock_outline,
+                          size: 20,
+                          color: Colors.white70,
+                        ),
                         SizedBox(width: 8),
                         Text(
                           'Enter PIN',
@@ -235,48 +237,50 @@ class _PinOverlayState extends State<_PinOverlay> {
                     // PIN fields
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
-                      children: List.generate(4, (index) {
-                        return Container(
-                          width: 52,
-                          margin:
-                              const EdgeInsets.symmetric(horizontal: 5),
-                          child: TextField(
-                            controller: _controllers[index],
-                            focusNode: _focusNodes[index],
-                            obscureText: true,
-                            textAlign: TextAlign.center,
-                            maxLength: 1,
-                            keyboardType: TextInputType.number,
-                            style: const TextStyle(
-                              fontSize: 22,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.white,
-                            ),
-                            decoration: InputDecoration(
-                              counterText: '',
-                              contentPadding:
-                                  const EdgeInsets.symmetric(vertical: 14),
-                              filled: true,
-                              fillColor: const Color(0xFF2A2A3E),
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(10),
-                                borderSide: BorderSide.none,
+                      children: List.generate(
+                        4,
+                        (index) {
+                          return Container(
+                            width: 52,
+                            margin: const EdgeInsets.symmetric(horizontal: 5),
+                            child: TextField(
+                              controller: _controllers[index],
+                              focusNode: _focusNodes[index],
+                              obscureText: true,
+                              textAlign: TextAlign.center,
+                              maxLength: 1,
+                              keyboardType: TextInputType.number,
+                              style: const TextStyle(
+                                fontSize: 22,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
                               ),
-                              focusedBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(10),
-                                borderSide: const BorderSide(
-                                  color: Color(0xFF6C8EEF),
-                                  width: 2,
+                              decoration: InputDecoration(
+                                counterText: '',
+                                contentPadding:
+                                    const EdgeInsets.symmetric(vertical: 14),
+                                filled: true,
+                                fillColor: const Color(0xFF2A2A3E),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(10),
+                                  borderSide: BorderSide.none,
+                                ),
+                                focusedBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(10),
+                                  borderSide: const BorderSide(
+                                    color: Color(0xFF6C8EEF),
+                                    width: 2,
+                                  ),
                                 ),
                               ),
+                              onChanged: (v) => _onChanged(v, index),
+                              onSubmitted: (_) {
+                                if (index == 3) _submit();
+                              },
                             ),
-                            onChanged: (v) => _onChanged(v, index),
-                            onSubmitted: (_) {
-                              if (index == 3) _submit();
-                            },
-                          ),
-                        );
-                      }),
+                          );
+                        },
+                      ),
                     ),
 
                     const SizedBox(height: 28),
