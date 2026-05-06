@@ -197,6 +197,7 @@ class _EnvDebugPanelState extends State<EnvDebugPanel> {
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
           decoration: BoxDecoration(
+            // ignore: deprecated_member_use
             color: _envColor(config.env).withOpacity(0.15),
             borderRadius: BorderRadius.circular(20),
             border: Border.all(color: _envColor(config.env), width: 1.5),
@@ -222,6 +223,7 @@ class _EnvDebugPanelState extends State<EnvDebugPanel> {
           '🌿 envified',
           style: TextStyle(
             fontSize: 12,
+            // ignore: deprecated_member_use
             color: cs.onSurface.withOpacity(0.5),
           ),
         ),
@@ -255,6 +257,7 @@ class _EnvDebugPanelState extends State<EnvDebugPanel> {
               ),
               selected: isSelected,
               onSelected: locked ? null : (_) => _switchEnv(e),
+              // ignore: deprecated_member_use
               selectedColor: _envColor(e).withOpacity(0.2),
               labelStyle: TextStyle(
                 color: isSelected ? _envColor(e) : cs.onSurface,
@@ -281,6 +284,7 @@ class _EnvDebugPanelState extends State<EnvDebugPanel> {
           'BASE_URL from .env file',
           style: TextStyle(
             fontSize: 11,
+            // ignore: deprecated_member_use
             color: cs.onSurface.withOpacity(0.55),
             fontWeight: FontWeight.w600,
             letterSpacing: 0.4,
@@ -291,6 +295,7 @@ class _EnvDebugPanelState extends State<EnvDebugPanel> {
           fileUrl,
           style: TextStyle(
             fontSize: 13,
+            // ignore: deprecated_member_use
             color: cs.onSurface.withOpacity(0.8),
             fontFamily: 'monospace',
           ),
@@ -400,6 +405,7 @@ class _EnvDebugPanelState extends State<EnvDebugPanel> {
                       ? Icons.keyboard_arrow_up
                       : Icons.keyboard_arrow_down,
                   size: 18,
+                  // ignore: deprecated_member_use
                   color: cs.onSurface.withOpacity(0.6),
                 ),
                 const SizedBox(width: 4),
@@ -408,6 +414,7 @@ class _EnvDebugPanelState extends State<EnvDebugPanel> {
                   style: TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w600,
+                    // ignore: deprecated_member_use
                     color: cs.onSurface.withOpacity(0.7),
                   ),
                 ),
@@ -418,6 +425,7 @@ class _EnvDebugPanelState extends State<EnvDebugPanel> {
         if (_kvExpanded)
           Container(
             decoration: BoxDecoration(
+              // ignore: deprecated_member_use
               color: cs.surfaceContainerHighest.withOpacity(0.4),
               borderRadius: BorderRadius.circular(8),
             ),

@@ -15,9 +15,9 @@ class FakeFlutterSecureStorage extends Fake implements FlutterSecureStorage {
     IOSOptions? iOptions,
     AndroidOptions? aOptions,
     LinuxOptions? lOptions,
-    WebOptions? wOptions,
+    WebOptions? webOptions,
     MacOsOptions? mOptions,
-    WindowsOptions? winOptions,
+    WindowsOptions? wOptions,
   }) async {
     if (value == null) {
       _data.remove(key);
@@ -32,9 +32,9 @@ class FakeFlutterSecureStorage extends Fake implements FlutterSecureStorage {
     IOSOptions? iOptions,
     AndroidOptions? aOptions,
     LinuxOptions? lOptions,
-    WebOptions? wOptions,
+    WebOptions? webOptions,
     MacOsOptions? mOptions,
-    WindowsOptions? winOptions,
+    WindowsOptions? wOptions,
   }) async {
     return _data[key];
   }
@@ -45,9 +45,9 @@ class FakeFlutterSecureStorage extends Fake implements FlutterSecureStorage {
     IOSOptions? iOptions,
     AndroidOptions? aOptions,
     LinuxOptions? lOptions,
-    WebOptions? wOptions,
+    WebOptions? webOptions,
     MacOsOptions? mOptions,
-    WindowsOptions? winOptions,
+    WindowsOptions? wOptions,
   }) async {
     _data.remove(key);
   }
@@ -57,9 +57,9 @@ class FakeFlutterSecureStorage extends Fake implements FlutterSecureStorage {
     IOSOptions? iOptions,
     AndroidOptions? aOptions,
     LinuxOptions? lOptions,
-    WebOptions? wOptions,
+    WebOptions? webOptions,
     MacOsOptions? mOptions,
-    WindowsOptions? winOptions,
+    WindowsOptions? wOptions,
   }) async {
     _data.clear();
   }

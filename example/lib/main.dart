@@ -64,14 +64,14 @@ class _HomePage extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 // ── Active env badge ─────────────────────────────────────
-                _SectionTitle('Active Environment'),
+                const _SectionTitle('Active Environment'),
                 const SizedBox(height: 8),
                 _EnvBadge(env: config.env),
 
                 const SizedBox(height: 24),
 
                 // ── Base URL ─────────────────────────────────────────────
-                _SectionTitle('Base URL'),
+                const _SectionTitle('Base URL'),
                 const SizedBox(height: 8),
                 _InfoRow(
                   label: 'Current',
@@ -96,7 +96,7 @@ class _HomePage extends StatelessWidget {
                 const SizedBox(height: 24),
 
                 // ── Quick switch buttons ──────────────────────────────────
-                _SectionTitle('Quick Switch'),
+                const _SectionTitle('Quick Switch'),
                 const SizedBox(height: 12),
                 _EnvSwitcher(service: service),
 
@@ -170,6 +170,7 @@ class _EnvBadge extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       decoration: BoxDecoration(
+        // ignore: deprecated_member_use
         color: _color().withOpacity(0.15),
         borderRadius: BorderRadius.circular(24),
         border: Border.all(color: _color(), width: 1.5),
