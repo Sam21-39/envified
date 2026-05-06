@@ -65,13 +65,17 @@ class FakeFlutterSecureStorage extends Fake implements FlutterSecureStorage {
   }
 }
 
+final Map<String, String> _mockAssets = {};
+
 /// Helper to register a fake asset in the root bundle.
 void _registerAsset(String key, String content) {
+  _mockAssets[key] = content;
+
   TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
       .setMockMessageHandler('flutter/assets', (ByteData? message) async {
     final String assetKey = const StringCodec().decodeMessage(message) ?? '';
-    if (assetKey == key) {
-      return const StringCodec().encodeMessage(content);
+    if (_mockAssets.containsKey(assetKey)) {
+      return const StringCodec().encodeMessage(_mockAssets[assetKey]!);
     }
     return null;
   });
@@ -85,6 +89,7 @@ void main() {
   late EnvStorage envStorage;
 
   setUp(() async {
+    _mockAssets.clear(); // Clear assets between tests
     fakeStorage = FakeFlutterSecureStorage();
     envStorage = EnvStorage(storage: fakeStorage);
 

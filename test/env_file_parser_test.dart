@@ -10,6 +10,7 @@ void main() {
     late EnvFileParser parser;
 
     setUp(() {
+      _mockAssets.clear();
       parser = EnvFileParser();
     });
 
@@ -122,13 +123,17 @@ void main() {
   });
 }
 
+final Map<String, String> _mockAssets = {};
+
 /// Registers [content] as a fake asset at [key] in the root bundle.
 void _registerAsset(String key, String content) {
+  _mockAssets[key] = content;
+
   TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
       .setMockMessageHandler('flutter/assets', (ByteData? message) async {
     final String assetKey = const StringCodec().decodeMessage(message) ?? '';
-    if (assetKey == key) {
-      return const StringCodec().encodeMessage(content);
+    if (_mockAssets.containsKey(assetKey)) {
+      return const StringCodec().encodeMessage(_mockAssets[assetKey]!);
     }
     return null;
   });
