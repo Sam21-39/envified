@@ -2,6 +2,7 @@
 
 [![pub package](https://img.shields.io/pub/v/envified.svg)](https://pub.dev/packages/envified)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Dart CI](https://github.com/Sam21-39/envified/actions/workflows/dart.yml/badge.svg)](https://github.com/Sam21-39/envified/actions/workflows/dart.yml)
 
 ### Stop Rebuilding. Start Switching. 🚀
 
@@ -46,7 +47,7 @@ We keep it lean and mean on security. `envified` only relies on:
 ### 1. Grab the Package
 ```yaml
 dependencies:
-  envified: ^0.1.0
+  envified: ^1.0.0
 ```
 
 ### 2. Toss in your `.env` files

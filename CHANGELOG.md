@@ -5,40 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.0] - 2026-05-06
+
+### Initial Stable Release 🚀
+
+- **Runtime Environment Switching** — Seamlessly swap between `dev`, `staging`, `prod`, and `custom` without rebuilding your app.
+- **Enterprise-Grade Security** — Fully encrypted persistence layer using `flutter_secure_storage`. Choices and overrides are stored in Keychain/Keystore.
+- **Production Lock** — Prevent accidental environment switches or URL overrides in production builds.
+- **API URL Overrides** — Dynamically point your app to any backend URL at runtime (perfect for local testing or PR reviews).
+- **Premium Debug UI** — Built-in, horizontally scrollable action chip panel and floating action button that only appears in debug mode.
+- **Zero-Overhead** — Debug components are completely optimized out in release builds.
+- **Bulletproof Reliability** — Comprehensive unit test suite covering parsing, models, storage, and service logic.
+
 ## [0.1.2] - 2026-05-06
-
-### Changed
-
-- **Security Upgrade** — Switched from `shared_preferences` to `flutter_secure_storage` for encrypted persistence.
-- **Injectable Storage** — `EnvConfigService.init` now accepts an optional `storage` parameter for easier testing.
-- **Improved Tests** — Unit tests now use a `FakeFlutterSecureStorage` and have zero external dependencies.
+- Security upgrade to encrypted storage.
+- Storage injection for unit testing.
 
 ## [0.1.0] - 2026-05-06
-
-### Added
-
-- **Runtime environment switching** — Switch between `dev`, `staging`, `prod`,
-  and `custom` environments without a rebuild.
-- **`.env` file loading** — Parses `.env`, `.env.dev`, `.env.staging`, and
-  `.env.prod` from Flutter assets at runtime. Supports shared fallback values
-  with per-environment overrides.
-- **Base URL override** — `setBaseUrl()` and `clearBaseUrlOverride()` allow
-  changing the active API base URL independently of the `.env` file. Overrides
-  persist across restarts via `SharedPreferences`.
-- **Production lock** — When `allowProdSwitch: false` (default), switching away
-  from `Env.prod` or modifying the base URL throws `EnvifiedLockException`,
-  preventing accidental config changes in production.
-- **`EnvConfigService` singleton** — Central service with `init()`, `switchTo()`,
-  `get()`, `setBaseUrl()`, `clearBaseUrlOverride()`, and `reset()`.
-- **`EnvConfig` model** — Immutable snapshot with `copyWith`, `toJson`,
-  `fromJson`, and equality.
-- **`EnvifiedOverlay` widget** — Transparent wrapper that injects a floating
-  🌿 button into the Overlay; opens `EnvDebugPanel` in a bottom sheet.
-- **`EnvDebugPanel` widget** — Standalone debug panel with env switcher,
-  URL override field, key-value table, reset button, and prod-lock UI.
-- **`EnvifiedLockException`** — Typed exception for all production-lock
-  violations.
-- **Persistence** — Active env selection and base URL override survive app
-  restarts via `SharedPreferences`.
-- **`ValueNotifier<EnvConfig>`** — Reactive integration; widgets can rebuild
-  automatically on env changes.
+- Initial beta release.
