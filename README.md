@@ -1,88 +1,113 @@
 # 🌿 envified
 
 [![pub package](https://img.shields.io/pub/v/envified.svg)](https://pub.dev/packages/envified)
+[![pub points](https://img.shields.io/pub/points/envified?color=blue)](https://pub.dev/packages/envified/score)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Dart CI](https://github.com/Sam21-39/envified/actions/workflows/dart.yml/badge.svg)](https://github.com/Sam21-39/envified/actions/workflows/dart.yml)
+[![Buy me a Chai](https://img.shields.io/badge/☕%20Support%20-paywithchai-FF5722?style=flat)](https://paywithchai.in/appamania)
 
-### Stop Rebuilding. Start Switching. 🚀
-
-**envified** is the runtime brain for your Flutter app. Load your `.env` files, swap environments on the fly, override API URLs, authenticate access with a PIN or biometric, detect tampering, and keep a full audit trail — all without a single `hot reload`.
+> **Stop rebuilding. Start switching.** ⚡  
+> Runtime environment magic for Flutter apps. No hot reload needed.
 
 ---
 
-## 📸 The "Look Ma, No Rebuilds!" UI
+## The Problem
 
-`envified` ships with a premium, dark-luxury debug overlay. It stays invisible in production but pops up when you need it most.
+You're a Flutter developer. Every time you need to test a different API endpoint—local dev server, staging, production—you rebuild the app. With `--dart-define` flags. Or `.env` files baked into the binary. Or multiple entry points. It's tedious. It's error-prone. It breaks flow.
+
+**What if you could swap environments in 0.2 seconds? No rebuild. No compilation. Just tap, tap, done.**
+
+That's `envified`.
+
+---
+
+## What is envified?
+
+`envified` is a **production-grade environment manager** for Flutter that lives entirely at runtime.
+
+- 🚀 **Swap dev ↔ prod in 200ms** — no rebuild, no hot reload
+- 🔒 **Prod lock by default** — prevent accidental data disasters  
+- 🧪 **Override any URL** — test against local tunnels, PR branches, anywhere
+- 🔐 **PIN/biometric gate** — secure the debug panel
+- 📋 **Full audit trail** — log every switch and URL change
+- ⚙️ **Zero production overhead** — stripped out completely in release builds
+- 🎨 **Premium debug UI** — dark-luxury design, fully customizable
+
+It's not just a config switcher. It's **enterprise-grade security** meets **developer quality of life**.
+
+---
+
+## 📸 See It In Action
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/Sam21-39/envified/main/example/assets/images/Simulator%20Screenshot%20-%20iPhone%2017%20Pro%20Max%20-%202026-05-06%20at%2023.13.56.png" width="300" alt="envified Floating Button" />
-  &nbsp;&nbsp;&nbsp;&nbsp;
-  <img src="https://raw.githubusercontent.com/Sam21-39/envified/main/example/assets/images/Simulator%20Screenshot%20-%20iPhone%2017%20Pro%20Max%20-%202026-05-06%20at%2023.13.51.png" width="300" alt="envified Debug Panel" />
+  <img src="https://raw.githubusercontent.com/Sam21-39/envified/main/example/assets/images/Simulator%20Screenshot%20-%20iPhone%2017%20Pro%20Max%20-%202026-05-06%20at%2023.13.56.png" width="280" alt="Floating button trigger" />
+  <img src="https://raw.githubusercontent.com/Sam21-39/envified/main/example/assets/images/Simulator%20Screenshot%20-%20iPhone%2017%20Pro%20Max%20-%202026-05-06%20at%2023.13.51.png" width="280" alt="Debug panel with env switcher" />
+  <img src="https://raw.githubusercontent.com/Sam21-39/envified/main/example/assets/gifs/SimulatorScreenRecording-iPhone17ProMax-2026-05-07at04.38.55-ezgif.com-video-to-gif-converter.gif" width="280" alt="Live demo: tap to switch" />
 </p>
 
 ---
 
-## ✨ What's New in v2.0.0
+## v2.0+ — What's Inside
 
-| # | Feature | Summary |
-|---|---------|---------|
-| 1 | **Tamper Detection** | SHA-256 hash every `.env*` file on first load; throw `EnvifiedTamperException` if modified |
-| 2 | **Access Gate** | PIN dialog or biometric auth before opening the debug panel |
-| 3 | **Typed Getters** | `getBool`, `getInt`, `getDouble`, `getUri`, `getList` |
-| 4 | **Lifecycle Hooks** | `onBeforeSwitch` / `onAfterSwitch` callbacks in `init()` |
-| 5 | **URL History** | Last 5 URLs auto-saved; one-tap chips in the debug panel |
-| 6 | **Status Badge** | `EnvStatusBadge` — colour-coded, pulsing when URL override is active |
-| 7 | **Gesture Trigger** | Tap N times, shake the device, or swipe from the right edge |
-| 8 | **Audit Log** | Encrypted, capped-at-50 activity log; visible in the debug panel |
-| + | **Auto-lock** | Panel closes and re-requires auth when app is backgrounded |
-
----
-
-## ✨ Why You'll Love It
-
-- ⚡️ **Switch in Seconds**: Swap from `dev` to `prod` in 0.2 seconds. No compilation, no coffee breaks.
-- 🔒 **The "Safety First" Lock**: We lock your `prod` environment by default. No accidental data deletions here.
-- 🧪 **API Mad Scientist Mode**: Override your base URL at runtime. Test against that local tunnel or a specific PR branch instantly.
-- 💾 **Memory Like an Elephant**: Your selections and URL overrides persist across app restarts.
-- ⚙️ **Ghost in the Machine**: The debug UI is stripped out completely in release builds. Zero overhead.
-- 🔍 **Tamper-Evident**: SHA-256 integrity checks catch any `.env` file modification after first launch.
-- 📋 **Full Audit Trail**: Every environment switch and URL change is logged securely.
+| Feature | What It Does | Why You Care |
+|---------|-------------|--------------|
+| **Tamper Detection** | SHA-256 hashes `.env*` files; throws if modified | Catch rogue config changes on rooted devices |
+| **Access Gate** | PIN dialog or Face ID / fingerprint before opening panel | QA devices don't leak sensitive switches |
+| **Typed Getters** | `getBool()`, `getInt()`, `getUri()`, `getList()` | No more string parsing bugs |
+| **Lifecycle Hooks** | `onBeforeSwitch` / `onAfterSwitch` callbacks | Flush HTTP queues, log analytics, etc. |
+| **URL History** | Last 5 URLs one-tap available | Faster testing against recent tunnels |
+| **Status Badge** | Persistent `[DEV]` indicator in your app | Never forget what env you're testing |
+| **Gesture Triggers** | Tap N times, shake, or swipe edge to open | Customize to your preference |
+| **Audit Log** | Encrypted log of every switch (capped 50 entries) | "Who changed prod at 3pm?" |
+| **Auto-lock** | Panel closes when app backgrounded | Shoulder-surf proof |
 
 ---
 
-## 📦 Dependencies
+## Quick Start (3 Steps)
 
-| Package | Purpose |
-|---------|---------|
-| `flutter_secure_storage` | AES (Android) / Keychain (iOS) encrypted persistence |
-| `local_auth` | Biometric / device-credential authentication |
-| `sensors_plus` | Accelerometer for shake-to-open trigger |
-| `crypto` | SHA-256 hashing for tamper detection |
+### 1️⃣ Install
 
----
-
-## 🛠 Quick Start (30 Seconds)
-
-### 1. Grab the Package
 ```yaml
 dependencies:
-  envified: ^2.0.0
+  envified: ^2.0.5
 ```
 
-### 2. Toss in your `.env` files
-Create your `.env` files and tell Flutter where they are in `pubspec.yaml`:
+### 2️⃣ Add `.env` Files
+
+Create in `assets/env/`:
+
+```env
+# .env (shared across all envs)
+APP_NAME=MyApp
+TIMEOUT=30
+
+# .env.dev
+BASE_URL=https://dev.api.myapp.com
+DEBUG=true
+
+# .env.staging
+BASE_URL=https://staging.api.myapp.com
+DEBUG=false
+
+# .env.prod
+BASE_URL=https://api.myapp.com
+DEBUG=false
+```
+
+Register in `pubspec.yaml`:
 
 ```yaml
 flutter:
   assets:
-    - assets/env/.env          # Shared defaults
-    - assets/env/.env.dev      # Dev overrides
-    - assets/env/.env.staging  # Staging overrides
-    - assets/env/.env.prod     # Prod overrides
+    - assets/env/.env
+    - assets/env/.env.dev
+    - assets/env/.env.staging
+    - assets/env/.env.prod
 ```
 
-### 3. Light the Fuse
-Initialize before `runApp()`:
+### 3️⃣ Initialize
+
+In `main.dart`, before `runApp()`:
 
 ```dart
 void main() async {
@@ -90,13 +115,10 @@ void main() async {
 
   await EnvConfigService.instance.init(
     defaultEnv: Env.dev,
-    allowProdSwitch: false,   // Lock prod for safety!
-    verifyIntegrity: true,    // Tamper detection
-    onBeforeSwitch: (from, to) async {
-      debugPrint('Switching: ${from.longLabel} → ${to.longLabel}');
-    },
-    onAfterSwitch: (config) {
-      debugPrint('Now on: ${config.baseUrl}');
+    allowProdSwitch: false,    // ⚠️ Lock prod by default
+    verifyIntegrity: true,     // 🔐 Detect tampering
+    onBeforeSwitch: (from, to) {
+      debugPrint('Switching: ${from.name} → ${to.name}');
     },
   );
 
@@ -104,166 +126,293 @@ void main() async {
 }
 ```
 
----
-
-## 🪄 The Magic Sauce
-
-### Injecting the Overlay
-
-Wrap your app using the `builder` pattern. Configure the trigger and optional gate:
+Wrap your app with the overlay:
 
 ```dart
 MaterialApp(
   builder: (context, child) => EnvifiedOverlay(
     service: EnvConfigService.instance,
-    enabled: kDebugMode,             // Only show in debug!
-    gate: EnvGate(pin: '1234'),      // PIN protection
-    trigger: const EnvTrigger.tap(count: 7), // 7 rapid taps
-    showFab: true,                   // Set to false for "stealth mode"
+    enabled: kDebugMode,                        // 🚫 Hidden in production
+    gate: EnvGate(pin: '1234', biometric: true), // 🔐 PIN + Face ID
+    trigger: const EnvTrigger.tap(count: 7),    // 7-tap to open
     child: child ?? const SizedBox.shrink(),
   ),
-  home: const MyAwesomeApp(),
+  home: const MyApp(),
+)
+```
+
+**Done.** 7 taps anywhere on the screen and you can switch environments in real-time.
+
+---
+
+## Core Usage Patterns
+
+### Reading Values
+
+```dart
+final svc = EnvConfigService.instance;
+
+// String
+final name = svc.get('APP_NAME');
+
+// Typed (with fallbacks)
+final timeout  = svc.getInt('TIMEOUT', fallback: 30);
+final debug    = svc.getBool('DEBUG');
+final apiUrl   = svc.getUri('BASE_URL');
+final hosts    = svc.getList('ALLOWED_HOSTS'); // comma-separated
+```
+
+### Reacting to Switches
+
+`EnvConfigService.current` is a `ValueNotifier`. Use it with:
+
+**ValueListenableBuilder:**
+```dart
+ValueListenableBuilder<EnvConfig>(
+  valueListenable: EnvConfigService.instance.current,
+  builder: (context, config, _) {
+    return Text('Env: ${config.env.name} (${config.baseUrl})');
+  },
+)
+```
+
+**Listener (one-time setup):**
+```dart
+EnvConfigService.instance.current.addListener(() {
+  final config = EnvConfigService.instance.current.value;
+  dio.options.baseUrl = config.baseUrl;
+  analytics.setProperty('env', config.env.name);
+});
+```
+
+### Customizing the Panel
+
+```dart
+EnvifiedOverlay(
+  service: EnvConfigService.instance,
+  trigger: EnvTrigger.shake(),                    // Shake to open
+  gate: EnvGate(pin: '0000'),                     // PIN only
+  showFab: false,                                 // Stealth mode (hidden button)
+  child: child!,
 )
 ```
 
 ### Adding the Status Badge
 
-Display a persistent env indicator anywhere in your UI:
+Display a persistent env indicator (optional):
 
 ```dart
 Stack(
   children: [
     MyApp(),
     if (kDebugMode)
-      EnvStatusBadge(service: EnvConfigService.instance),
+      EnvStatusBadge(
+        service: EnvConfigService.instance,
+        alignment: Alignment.topRight,            // Corner position
+      ),
   ],
 )
 ```
 
-### Grabbing Values (Typed)
-
-```dart
-final svc = EnvConfigService.instance;
-
-// Raw string
-final name = svc.get('APP_NAME');
-
-// Typed helpers
-final timeout    = svc.getInt('TIMEOUT', fallback: 30);
-final isDebug    = svc.getBool('DEBUG');
-final rate       = svc.getDouble('RATE_LIMIT', fallback: 1.0);
-final webhook    = svc.getUri('WEBHOOK_URL');
-final allowHosts = svc.getList('ALLOWED_HOSTS');
-```
+The badge pulses amber when a custom URL override is active.
 
 ---
 
-## 🔒 Access Gate
+## Security & Production Safety
 
-Protect the debug panel with a PIN or biometrics:
+### 🔒 Production Lock
 
-```dart
-// PIN only
-EnvGate(pin: '1234')
-
-// Biometric only (Face ID / fingerprint)
-EnvGate(biometric: true)
-
-// Either method works
-EnvGate(pin: '1234', biometric: true)
-```
-
-The gate is automatically cleared when the app is backgrounded, so the next open always requires re-authentication.
-
----
-
-## 🎯 Gesture Triggers
-
-| Trigger | Constructor | Description |
-|---------|-------------|-------------|
-| Tap N times | `EnvTrigger.tap(count: 7)` | Tap any area 7 times within 800 ms |
-| Shake device | `EnvTrigger.shake(threshold: 15.0)` | Accelerometer shake (2 s debounce) |
-| Edge swipe | `EnvTrigger.edgeSwipe(edgeWidth: 20)` | Swipe inward from the right edge |
-
-**Stealth Mode:** Set `showFab: false` on `EnvifiedOverlay` to completely hide the floating 🌿 button, making your chosen trigger the *only* way to access the debug panel.
-
----
-
-## 🔍 Tamper Detection
+By default, `allowProdSwitch: false` locks the production environment:
 
 ```dart
 await EnvConfigService.instance.init(
-  verifyIntegrity: true,
+  allowProdSwitch: false,  // ← Once in prod, can't switch out
 );
 ```
 
-On first launch the SHA-256 hash of each `.env*` file is stored securely. On every subsequent launch the hash is recomputed. If a file has been modified an `EnvifiedTamperException` is thrown.
+This prevents accidental data disasters. To unlock (dev only):
 
----
+```dart
+allowProdSwitch: true  // Use only in debug/test builds
+```
 
-## 📋 Audit Log
+### 🔐 Access Gate (PIN / Biometric)
 
-Every mutating action is logged automatically:
+Require authentication before opening the debug panel:
+
+```dart
+EnvGate(pin: '1234')                          // PIN only
+EnvGate(biometric: true)                      // Face ID / Fingerprint
+EnvGate(pin: '1234', biometric: true)         // Either works
+```
+
+The gate auto-clears when the app is backgrounded. Next open requires re-auth.
+
+### ✅ Tamper Detection
+
+SHA-256 integrity checks on `.env*` files:
+
+```dart
+await EnvConfigService.instance.init(
+  verifyIntegrity: true,  // 🔍 Detect if .env was modified
+);
+```
+
+Throws `EnvifiedTamperException` if a file changes after first load (rooted device attack detection).
+
+### 📋 Audit Log
+
+Every switch and URL change is logged (encrypted, capped at 50 entries):
 
 ```dart
 final entries = await EnvConfigService.instance.auditLog;
 for (final entry in entries) {
   print('${entry.timestamp} — ${entry.action}');
-  // e.g. "2026-05-07T10:30:00Z — switch (dev → staging)"
+  // e.g. "2026-05-07T10:30:00Z — switch (dev → prod)"
 }
 ```
 
-The log is stored in `flutter_secure_storage`, capped at 50 entries, and the last 10 entries are visible in the `EnvDebugPanel`.
+Last 10 entries visible in the debug panel.
+
+### ⚙️ Zero Production Overhead
+
+All debug code is wrapped in `kDebugMode`:
+
+```dart
+EnvifiedOverlay(
+  enabled: kDebugMode,  // ← Entire widget tree stripped in release
+  ...
+)
+```
+
+Tree-shaking removes the button, panel, and all gates from your release APK/IPA. **Zero bytes added to production.**
 
 ---
 
-## 🔒 Enterprise-Grade Security
+## Gesture Triggers
 
-1. **Encrypted Persistence**: Every environment switch and URL override is persisted using **AES encryption** on Android and the **Secure Keychain** on iOS.
-2. **Production Lock**: `allowProdSwitch: false` prevents leaving production or overriding URLs.
-3. **URL Allowlist**: Supply `allowedUrls: ['https://api.myapp.com']` to reject unexpected base URLs.
-4. **Tamper Detection**: SHA-256 integrity checks on `.env*` files.
-5. **Zero-Leak Release**: The debug 🌿 button and panel are completely optimized out in release builds.
+Choose how to open the panel:
+
+| Trigger | Example | Best for |
+|---------|---------|----------|
+| **Tap N times** | `EnvTrigger.tap(count: 7)` | Universal (no special hardware) |
+| **Shake** | `EnvTrigger.shake(threshold: 15.0)` | Mobile-friendly, intuitive |
+| **Edge swipe** | `EnvTrigger.edgeSwipe(edgeWidth: 20)` | Stealth (easy to hide) |
+
+**Stealth mode:** Set `showFab: false` to hide the floating button and use *only* the gesture:
+
+```dart
+EnvifiedOverlay(
+  trigger: EnvTrigger.shake(),
+  showFab: false,  // 👻 Button completely hidden
+  child: child!,
+)
+```
 
 ---
 
-## ⚙️ Platform Setup
+## Platform Setup
 
-### `local_auth` — Biometric Authentication
+### iOS — Biometric (Face ID / Fingerprint)
 
-#### Android
-Add to `android/app/src/main/AndroidManifest.xml`:
+Edit `ios/Runner/Info.plist`:
+
+```xml
+<key>NSFaceIDUsageDescription</key>
+<string>Used to authenticate access to the envified debug panel.</string>
+```
+
+### Android — Biometric
+
+Edit `android/app/src/main/AndroidManifest.xml`:
+
 ```xml
 <uses-permission android:name="android.permission.USE_BIOMETRIC"/>
 <uses-permission android:name="android.permission.USE_FINGERPRINT"/>
 ```
 
-Also ensure your `MainActivity` extends `FlutterFragmentActivity`:
+Ensure `MainActivity` extends `FlutterFragmentActivity`:
+
 ```kotlin
 import io.flutter.embedding.android.FlutterFragmentActivity
 
 class MainActivity : FlutterFragmentActivity()
 ```
 
-#### iOS
-Add to `ios/Runner/Info.plist`:
-```xml
-<key>NSFaceIDUsageDescription</key>
-<string>Used to authenticate access to the envified debug panel.</string>
-```
+### Shake Trigger (iOS + Android)
 
-### `sensors_plus` — Shake Trigger
-
-No additional setup required. Works out of the box on Android and iOS.
+No setup needed — works out of the box via accelerometer.
 
 ---
 
-## 🔄 Migration from v1.0.0
+## State Management Integration
 
-All new parameters in `init()` and `EnvifiedOverlay()` are **optional** with safe defaults. Your existing v1.0.0 code will compile and run without changes.
+`envified` is framework-agnostic. Integrate with any state management:
+
+### GetX
 
 ```dart
-// v1.0.0 — still works unchanged
+Get.put(EnvConfigService.instance, permanent: true);
+
+// Later, anywhere:
+final svc = Get.find<EnvConfigService>();
+final baseUrl = svc.current.value.baseUrl;
+```
+
+### Riverpod
+
+```dart
+final envServiceProvider = Provider<EnvConfigService>((ref) {
+  return EnvConfigService.instance;
+});
+
+final baseUrlProvider = Provider<String>((ref) {
+  final svc = ref.watch(envServiceProvider);
+  return svc.current.value.baseUrl;
+});
+```
+
+### BLoC
+
+```dart
+EnvConfigService.instance.current.addListener(() {
+  add(EnvChanged(EnvConfigService.instance.current.value));
+});
+```
+
+---
+
+## Lifecycle Hooks
+
+Run code before/after environment switches:
+
+```dart
+await EnvConfigService.instance.init(
+  onBeforeSwitch: (from, to) async {
+    // Flush pending HTTP requests
+    await _api.flushQueue();
+    // Wait for active transactions to complete
+    await _db.waitForCommits();
+  },
+  onAfterSwitch: (config) {
+    // Update HTTP client
+    _dio.options.baseUrl = config.baseUrl;
+    // Log to analytics
+    _analytics.logEvent('env_switched', {'env': config.env.name});
+    // Refresh UI
+    _eventBus.emit(EnvChangedEvent(config));
+  },
+);
+```
+
+---
+
+## Migration from v1.0.0
+
+All new features are **optional** with sensible defaults. Your existing v1.0.0 code works unchanged:
+
+```dart
+// v1.0.0 style — still works
 await EnvConfigService.instance.init(defaultEnv: Env.dev);
 
 EnvifiedOverlay(
@@ -273,127 +422,171 @@ EnvifiedOverlay(
 )
 ```
 
-The only **breaking change** is `EnvStorage.clear()` now also wipes URL history and the audit log (desired behaviour for a full reset). If you relied on clear() preserving history, use selective deletion instead.
-
----
-
-## 🤝 Contributing (Join the Cult! 🌿)
-
-Got an idea to make `envified` even more magical? We love PRs!
-
-1. **Fork it**: Click that button at the top right.
-2. **Branch it**: `git checkout -b feature/my-amazing-idea`.
-3. **Code it**: Make your changes (and add tests, or the lint gods will be angry).
-4. **Commit it**: `git commit -m 'Add some magic'`.
-5. **Push it**: `git push origin feature/my-amazing-idea`.
-6. **Open a PR**: And wait for the applause. 👏
-
----
-
-## 🐛 Found a Bug? (The "Oh No!" Section)
-
-If something isn't working right, or you have a feature request that just can't wait:
-
-1. Head over to the [Issue Tracker](https://github.com/Sam21-39/envified/issues).
-2. Search if someone else already complained about it.
-3. If not, open a new issue. Be descriptive! "It's broken" helps no one.
-
----
-
-## Support the project ☕
-
-`envified` is free and open source, built and maintained by **Sumit Pal** ([@appamania](https://appamania.in)).  
-If it saves you time, buy me a chai — direct UPI, zero fees, 100% reaches me.
-
-[![Buy me a Chai](https://img.shields.io/badge/☕%20Buy%20me%20a%20Chai-FF5722?style=for-the-badge&logo=upi&logoColor=white)](https://paywithchai.in/appamania)
-
-| | Amount | What it means |
-|---|---|---|
-| ☕ | [₹20 — A sip of chai](https://paywithchai.in/appamania) | You liked the package |
-| 🍵 | [₹50 — A full cup](https://paywithchai.in/appamania) | It saved you time |
-| 🚀 | [₹100 — Keep the server running](https://paywithchai.in/appamania) | You use it in production |
-
-**→ [paywithchai.in/appamania](https://paywithchai.in/appamania)**  
-*No middleman. No fees. Direct UPI payment.*
-
----
-
-## 📸 In action
-
-![envified in action](https://raw.githubusercontent.com/Sam21-39/envified/main/example/assets/gifs/SimulatorScreenRecording-iPhone17ProMax-2026-05-07at04.38.55-ezgif.com-video-to-gif-converter.gif)
+The only **breaking change**: `EnvStorage.clear()` now also wipes URL history and audit log (desired for full reset). If you need selective deletion, use the new targeted methods.
 
 ---
 
 ## ❓ FAQ
 
-**Q: Zero overhead in release builds?**  
-A: Correct. Tree-shaking removes all `if (kDebugMode)` branches. The 🌿 button, panel, and gates ship zero bytes to production.
+**Q: Does this slow down my app?**  
+A: No. The service is lazy-initialized and UI is completely stripped in release builds via tree-shaking. Zero impact.
 
-**Q: Can I lock production by default?**  
-A: Yes. Set `allowProdSwitch: false` in init(). It's the default.
+**Q: What if a `.env` file is deleted?**  
+A: The service throws `EnvifiedMissingFileException` on init. This is intentional — fail loudly, not silently.
 
-**Q: What if `.env` files are missing?**  
-A: The service throws `EnvifiedMissingFileException` loudly. Fail-fast is intentional.
+**Q: Can I switch prod at runtime?**  
+A: Only if you set `allowProdSwitch: true`. Default is locked for safety. Recommended: unlock only in debug builds.
 
-**Q: Works with GetX / Riverpod / BLoC?**  
-A: Yes. The service is a plain Dart singleton — adapts to any state management.
+**Q: What about secrets and API keys?**  
+A: Don't put secrets in `.env` files. Use a secure backend. `.env` is for non-sensitive config only (URLs, timeouts, feature flags).
 
-**Q: Can I customize the debug panel UI?**  
-A: Fully. Pass `EnvifiedTheme` to `EnvifiedOverlay` to override colors, fonts, corner radius.
+**Q: Do users see the debug button in production?**  
+A: No. All debug code is wrapped in `if (kDebugMode)` and stripped via tree-shaking in release builds.
 
----
+**Q: Can I customize colors and fonts?**  
+A: Yes. Pass `EnvifiedTheme` to `EnvifiedOverlay` to override everything.
 
-## 📱 Platform Setup
-
-### iOS (biometric authentication)
-
-Edit `ios/Runner/Info.plist` and add:
-
-```xml
-<key>NSFaceIDUsageDescription</key>
-<string>Used to authenticate access to the envified debug panel.</string>
-```
-
-### Android (biometric + fingerprint)
-
-Edit `android/app/src/main/AndroidManifest.xml` and add:
-
-```xml
-<uses-permission android:name="android.permission.USE_BIOMETRIC"/>
-<uses-permission android:name="android.permission.USE_FINGERPRINT"/>
-```
-
-Also ensure `MainActivity` extends `FlutterFragmentActivity`:
-
-```kotlin
-import io.flutter.embedding.android.FlutterFragmentActivity
-
-class MainActivity : FlutterFragmentActivity()
-```
+**Q: Works with web?**  
+A: Partially. Web doesn't support biometric auth or shake detection. Tap trigger and PIN gate work fine.
 
 ---
 
-## 🔄 API reference
+## 🔄 API Reference
 
-Full documentation: [pub.dev/documentation/envified](https://pub.dev/documentation/envified)
+**Full docs:** [pub.dev/documentation/envified](https://pub.dev/documentation/envified)
 
-| Symbol | Purpose |
-|--------|---------|
-| `EnvConfigService.instance` | Singleton service |
-| `EnvConfigService.init()` | Async initialization |
-| `EnvConfigService.switchTo(Env)` | Change environment |
-| `EnvConfigService.setBaseUrl(String)` | Override API URL |
-| `EnvConfigService.get(String key)` | Read raw string |
-| `EnvConfigService.getBool/Int/Uri/List()` | Typed getters |
-| `EnvConfigService.current` | Active config (ValueNotifier) |
-| `EnvConfigService.auditLog` | Activity history |
-| `EnvifiedOverlay` | Debug panel widget |
-| `EnvStatusBadge` | Env indicator chip |
-| `EnvGate` | PIN / biometric lock |
-| `EnvTrigger` | Gesture config (tap, shake, swipe) |
+### EnvConfigService (Singleton)
+
+```dart
+// Initialization
+await EnvConfigService.instance.init({
+  defaultEnv,           // Env.dev (default)
+  allowProdSwitch,      // false (default, locked)
+  verifyIntegrity,      // false (default)
+  onBeforeSwitch,       // Function?
+  onAfterSwitch,        // Function?
+});
+
+// Reading values
+final value = svc.get('KEY');
+final bool = svc.getBool('DEBUG');
+final int = svc.getInt('TIMEOUT', fallback: 30);
+final uri = svc.getUri('BASE_URL');
+final list = svc.getList('ALLOWED_HOSTS');
+
+// Switching
+await svc.switchTo(Env.prod);
+await svc.setBaseUrl('https://custom.url');
+await svc.clearBaseUrlOverride();
+
+// Lifecycle
+svc.current              // ValueNotifier<EnvConfig>
+await svc.auditLog      // List<AuditEntry>
+
+// Reset
+await svc.reset();
+```
+
+### Widgets
+
+```dart
+// Overlay + Panel
+EnvifiedOverlay(
+  service: EnvConfigService.instance,
+  enabled: kDebugMode,
+  gate: EnvGate(...),
+  trigger: EnvTrigger.tap(),
+  showFab: true,
+  child: child,
+)
+
+// Status indicator
+EnvStatusBadge(
+  service: EnvConfigService.instance,
+  alignment: Alignment.topRight,
+)
+
+// Manual panel (no overlay)
+EnvDebugPanel(
+  service: EnvConfigService.instance,
+)
+```
+
+### Models
+
+```dart
+enum Env { dev, staging, prod, custom }
+
+class EnvConfig {
+  final Env env;
+  final String baseUrl;
+  final Map<String, String> extras;
+}
+
+class EnvGate {
+  EnvGate({String? pin, bool biometric = false});
+}
+
+sealed class EnvTrigger {
+  factory EnvTrigger.tap({int count = 7}) = _TapTrigger;
+  factory EnvTrigger.shake({double threshold = 15.0}) = _ShakeTrigger;
+  factory EnvTrigger.edgeSwipe({double edgeWidth = 20}) = _EdgeSwipeTrigger;
+}
+
+class AuditEntry {
+  final DateTime timestamp;
+  final String action;        // 'switch', 'setBaseUrl', etc.
+  final String? fromEnv;
+  final String? toEnv;
+  final String? url;
+}
+```
+
+---
+
+## 🤝 Contributing
+
+Found a bug? Have a feature idea? We'd love your help!
+
+1. **Fork** the repo
+2. **Create a branch** — `git checkout -b feat/amazing-idea`
+3. **Make changes** — add tests for new code
+4. **Commit** — `git commit -m 'feat: add amazing idea'`
+5. **Push** — `git push origin feat/amazing-idea`
+6. **Open a PR** — and let's ship it together! 🚀
+
+See [CONTRIBUTING.md](https://github.com/Sam21-39/envified/blob/main/CONTRIBUTING.md) for details.
+
+---
+
+## 🐛 Issues & Feedback
+
+- **Bug report?** → [GitHub Issues](https://github.com/Sam21-39/envified/issues)
+- **Feature request?** → [GitHub Discussions](https://github.com/Sam21-39/envified/discussions)
+- **Security concern?** → Email security@appamania.in (private disclosure)
+
+---
+
+## Support the Project ☕
+
+`envified` is **100% open source and free**. Built and maintained by [Sumit Pal](https://appamania.in) in spare time.
+
+If it saves you hours of rebuild time, consider buying me a chai. Direct UPI — zero fees, 100% goes to me.
+
+[![Buy me a Chai](https://img.shields.io/badge/☕%20Buy%20me%20a%20Chai-FF5722?style=for-the-badge&logo=upi&logoColor=white)](https://paywithchai.in/appamania)
+
+| | Amount | What it means |
+|---|---|---|
+| ☕ | [₹20](https://paywithchai.in/appamania) | You liked it |
+| 🍵 | [₹50](https://paywithchai.in/appamania) | Saved you time |
+| 🚀 | [₹100](https://paywithchai.in/appamania) | In production |
+
+**→ [paywithchai.in/appamania](https://paywithchai.in/appamania)**
 
 ---
 
 ## 📄 License
 
-MIT. Go build something amazing. 🚀
+MIT © [Appamania](https://appamania.in)
+
+**Built with ❤️ for Flutter developers who value time, security, and sanity.**

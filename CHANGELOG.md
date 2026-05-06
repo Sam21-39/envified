@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Expanded documentation: added FAQ section, platform setup instructions, and API reference
 - Enhanced example app to showcase all 8 major features
 - Added showcase GIF to README to visualize the debug panel in action
+- Complete README overhaul with a premium presentation and feature highlights
 
 ### Fixed
 - Dependency resolution confidence (platform support +10 pts, dependency stability +20 pts)
