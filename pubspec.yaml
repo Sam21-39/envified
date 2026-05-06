@@ -18,7 +18,8 @@ environment:
   flutter: ">=3.10.0"
 
 platforms:
-  flutter:
+  android:
+  ios:
 
 dependencies:
   flutter:
@@ -39,3 +40,4 @@ topics:
   - configuration
   - dotenv
   - debugging
+  - devtool

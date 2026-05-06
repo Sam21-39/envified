@@ -318,6 +318,14 @@ If it saves you time, buy me a chai — direct UPI, zero fees, 100% reaches me.
 
 ---
 
+## 📸 In action
+
+![7-tap trigger opens panel](https://raw.githubusercontent.com/Sam21-39/envified/main/example/assets/tap-trigger.gif)
+![Swipe from right edge](https://raw.githubusercontent.com/Sam21-39/envified/main/example/assets/edge-swipe.gif)
+![Biometric gate](https://raw.githubusercontent.com/Sam21-39/envified/main/example/assets/biometric.gif)
+
+---
+
 ## ❓ FAQ
 
 **Q: Zero overhead in release builds?**  

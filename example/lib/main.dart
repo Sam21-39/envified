@@ -111,7 +111,7 @@ class _HomePage extends StatelessWidget {
                 // ── Audit Log ──────────────────────────────────────────────
                 const _SectionTitle('Audit Log (Action History)'),
                 const SizedBox(height: 8),
-                ValueListenableBuilder(
+                ValueListenableBuilder<List<AuditEntry>>(
                   valueListenable: service.auditLog,
                   builder: (context, log, _) {
                     if (log.isEmpty) {
