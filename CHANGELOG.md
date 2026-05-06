@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.5] - 2026-05-07
+
+### Improved
+- Added explicit platform declaration (`platforms: flutter`) for full pub.dev platform support scoring
+- Tightened all dependency version constraints for better stability signaling
+  - Changed `^x.y.z` to `>=x.y.z <(x+1).0.0` across all dependencies
+- Expanded documentation: added FAQ section, platform setup instructions, and API reference
+- Enhanced example app to showcase all 8 major features
+
+### Fixed
+- Dependency resolution confidence (platform support +10 pts, dependency stability +20 pts)
+
 ## [2.0.4] - 2026-05-07
 
 - Added PayWithChai support page (direct UPI — paywithchai.in/appamania)

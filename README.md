@@ -318,6 +318,76 @@ If it saves you time, buy me a chai — direct UPI, zero fees, 100% reaches me.
 
 ---
 
+## ❓ FAQ
+
+**Q: Zero overhead in release builds?**  
+A: Correct. Tree-shaking removes all `if (kDebugMode)` branches. The 🌿 button, panel, and gates ship zero bytes to production.
+
+**Q: Can I lock production by default?**  
+A: Yes. Set `allowProdSwitch: false` in init(). It's the default.
+
+**Q: What if `.env` files are missing?**  
+A: The service throws `EnvifiedMissingFileException` loudly. Fail-fast is intentional.
+
+**Q: Works with GetX / Riverpod / BLoC?**  
+A: Yes. The service is a plain Dart singleton — adapts to any state management.
+
+**Q: Can I customize the debug panel UI?**  
+A: Fully. Pass `EnvifiedTheme` to `EnvifiedOverlay` to override colors, fonts, corner radius.
+
+---
+
+## 📱 Platform Setup
+
+### iOS (biometric authentication)
+
+Edit `ios/Runner/Info.plist` and add:
+
+```xml
+<key>NSFaceIDUsageDescription</key>
+<string>Used to authenticate access to the envified debug panel.</string>
+```
+
+### Android (biometric + fingerprint)
+
+Edit `android/app/src/main/AndroidManifest.xml` and add:
+
+```xml
+<uses-permission android:name="android.permission.USE_BIOMETRIC"/>
+<uses-permission android:name="android.permission.USE_FINGERPRINT"/>
+```
+
+Also ensure `MainActivity` extends `FlutterFragmentActivity`:
+
+```kotlin
+import io.flutter.embedding.android.FlutterFragmentActivity
+
+class MainActivity : FlutterFragmentActivity()
+```
+
+---
+
+## 🔄 API reference
+
+Full documentation: [pub.dev/documentation/envified](https://pub.dev/documentation/envified)
+
+| Symbol | Purpose |
+|--------|---------|
+| `EnvConfigService.instance` | Singleton service |
+| `EnvConfigService.init()` | Async initialization |
+| `EnvConfigService.switchTo(Env)` | Change environment |
+| `EnvConfigService.setBaseUrl(String)` | Override API URL |
+| `EnvConfigService.get(String key)` | Read raw string |
+| `EnvConfigService.getBool/Int/Uri/List()` | Typed getters |
+| `EnvConfigService.current` | Active config (ValueNotifier) |
+| `EnvConfigService.auditLog` | Activity history |
+| `EnvifiedOverlay` | Debug panel widget |
+| `EnvStatusBadge` | Env indicator chip |
+| `EnvGate` | PIN / biometric lock |
+| `EnvTrigger` | Gesture config (tap, shake, swipe) |
+
+---
+
 ## 📄 License
 
 MIT. Go build something amazing. 🚀

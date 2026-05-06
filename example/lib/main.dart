@@ -97,6 +97,46 @@ class _HomePage extends StatelessWidget {
 
                 const SizedBox(height: 24),
 
+                // ── Typed Getters ──────────────────────────────────────────
+                const _SectionTitle('Typed Getters (Safe Parsing)'),
+                const SizedBox(height: 8),
+                _InfoRow(label: 'getBool("DEBUG")', value: service.getBool('DEBUG').toString()),
+                _InfoRow(label: 'getInt("PORT")', value: service.getInt('PORT').toString()),
+                _InfoRow(label: 'getDouble("VERSION")', value: service.getDouble('VERSION').toString()),
+                _InfoRow(label: 'getUri("BASE_URL")', value: service.getUri('BASE_URL')?.toString() ?? 'null'),
+                _InfoRow(label: 'getList("SCOPES")', value: service.getList('SCOPES').join(', ')),
+
+                const SizedBox(height: 24),
+
+                // ── Audit Log ──────────────────────────────────────────────
+                const _SectionTitle('Audit Log (Action History)'),
+                const SizedBox(height: 8),
+                ValueListenableBuilder(
+                  valueListenable: service.auditLog,
+                  builder: (context, log, _) {
+                    if (log.isEmpty) {
+                      return const Text('No history yet.', style: TextStyle(color: Colors.blueGrey));
+                    }
+                    return ListView.builder(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      itemCount: log.length,
+                      itemBuilder: (context, index) {
+                        final entry = log[index];
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 6),
+                          child: Text(
+                            '[${entry.timestamp.toIso8601String().substring(11, 19)}] ${entry.action.name}: ${entry.details}',
+                            style: const TextStyle(fontSize: 12, fontFamily: 'monospace', color: Colors.blueGrey),
+                          ),
+                        );
+                      },
+                    );
+                  },
+                ),
+
+                const SizedBox(height: 24),
+
                 // ── Quick switch buttons ──────────────────────────────────
                 const _SectionTitle('Quick Switch'),
                 const SizedBox(height: 12),
