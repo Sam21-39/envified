@@ -23,7 +23,7 @@ sealed class EnvTrigger {
   /// (within an 800 ms window).
   ///
   /// Defaults to 7 taps, which is unlikely to trigger accidentally.
-  const factory EnvTrigger.tap({int count = 7}) = _TapTrigger;
+  const factory EnvTrigger.tap({int? count}) = _TapTrigger;
 
   /// Open the panel by shaking the device.
   ///
@@ -32,14 +32,14 @@ sealed class EnvTrigger {
   /// A 2-second debounce prevents repeated triggers.
   ///
   /// Requires `sensors_plus` to be configured in `pubspec.yaml`.
-  const factory EnvTrigger.shake({double threshold}) = _ShakeTrigger;
+  const factory EnvTrigger.shake({double? threshold}) = _ShakeTrigger;
 
   /// Open the panel by swiping inward from the right screen edge.
   ///
   /// A transparent strip of width [edgeWidth] (default 20 px) is placed along
   /// the right edge. A right-to-left horizontal drag starting inside that strip
   /// opens the panel.
-  const factory EnvTrigger.edgeSwipe({double edgeWidth}) = _EdgeSwipeTrigger;
+  const factory EnvTrigger.edgeSwipe({double? edgeWidth}) = _EdgeSwipeTrigger;
 
   /// Wraps [child] in a gesture-detecting widget that calls [onOpen] when the
   /// configured trigger fires.
@@ -57,7 +57,9 @@ sealed class EnvTrigger {
 
 final class _TapTrigger extends EnvTrigger {
   final int count;
-  const _TapTrigger({this.count = 7}) : super();
+  const _TapTrigger({int? count})
+      : count = count ?? 7,
+        super();
 
   @override
   Widget build({
@@ -130,7 +132,9 @@ class _TapTriggerWidgetState extends State<_TapTriggerWidget> {
 
 final class _ShakeTrigger extends EnvTrigger {
   final double threshold;
-  const _ShakeTrigger({this.threshold = 15.0}) : super();
+  const _ShakeTrigger({double? threshold})
+      : threshold = threshold ?? 15.0,
+        super();
 
   @override
   Widget build({
@@ -204,7 +208,9 @@ class _ShakeTriggerWidgetState extends State<_ShakeTriggerWidget> {
 
 final class _EdgeSwipeTrigger extends EnvTrigger {
   final double edgeWidth;
-  const _EdgeSwipeTrigger({this.edgeWidth = 20.0}) : super();
+  const _EdgeSwipeTrigger({double? edgeWidth})
+      : edgeWidth = edgeWidth ?? 20.0,
+        super();
 
   @override
   Widget build({
