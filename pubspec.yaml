@@ -3,15 +3,12 @@ description: >-
   Runtime environment switching for Flutter. Load .env files, switch
   dev/staging/prod/custom at runtime, override base URLs, and lock
   production config — no rebuild required.
-version: 2.0.5
+version: 2.0.6
+
 homepage: https://appamania.in
 repository: https://github.com/Sam21-39/envified
 issue_tracker: https://github.com/Sam21-39/envified/issues
 documentation: https://pub.dev/documentation/envified/latest/
-
-funding:
-  - https://paywithchai.in/appamania
-
 
 environment:
   sdk: ">=3.0.0 <4.0.0"
@@ -24,20 +21,23 @@ platforms:
 dependencies:
   flutter:
     sdk: flutter
+  crypto: ">=3.0.0 <4.0.0"
   flutter_secure_storage: ">=9.0.0 <11.0.0"
   local_auth: ">=2.2.0 <4.0.0"
+  local_auth_android: ">=1.0.0 <2.0.0"
   sensors_plus: ">=5.0.0 <8.0.0"
-  crypto: ">=3.0.0 <4.0.0"
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^3.0.0
-  mocktail: ^1.0.0
 
 topics:
   - environment
   - configuration
   - dotenv
   - debugging
-  - devtool
+  - devtools
+
+funding:
+  - https://paywithchai.in/appamania

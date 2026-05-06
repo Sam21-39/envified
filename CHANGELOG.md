@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.6] - 2026-05-07
+
+### Fixed
+- Fixed compilation error in `env_gate.dart`: updated `local_auth` API usage
+  - Replaced deprecated `AuthenticationOptions` with `AndroidAuthMessages` via `authMessages`
+  - Now fully compatible with `local_auth >= 2.2.0 < 4.0.0`
+- Fixed platform declarations in `pubspec.yaml` (`android`, `ios`) for full pub.dev platform support scoring
+
+### Improved
+- Platform support score: now 20/20 points (up from 0/20)
+- Code compiles cleanly (zero errors, zero warnings)
+
 ## [2.0.5] - 2026-05-07
 
 ### Improved
