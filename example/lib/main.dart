@@ -3,8 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:envified/envified.dart';
 
-final GlobalKey<NavigatorState> navKey = GlobalKey<NavigatorState>();
-
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
@@ -25,27 +23,14 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Wrap your app with EnvifiedScope to automatically rebuild when the environment changes.
     return EnvifiedScope(
       service: EnvConfigService.instance,
       builder: (context, config) {
         return MaterialApp(
-          navigatorKey: navKey,
-          title: 'Envified UI Example',
+          title: 'Direct Service Example',
           theme: ThemeData(
-            colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
-            useMaterial3: true,
-          ),
-          darkTheme: ThemeData.dark(useMaterial3: true),
-          themeMode: ThemeMode.system,
-          // 1. Simply add the overlay builder to your MaterialApp
-          builder: (context, child) {
-            return EnvifiedOverlay(
-              service: EnvConfigService.instance,
-              navigatorKey: navKey,
-              // The overlay will automatically hide if config.env == Env.prod
-              child: child!,
-            );
-          },
+              colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue)),
           home: const MyHomePage(),
         );
       },
@@ -72,7 +57,6 @@ class _MyHomePageState extends State<MyHomePage> {
 
     try {
       final config = EnvConfigService.instance.current.value;
-      // Using different endpoints based on the fake APIs configured
       final String endpoint;
       if (config.baseUrl.contains('jsonplaceholder')) {
         endpoint = '/users/1';
@@ -109,57 +93,32 @@ class _MyHomePageState extends State<MyHomePage> {
 
   @override
   Widget build(BuildContext context) {
-    // 2. Access the current config effortlessly anywhere in your app
     final config = EnvifiedScope.of(context);
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Envified UI Overlay'),
-      ),
+      appBar: AppBar(title: const Text('Direct Service Integration')),
       body: Center(
         child: SingleChildScrollView(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               const FlutterLogo(size: 64),
-              const SizedBox(height: 16),
-              const Text(
-                'Simulated API Fetcher',
-                textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-              ),
-              const Padding(
-                padding: EdgeInsets.all(16.0),
-                child: Text(
-                  'Change environments using the floating bug icon. Then press the button below to fetch data from the active environment.',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(color: Colors.grey),
-                ),
-              ),
-              Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                margin: const EdgeInsets.symmetric(vertical: 16),
-                decoration: BoxDecoration(
-                  color: Colors.deepPurple.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: Text(
-                  'Current Config:\n${config.env.name.toUpperCase()} - ${config.baseUrl}',
-                  textAlign: TextAlign.center,
+              const SizedBox(height: 24),
+              Text('Current Env: ${config.env.name.toUpperCase()}',
                   style: const TextStyle(
-                      fontWeight: FontWeight.bold, fontSize: 14),
-                ),
-              ),
-              ElevatedButton.icon(
+                      fontSize: 24, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 8),
+              Text('Base URL: ${config.baseUrl}',
+                  style: const TextStyle(fontSize: 16)),
+              const SizedBox(height: 32),
+              ElevatedButton(
                 onPressed: _isLoading ? null : _fetchData,
-                icon: _isLoading
+                child: _isLoading
                     ? const SizedBox(
                         width: 16,
                         height: 16,
                         child: CircularProgressIndicator(strokeWidth: 2))
-                    : const Icon(Icons.cloud_download),
-                label: const Text('Fetch Data'),
+                    : const Text('Fetch Data'),
               ),
               const SizedBox(height: 32),
               Container(
@@ -167,9 +126,7 @@ class _MyHomePageState extends State<MyHomePage> {
                 margin: const EdgeInsets.symmetric(horizontal: 24),
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: Theme.of(context).brightness == Brightness.dark
-                      ? Colors.black26
-                      : Colors.grey[200],
+                  color: Colors.grey[200],
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Text(
@@ -177,7 +134,17 @@ class _MyHomePageState extends State<MyHomePage> {
                   style: const TextStyle(fontFamily: 'monospace', fontSize: 12),
                 ),
               ),
-              const SizedBox(height: 32),
+              const SizedBox(height: 48),
+              ElevatedButton(
+                onPressed: () =>
+                    EnvConfigService.instance.switchTo(Env.staging),
+                child: const Text('Switch to Staging Programmatically'),
+              ),
+              const SizedBox(height: 12),
+              ElevatedButton(
+                onPressed: () => EnvConfigService.instance.switchTo(Env.dev),
+                child: const Text('Switch to Dev Programmatically'),
+              ),
             ],
           ),
         ),
