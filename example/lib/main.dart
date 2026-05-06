@@ -111,8 +111,8 @@ class _HomePage extends StatelessWidget {
                 // ── Audit Log ──────────────────────────────────────────────
                 const _SectionTitle('Audit Log (Action History)'),
                 const SizedBox(height: 8),
-                FutureBuilder<List<AuditEntry>>(
-                  future: service.auditLog,
+                StreamBuilder<List<AuditEntry>>(
+                  stream: Stream.fromFuture(service.auditLog),
                   builder: (context, snapshot) {
                     if (snapshot.connectionState == ConnectionState.waiting) {
                       return const Text('Loading...', style: TextStyle(color: Colors.blueGrey));
