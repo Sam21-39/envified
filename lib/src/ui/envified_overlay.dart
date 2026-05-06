@@ -35,25 +35,9 @@ class EnvifiedOverlay extends StatefulWidget {
 class _EnvifiedOverlayState extends State<EnvifiedOverlay> {
   Offset _offset = const Offset(20, kToolbarHeight + 40);
 
-  bool get _shouldShow {
-    if (widget.enabled != null) return widget.enabled!;
-    return widget.service.current.value.env != Env.prod;
-  }
-
-  @override
-  void initState() {
-    super.initState();
-    widget.service.current.addListener(_onEnvChanged);
-  }
-
   @override
   void dispose() {
-    widget.service.current.removeListener(_onEnvChanged);
     super.dispose();
-  }
-
-  void _onEnvChanged() {
-    if (mounted) setState(() {});
   }
 
   void _showPanel() {
@@ -75,53 +59,68 @@ class _EnvifiedOverlayState extends State<EnvifiedOverlay> {
 
   @override
   Widget build(BuildContext context) {
-    if (!_shouldShow) return widget.child;
+    return ValueListenableBuilder<EnvConfig>(
+      valueListenable: widget.service.current,
+      builder: (context, config, child) {
+        final bool shouldShow = widget.enabled ?? (config.env != Env.prod);
 
-    return Stack(
-      textDirection: TextDirection.ltr,
-      children: [
-        widget.child,
-        Positioned(
-          left: _offset.dx,
-          top: _offset.dy,
-          child: GestureDetector(
-            onPanUpdate: (details) {
-              setState(() {
-                _offset += details.delta;
-              });
-            },
-            onTap: _showPanel,
-            child: Material(
-              color: Colors.transparent,
-              elevation: 8,
-              shape: const CircleBorder(),
-              child: Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: Colors.black87,
-                  border: Border.all(color: Colors.white24, width: 1),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.3),
-                      blurRadius: 8,
-                      offset: const Offset(0, 4),
+        return Stack(
+          textDirection: TextDirection.ltr,
+          children: [
+            widget.child,
+            if (shouldShow)
+              Builder(builder: (context) {
+                // Ensure the overlay stays within screen bounds dynamically
+                final size = MediaQuery.sizeOf(context);
+                final dx = _offset.dx.clamp(
+                    0.0, (size.width - 56.0).clamp(0.0, double.infinity));
+                final dy = _offset.dy.clamp(
+                    0.0, (size.height - 56.0).clamp(0.0, double.infinity));
+
+                return Positioned(
+                  left: dx,
+                  top: dy,
+                  child: GestureDetector(
+                    onPanUpdate: (details) {
+                      setState(() {
+                        _offset += details.delta;
+                      });
+                    },
+                    onTap: _showPanel,
+                    child: Material(
+                      color: Colors.transparent,
+                      elevation: 8,
+                      shape: const CircleBorder(),
+                      child: Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: Colors.black87,
+                          border: Border.all(color: Colors.white24, width: 1),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.3),
+                              blurRadius: 8,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
+                        ),
+                        child: SvgPicture.asset(
+                          'assets/icons/bug-ant.svg',
+                          package: 'envified',
+                          colorFilter: const ColorFilter.mode(
+                              Colors.greenAccent, BlendMode.srcIn),
+                          width: 28,
+                          height: 28,
+                        ),
+                      ),
                     ),
-                  ],
-                ),
-                child: SvgPicture.asset(
-                  'assets/icons/bug-ant.svg',
-                  package: 'envified',
-                  colorFilter: const ColorFilter.mode(
-                      Colors.greenAccent, BlendMode.srcIn),
-                  width: 28,
-                  height: 28,
-                ),
-              ),
-            ),
-          ),
-        ),
-      ],
+                  ),
+                );
+              }),
+          ],
+        );
+      },
     );
   }
 }
