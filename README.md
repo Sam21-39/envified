@@ -300,6 +300,24 @@ If something isn't working right, or you have a feature request that just can't 
 
 ---
 
+## Support the project ☕
+
+`envified` is free and open source, built and maintained by **Sumit Pal** ([@appamania](https://appamania.in)).  
+If it saves you time, buy me a chai — direct UPI, zero fees, 100% reaches me.
+
+[![Buy me a Chai](https://img.shields.io/badge/☕%20Buy%20me%20a%20Chai-FF5722?style=for-the-badge&logo=upi&logoColor=white)](https://paywithchai.in/appamania)
+
+| | Amount | What it means |
+|---|---|---|
+| ☕ | [₹20 — A sip of chai](https://paywithchai.in/appamania) | You liked the package |
+| 🍵 | [₹50 — A full cup](https://paywithchai.in/appamania) | It saved you time |
+| 🚀 | [₹100 — Keep the server running](https://paywithchai.in/appamania) | You use it in production |
+
+**→ [paywithchai.in/appamania](https://paywithchai.in/appamania)**  
+*No middleman. No fees. Direct UPI payment.*
+
+---
+
 ## 📄 License
 
 MIT. Go build something amazing. 🚀
