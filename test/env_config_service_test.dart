@@ -12,12 +12,12 @@ class FakeFlutterSecureStorage extends Fake implements FlutterSecureStorage {
   Future<void> write({
     required String key,
     required String? value,
-    IOSOptions? iOptions,
-    AndroidOptions? aOptions,
-    LinuxOptions? lOptions,
-    WebOptions? webOptions,
-    MacOsOptions? mOptions,
-    WindowsOptions? wOptions,
+    Object? iOptions,
+    Object? aOptions,
+    Object? lOptions,
+    Object? webOptions,
+    Object? mOptions,
+    Object? wOptions,
   }) async {
     if (value == null) {
       _data.remove(key);
@@ -29,12 +29,12 @@ class FakeFlutterSecureStorage extends Fake implements FlutterSecureStorage {
   @override
   Future<String?> read({
     required String key,
-    IOSOptions? iOptions,
-    AndroidOptions? aOptions,
-    LinuxOptions? lOptions,
-    WebOptions? webOptions,
-    MacOsOptions? mOptions,
-    WindowsOptions? wOptions,
+    Object? iOptions,
+    Object? aOptions,
+    Object? lOptions,
+    Object? webOptions,
+    Object? mOptions,
+    Object? wOptions,
   }) async {
     return _data[key];
   }
@@ -42,24 +42,24 @@ class FakeFlutterSecureStorage extends Fake implements FlutterSecureStorage {
   @override
   Future<void> delete({
     required String key,
-    IOSOptions? iOptions,
-    AndroidOptions? aOptions,
-    LinuxOptions? lOptions,
-    WebOptions? webOptions,
-    MacOsOptions? mOptions,
-    WindowsOptions? wOptions,
+    Object? iOptions,
+    Object? aOptions,
+    Object? lOptions,
+    Object? webOptions,
+    Object? mOptions,
+    Object? wOptions,
   }) async {
     _data.remove(key);
   }
 
   @override
   Future<void> deleteAll({
-    IOSOptions? iOptions,
-    AndroidOptions? aOptions,
-    LinuxOptions? lOptions,
-    WebOptions? webOptions,
-    MacOsOptions? mOptions,
-    WindowsOptions? wOptions,
+    Object? iOptions,
+    Object? aOptions,
+    Object? lOptions,
+    Object? webOptions,
+    Object? mOptions,
+    Object? wOptions,
   }) async {
     _data.clear();
   }

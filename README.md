@@ -40,8 +40,6 @@ It's not just a config switcher. It's **enterprise-grade security** meets **deve
 ## 📸 See It In Action
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/Sam21-39/envified/main/example/assets/images/Simulator%20Screenshot%20-%20iPhone%2017%20Pro%20Max%20-%202026-05-06%20at%2023.13.56.png" width="280" alt="Floating button trigger" />
-  <img src="https://raw.githubusercontent.com/Sam21-39/envified/main/example/assets/images/Simulator%20Screenshot%20-%20iPhone%2017%20Pro%20Max%20-%202026-05-06%20at%2023.13.51.png" width="280" alt="Debug panel with env switcher" />
   <img src="https://raw.githubusercontent.com/Sam21-39/envified/main/example/assets/gifs/SimulatorScreenRecording-iPhone17ProMax-2026-05-07at04.38.55-ezgif.com-video-to-gif-converter.gif" width="280" alt="Live demo: tap to switch" />
 </p>
 
@@ -69,7 +67,7 @@ It's not just a config switcher. It's **enterprise-grade security** meets **deve
 
 ```yaml
 dependencies:
-  envified: ^2.0.5
+  envified: ^2.0.7
 ```
 
 ### 2️⃣ Add `.env` Files
