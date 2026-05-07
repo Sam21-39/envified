@@ -90,7 +90,7 @@ class EnvConfigService {
 
     // Load the shared fallback `.env` file.
     final String fallbackPath = '$_assetDir.env';
-    
+
     // We treat .env as Production for integrity purposes if it's our only prod source
     // or simply always verify it if requested, but requirement says only Prod envs.
     // However, .env is often a fallback for all.
@@ -117,16 +117,16 @@ class EnvConfigService {
 
     // Verify + load the environment-specific file.
     final String specificPath = '$_assetDir${activeEnv.assetFileName}';
-    
+
     // REQUIREMENT: verifyIntegrity should only do verification for Production related env.
     if (_verifyIntegrity && activeEnv.isProduction) {
       await _parser.verifyIntegrity(specificPath, _storage);
       // Also verify fallback if it's the prod file
       if (activeEnv.assetFileName == '.env') {
-         await _parser.verifyIntegrity(fallbackPath, _storage);
+        await _parser.verifyIntegrity(fallbackPath, _storage);
       }
     }
-    
+
     final merged = await _loadMerged(activeEnv);
 
     // Determine base URL.
@@ -158,7 +158,9 @@ class EnvConfigService {
     _assertInitialised();
 
     // Block leaving prod when locked.
-    if (!_allowProdSwitch && current.value.env.isProduction && !env.isProduction) {
+    if (!_allowProdSwitch &&
+        current.value.env.isProduction &&
+        !env.isProduction) {
       throw const EnvifiedLockException(
         'Cannot switch away from production when allowProdSwitch is false.',
       );

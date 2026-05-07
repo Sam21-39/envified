@@ -108,8 +108,8 @@ class _EnvDebugPanelState extends State<EnvDebugPanel> {
               ),
               FilledButton(
                 onPressed: () => Navigator.pop(ctx, true),
-                style:
-                    FilledButton.styleFrom(backgroundColor: Colors.red.shade900),
+                style: FilledButton.styleFrom(
+                    backgroundColor: Colors.red.shade900),
                 child: const Text('Switch'),
               ),
             ],
@@ -400,8 +400,8 @@ class _EnvDebugPanelState extends State<EnvDebugPanel> {
               const SizedBox(width: 8),
               FilledButton(
                 onPressed: () => _performSwitch(env),
-                style:
-                    FilledButton.styleFrom(backgroundColor: Colors.red.shade900),
+                style: FilledButton.styleFrom(
+                    backgroundColor: Colors.red.shade900),
                 child: const Text('Confirm Switch'),
               ),
             ],
