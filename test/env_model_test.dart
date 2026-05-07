@@ -84,30 +84,28 @@ void main() {
   });
 
   group('Env', () {
-    test('assetPath returns correct paths', () {
-      expect(Env.dev.assetPath, '.env.dev');
-      expect(Env.staging.assetPath, '.env.staging');
-      expect(Env.prod.assetPath, '.env.prod');
-      expect(Env.custom.assetPath, isNull);
+    test('assetFileName returns correct filenames', () {
+      expect(Env.dev.assetFileName, '.env.dev');
+      expect(Env.staging.assetFileName, '.env.staging');
+      expect(Env.prod.assetFileName, '.env.prod');
     });
 
-    test('label returns short display string', () {
+    test('label returns display string', () {
       expect(Env.dev.label, 'Dev');
       expect(Env.staging.label, 'Staging');
-      expect(Env.prod.label, 'Prod');
-      expect(Env.custom.label, 'Custom');
+      expect(Env.prod.label, 'Production');
     });
 
-    test('EnvX.fromName parses known names', () {
-      expect(EnvX.fromName('dev'), Env.dev);
-      expect(EnvX.fromName('staging'), Env.staging);
-      expect(EnvX.fromName('prod'), Env.prod);
-      expect(EnvX.fromName('custom'), Env.custom);
+    test('Env.fromFileName parses correctly', () {
+      expect(Env.fromFileName('.env.dev'), Env.dev);
+      expect(Env.fromFileName('.env.future').name, 'future');
+      expect(Env.fromFileName('.env.future').label, 'Future');
     });
 
-    test('EnvX.fromName returns fallback for unknown name', () {
-      expect(EnvX.fromName('unknown'), Env.dev);
-      expect(EnvX.fromName('unknown', fallback: Env.staging), Env.staging);
+    test('Env.fromFileName treats .env as Production', () {
+      final env = Env.fromFileName('.env');
+      expect(env.isProduction, isTrue);
+      expect(env.label, 'Production');
     });
   });
 }

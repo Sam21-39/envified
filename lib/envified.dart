@@ -56,7 +56,7 @@
 /// | [EnvTrigger]                   | Sealed class defining the gesture to open the panel  |
 library envified;
 
-export 'src/env_model.dart' show Env, EnvConfig, EnvX, EnvName;
+export 'src/env_model.dart' show Env, EnvConfig;
 export 'src/env_config_service.dart' show EnvConfigService;
 export 'src/envified_exception.dart'
     show

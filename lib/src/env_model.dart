@@ -1,144 +1,128 @@
 import 'package:flutter/foundation.dart';
 
-/// Represents the target deployment environment.
+/// Represents a deployment environment.
 ///
-/// Each value corresponds to a matching `.env.*` asset file:
-/// - [dev]     → `.env.dev`
-/// - [staging] → `.env.staging`
-/// - [prod]    → `.env.prod`
-/// - [custom]  → no dedicated file; uses the shared `.env` fallback plus a
-///               custom base URL stored via [EnvConfigService.setBaseUrl].
-///
-/// @see EnvConfigService
-/// @see EnvConfig
-enum Env {
-  /// Development environment. Maps to `.env.dev`.
-  dev,
-
-  /// Staging / QA environment. Maps to `.env.staging`.
-  staging,
-
-  /// Production environment. Maps to `.env.prod`.
-  ///
-  /// When `allowProdSwitch` is `false`, switching away from this environment
-  /// or overriding the base URL will throw [EnvifiedLockException].
-  prod,
-
-  /// Custom environment. Uses the shared `.env` fallback file values.
-  ///
-  /// Intended for developer-defined configurations supplied entirely via
-  /// [EnvConfigService.setBaseUrl] at runtime.
-  custom,
-}
-
-/// Extension helpers on [Env] for asset path resolution and display labels.
-extension EnvX on Env {
-  /// Returns the asset path of the `.env` file for this environment.
-  ///
-  /// Returns `null` for [Env.custom] because no dedicated file exists.
-  String? get assetPath {
-    switch (this) {
-      case Env.dev:
-        return '.env.dev';
-      case Env.staging:
-        return '.env.staging';
-      case Env.prod:
-        return '.env.prod';
-      case Env.custom:
-        return null;
-    }
-  }
-
-  /// Short display label used in the [EnvDebugPanel] chip row.
-  String get label {
-    switch (this) {
-      case Env.dev:
-        return 'Dev';
-      case Env.staging:
-        return 'Staging';
-      case Env.prod:
-        return 'Prod';
-      case Env.custom:
-        return 'Custom';
-    }
-  }
-
-  /// Parses an [Env] from its [name] string, returning [fallback] if not found.
-  static Env fromName(String name, {Env fallback = Env.dev}) {
-    return Env.values.firstWhere(
-      (e) => e.name == name,
-      orElse: () => fallback,
-    );
-  }
-}
-
-/// Extension providing a human-readable long-form label for [Env].
-///
-/// Intended for display in audit logs, status badges, and other places
-/// where the short [EnvX.label] is not descriptive enough.
+/// Environments are discovered at runtime from `.env.*` files.
+/// The environment name is derived from the file extension.
 ///
 /// Example:
-/// ```dart
-/// print(Env.dev.longLabel);     // "Development"
-/// print(Env.staging.longLabel); // "Staging"
-/// print(Env.prod.longLabel);    // "Production"
-/// print(Env.custom.longLabel);  // "Custom"
-/// ```
-extension EnvName on Env {
-  /// Returns the full human-readable environment name.
-  String get longLabel => switch (this) {
-        Env.dev => 'Development',
-        Env.staging => 'Staging',
-        Env.prod => 'Production',
-        Env.custom => 'Custom',
-      };
+/// - `.env.dev`     → [name: 'dev', label: 'Dev']
+/// - `.env.future`  → [name: 'future', label: 'Future']
+/// - `.env`         → [name: 'prod', label: 'Production', isProduction: true]
+@immutable
+class Env {
+  /// The internal identifier (lowercase).
+  final String name;
+
+  /// The human-readable label.
+  final String label;
+
+  /// The exact filename in assets.
+  final String assetFileName;
+
+  /// Whether this environment represents production.
+  ///
+  /// Integrity checks and production locks are enforced only when this is true.
+  final bool isProduction;
+
+  /// Creates an [Env].
+  const Env({
+    required this.name,
+    required this.label,
+    required this.assetFileName,
+    this.isProduction = false,
+  });
+
+  /// Standard development environment.
+  static const dev = Env(
+    name: 'dev',
+    label: 'Dev',
+    assetFileName: '.env.dev',
+  );
+
+  /// Standard staging environment.
+  static const staging = Env(
+    name: 'staging',
+    label: 'Staging',
+    assetFileName: '.env.staging',
+  );
+
+  /// Standard production environment.
+  static const prod = Env(
+    name: 'prod',
+    label: 'Production',
+    assetFileName: '.env.prod',
+    isProduction: true,
+  );
+
+  /// Create an [Env] from a filename.
+  factory Env.fromFileName(String fileName) {
+    // Strip leading path if present
+    final name = fileName.split('/').last;
+
+    if (name == '.env' || name == '.env.prod') {
+      return prod.copyWith(assetFileName: name);
+    }
+
+    final extension = name.startsWith('.env.') ? name.substring(5) : name;
+    final cleanName = extension.toLowerCase();
+
+    return Env(
+      name: cleanName,
+      label: cleanName.isEmpty
+          ? 'Production'
+          : cleanName[0].toUpperCase() + cleanName.substring(1),
+      assetFileName: name,
+      isProduction: cleanName == 'prod' || name == '.env',
+    );
+  }
+
+  /// Returns a copy of this [Env] with specific fields replaced.
+  Env copyWith({
+    String? name,
+    String? label,
+    String? assetFileName,
+    bool? isProduction,
+  }) {
+    return Env(
+      name: name ?? this.name,
+      label: label ?? this.label,
+      assetFileName: assetFileName ?? this.assetFileName,
+      isProduction: isProduction ?? this.isProduction,
+    );
+  }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is Env &&
+          runtimeType == other.runtimeType &&
+          name == other.name &&
+          assetFileName == other.assetFileName;
+
+  @override
+  int get hashCode => name.hashCode ^ assetFileName.hashCode;
+
+  @override
+  String toString() => 'Env(name: $name, isProduction: $isProduction)';
 }
 
 /// An immutable snapshot of the active environment configuration.
-///
-/// Holds the resolved key-value map from the active `.env*` file, the
-/// current base URL (which may be overridden), and metadata about the
-/// override state.
-///
-/// Instances are exposed through [EnvConfigService.current] as a
-/// [ValueNotifier], so widgets can `listen` for changes without polling.
-///
-/// Example:
-/// ```dart
-/// final config = EnvConfigService.instance.current.value;
-/// print(config.env.label);         // "DEV"
-/// print(config.baseUrl);           // "https://dev.api.myapp.com"
-/// print(config.isBaseUrlOverridden); // false
-/// print(config.values['TIMEOUT']); // "30"
-/// ```
-///
-/// @see EnvConfigService
-/// @see Env
 @immutable
 class EnvConfig {
-  /// The active [Env] variant.
+  /// The active [Env].
   final Env env;
 
   /// The resolved base URL for outbound HTTP requests.
-  ///
-  /// Defaults to the value of the `BASE_URL` key in the active `.env*` file.
-  /// Can be overridden at runtime via [EnvConfigService.setBaseUrl].
   final String baseUrl;
 
   /// The full merged key-value map from the active `.env*` file.
-  ///
-  /// Values from the specific env file take precedence over values from the
-  /// shared `.env` fallback file.
   final Map<String, String> values;
 
   /// Whether [baseUrl] was set manually via [EnvConfigService.setBaseUrl].
-  ///
-  /// When `true`, [baseUrl] may differ from the `BASE_URL` entry in [values].
   final bool isBaseUrlOverridden;
 
   /// Creates an [EnvConfig].
-  ///
-  /// All fields are required and immutable after construction.
   const EnvConfig({
     required this.env,
     required this.baseUrl,
@@ -147,14 +131,6 @@ class EnvConfig {
   });
 
   /// Returns a copy of this [EnvConfig] with the specified fields replaced.
-  ///
-  /// Only the fields you pass are changed; all others retain their current
-  /// values.
-  ///
-  /// Example:
-  /// ```dart
-  /// final updated = config.copyWith(baseUrl: 'https://custom.api.com');
-  /// ```
   EnvConfig copyWith({
     Env? env,
     String? baseUrl,
@@ -170,11 +146,12 @@ class EnvConfig {
   }
 
   /// Serialises this [EnvConfig] to a JSON-compatible map.
-  ///
-  /// Useful for debugging or logging.
   Map<String, Object> toJson() {
     return {
       'env': env.name,
+      'assetFileName': env.assetFileName,
+      'isProduction': env.isProduction,
+      'label': env.label,
       'baseUrl': baseUrl,
       'values': values,
       'isBaseUrlOverridden': isBaseUrlOverridden,
@@ -182,11 +159,17 @@ class EnvConfig {
   }
 
   /// Deserialises an [EnvConfig] from a JSON-compatible [map].
-  ///
-  /// Used internally to restore persisted state.
   factory EnvConfig.fromJson(Map<String, dynamic> map) {
+    final envName = map['env'] as String? ?? 'dev';
+    final assetFileName = map['assetFileName'] as String? ?? '.env.$envName';
+
     return EnvConfig(
-      env: EnvX.fromName(map['env'] as String? ?? Env.dev.name),
+      env: Env(
+        name: envName,
+        label: map['label'] as String? ?? envName,
+        assetFileName: assetFileName,
+        isProduction: map['isProduction'] as bool? ?? false,
+      ),
       baseUrl: map['baseUrl'] as String? ?? '',
       values: Map<String, String>.from(
         (map['values'] as Map<Object?, Object?>?) ?? <String, String>{},

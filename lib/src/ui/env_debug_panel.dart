@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../audit_entry.dart';
 import '../env_config_service.dart';
@@ -7,42 +8,11 @@ import '../envified_exception.dart';
 
 /// A self-contained debug panel widget for inspecting and modifying the active
 /// environment configuration at runtime.
-///
-/// [EnvDebugPanel] can be used standalone — embedded anywhere in your widget
-/// tree — or it can be presented by [EnvifiedOverlay] via a floating button
-/// and bottom sheet.
-///
-/// ## Features
-///
-/// - Displays the active [Env] with a lock indicator when prod-locked.
-/// - [ChoiceChip] row for switching between [Env] values.
-/// - Read-only label showing the `BASE_URL` from the current `.env*` file.
-/// - Text field for overriding the base URL at runtime.
-/// - URL history chip row (up to 5 recent URLs) with one-tap apply.
-/// - "Clear override" button to restore the `.env*` value.
-/// - Expandable key-value table of all entries in [EnvConfig.values].
-/// - Expandable activity log showing the last 10 audit entries.
-/// - Reset button to call [EnvConfigService.reset].
-/// - Optional [onApply] callback for "Apply & Restart" flows.
-///
-/// ## Usage
-///
-/// ```dart
-/// EnvDebugPanel(
-///   service: EnvConfigService.instance,
-///   onApply: () => /* restart logic */,
-/// )
-/// ```
-///
-/// @see EnvifiedOverlay
-/// @see EnvConfigService
 class EnvDebugPanel extends StatefulWidget {
   /// The [EnvConfigService] instance this panel reads from and writes to.
   final EnvConfigService service;
 
   /// Optional callback invoked when the user taps "Apply & Restart".
-  ///
-  /// If `null`, the button is not shown.
   final VoidCallback? onApply;
 
   /// Creates an [EnvDebugPanel].
@@ -61,6 +31,9 @@ class _EnvDebugPanelState extends State<EnvDebugPanel> {
   bool _kvExpanded = false;
   bool _auditExpanded = false;
   String? _errorMessage;
+  String _configSearchQuery = '';
+  bool _showNewConfig = true;
+  Env? _pendingEnv;
 
   List<String> _urlHistory = <String>[];
   List<AuditEntry> _auditEntries = <AuditEntry>[];
@@ -116,11 +89,64 @@ class _EnvDebugPanelState extends State<EnvDebugPanel> {
   }
 
   Future<void> _switchEnv(Env env) async {
+    if (env.isProduction && !_svc.allowProdSwitch) {
+      // If we have a navigator, use showDialog (nicer UX)
+      // Otherwise, use inline confirmation.
+      final hasNavigator = Navigator.maybeOf(context) != null;
+      if (hasNavigator) {
+        final confirm = await showDialog<bool>(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            title: Text('Switch to ${env.label}?'),
+            content: const Text(
+              'This will use the production API. Are you sure you want to proceed?',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                child: const Text('Cancel'),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.pop(ctx, true),
+                style:
+                    FilledButton.styleFrom(backgroundColor: Colors.red.shade900),
+                child: const Text('Switch'),
+              ),
+            ],
+          ),
+        );
+        if (confirm != true) return;
+      } else {
+        // No Navigator (likely in a root overlay). Use inline confirmation.
+        setState(() => _pendingEnv = env);
+        return;
+      }
+    }
+
+    await _performSwitch(env);
+  }
+
+  Future<void> _performSwitch(Env env) async {
     try {
+      setState(() {
+        _showNewConfig = false;
+        _pendingEnv = null;
+      });
       await _svc.switchTo(env);
-      if (mounted) setState(() => _errorMessage = null);
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+      if (mounted) {
+        setState(() {
+          _errorMessage = null;
+          _showNewConfig = true;
+        });
+      }
     } on EnvifiedLockException catch (e) {
-      if (mounted) setState(() => _errorMessage = e.message);
+      if (mounted) {
+        setState(() {
+          _errorMessage = e.message;
+          _showNewConfig = true;
+        });
+      }
     }
     await _loadAudit();
   }
@@ -181,62 +207,72 @@ class _EnvDebugPanelState extends State<EnvDebugPanel> {
         final ThemeData theme = Theme.of(context);
         final ColorScheme cs = theme.colorScheme;
 
-        return Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // ── Header ────────────────────────────────────────────────────
-            _buildHeader(config, locked, lockColor, cs),
+        return AnimatedCrossFade(
+          duration: const Duration(milliseconds: 200),
+          crossFadeState: _showNewConfig
+              ? CrossFadeState.showSecond
+              : CrossFadeState.showFirst,
+          firstChild: const SizedBox(height: 400),
+          secondChild: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // ── Header ────────────────────────────────────────────────────
+              _buildHeader(config, locked, lockColor, cs),
 
-            const SizedBox(height: 16),
+              const SizedBox(height: 16),
 
-            // ── Env switcher ──────────────────────────────────────────────
-            _buildEnvSwitcher(config, locked, cs),
+              // ── Env switcher ──────────────────────────────────────────────
+              if (_pendingEnv != null)
+                _buildConfirmSwitch(_pendingEnv!, cs)
+              else
+                _buildEnvSwitcher(config, locked, cs),
 
-            const SizedBox(height: 20),
+              const SizedBox(height: 20),
 
-            // ── BASE_URL (from .env file) ─────────────────────────────────
-            _buildEnvBaseUrlLabel(config, cs),
+              // ── BASE_URL (from .env file) ─────────────────────────────────
+              _buildEnvBaseUrlLabel(config, cs),
 
-            const SizedBox(height: 16),
+              const SizedBox(height: 16),
 
-            // ── URL override ──────────────────────────────────────────────
-            _buildUrlOverrideField(config, locked),
+              // ── URL override ──────────────────────────────────────────────
+              _buildUrlOverrideField(config, locked),
 
-            // ── URL History chips ─────────────────────────────────────────
-            if (_urlHistory.isNotEmpty) ...[
-              const SizedBox(height: 10),
-              _buildUrlHistory(locked, cs),
-            ],
+              // ── URL History chips ─────────────────────────────────────────
+              if (_urlHistory.isNotEmpty) ...[
+                const SizedBox(height: 10),
+                _buildUrlHistory(locked, cs),
+              ],
 
-            if (config.isBaseUrlOverridden) ...[
+              if (config.isBaseUrlOverridden) ...[
+                const SizedBox(height: 8),
+                _buildClearOverrideButton(locked),
+              ],
+
+              // ── Error message ─────────────────────────────────────────────
+              if (_errorMessage != null) ...[
+                const SizedBox(height: 8),
+                _buildErrorBanner(_errorMessage!),
+              ],
+
+              const SizedBox(height: 20),
+              const Divider(),
+
+              // ── Key-value table ───────────────────────────────────────────
+              _buildKvTable(config, cs),
+
+              const Divider(),
+
+              // ── Activity log ─────────────────────────────────────────────────
+              _buildAuditLog(cs),
+
+              const Divider(),
               const SizedBox(height: 8),
-              _buildClearOverrideButton(locked),
+
+              // ── Action buttons ────────────────────────────────────────────
+              _buildActionRow(),
             ],
-
-            // ── Error message ─────────────────────────────────────────────
-            if (_errorMessage != null) ...[
-              const SizedBox(height: 8),
-              _buildErrorBanner(_errorMessage!),
-            ],
-
-            const SizedBox(height: 20),
-            const Divider(),
-
-            // ── Key-value table ───────────────────────────────────────────
-            _buildKvTable(config, cs),
-
-            const Divider(),
-
-            // ── Audit log ─────────────────────────────────────────────────
-            _buildAuditLog(cs),
-
-            const Divider(),
-            const SizedBox(height: 8),
-
-            // ── Action buttons ────────────────────────────────────────────
-            _buildActionRow(),
-          ],
+          ),
         );
       },
     );
@@ -253,7 +289,6 @@ class _EnvDebugPanelState extends State<EnvDebugPanel> {
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
           decoration: BoxDecoration(
-            // ignore: deprecated_member_use
             color: _envColor(config.env).withOpacity(0.15),
             borderRadius: BorderRadius.circular(20),
             border: Border.all(color: _envColor(config.env), width: 1.5),
@@ -279,7 +314,6 @@ class _EnvDebugPanelState extends State<EnvDebugPanel> {
           '🌿 envified',
           style: TextStyle(
             fontSize: 12,
-            // ignore: deprecated_member_use
             color: cs.onSurface.withOpacity(0.5),
           ),
         ),
@@ -292,11 +326,12 @@ class _EnvDebugPanelState extends State<EnvDebugPanel> {
     bool locked,
     ColorScheme cs,
   ) {
+    final List<Env> available = _svc.availableEnvs;
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       child: Row(
-        children: Env.values.map((e) {
-          final isSelected = config.env == e;
+        children: available.map((e) {
+          final isSelected = config.env.name == e.name;
           return Padding(
             padding: const EdgeInsets.only(right: 8.0),
             child: ChoiceChip(
@@ -304,7 +339,7 @@ class _EnvDebugPanelState extends State<EnvDebugPanel> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(e.label),
-                  if (e == Env.prod && !_svc.allowProdSwitch)
+                  if (e.isProduction && !_svc.allowProdSwitch)
                     const Padding(
                       padding: EdgeInsets.only(left: 4),
                       child: Icon(Icons.lock, size: 12),
@@ -313,7 +348,6 @@ class _EnvDebugPanelState extends State<EnvDebugPanel> {
               ),
               selected: isSelected,
               onSelected: locked ? null : (_) => _switchEnv(e),
-              // ignore: deprecated_member_use
               selectedColor: _envColor(e).withOpacity(0.2),
               labelStyle: TextStyle(
                 color: isSelected ? _envColor(e) : cs.onSurface,
@@ -331,30 +365,98 @@ class _EnvDebugPanelState extends State<EnvDebugPanel> {
     );
   }
 
+  Widget _buildConfirmSwitch(Env env, ColorScheme cs) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.red.shade50,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.red.shade200),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Switch to ${env.label}?',
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.bold,
+              color: Colors.red.shade900,
+            ),
+          ),
+          const SizedBox(height: 4),
+          const Text(
+            'This will use the production API.',
+            style: TextStyle(fontSize: 12, color: Colors.black87),
+          ),
+          const SizedBox(height: 12),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              TextButton(
+                onPressed: () => setState(() => _pendingEnv = null),
+                child: const Text('Cancel'),
+              ),
+              const SizedBox(width: 8),
+              FilledButton(
+                onPressed: () => _performSwitch(env),
+                style:
+                    FilledButton.styleFrom(backgroundColor: Colors.red.shade900),
+                child: const Text('Confirm Switch'),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildEnvBaseUrlLabel(EnvConfig config, ColorScheme cs) {
     final fileUrl = config.values['BASE_URL'] ?? '(not set)';
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'BASE_URL from .env file',
+          'BASE_URL from ${config.env.assetFileName}',
           style: TextStyle(
             fontSize: 11,
-            // ignore: deprecated_member_use
             color: cs.onSurface.withOpacity(0.55),
             fontWeight: FontWeight.w600,
             letterSpacing: 0.4,
           ),
         ),
         const SizedBox(height: 4),
-        SelectableText(
-          fileUrl,
-          style: TextStyle(
-            fontSize: 13,
-            // ignore: deprecated_member_use
-            color: cs.onSurface.withOpacity(0.8),
-            fontFamily: 'monospace',
-          ),
+        Row(
+          children: [
+            Expanded(
+              child: SelectableText(
+                fileUrl,
+                style: TextStyle(
+                  fontSize: 13,
+                  color: cs.onSurface.withOpacity(0.8),
+                  fontFamily: 'monospace',
+                ),
+              ),
+            ),
+            IconButton(
+              onPressed: () {
+                Clipboard.setData(ClipboardData(text: fileUrl));
+                // ignore: deprecated_member_use
+                final messenger = ScaffoldMessenger.maybeOf(context);
+                if (messenger != null) {
+                  messenger.showSnackBar(
+                    const SnackBar(
+                      content: Text('URL copied to clipboard'),
+                      duration: Duration(seconds: 1),
+                    ),
+                  );
+                }
+              },
+              icon: const Icon(Icons.copy_all, size: 16),
+              tooltip: 'Copy to clipboard',
+              visualDensity: VisualDensity.compact,
+            ),
+          ],
         ),
       ],
     );
@@ -415,7 +517,6 @@ class _EnvDebugPanelState extends State<EnvDebugPanel> {
           'Recent',
           style: TextStyle(
             fontSize: 12,
-            // ignore: deprecated_member_use
             color: cs.onSurface.withOpacity(0.45),
           ),
         ),
@@ -496,7 +597,6 @@ class _EnvDebugPanelState extends State<EnvDebugPanel> {
                       ? Icons.keyboard_arrow_up
                       : Icons.keyboard_arrow_down,
                   size: 18,
-                  // ignore: deprecated_member_use
                   color: cs.onSurface.withOpacity(0.6),
                 ),
                 const SizedBox(width: 4),
@@ -505,7 +605,6 @@ class _EnvDebugPanelState extends State<EnvDebugPanel> {
                   style: TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w600,
-                    // ignore: deprecated_member_use
                     color: cs.onSurface.withOpacity(0.7),
                   ),
                 ),
@@ -515,15 +614,35 @@ class _EnvDebugPanelState extends State<EnvDebugPanel> {
         ),
         if (_kvExpanded)
           Container(
+            padding: const EdgeInsets.only(bottom: 8),
             decoration: BoxDecoration(
-              // ignore: deprecated_member_use
               color: cs.surfaceContainerHighest.withOpacity(0.4),
               borderRadius: BorderRadius.circular(8),
             ),
             child: Column(
-              children: config.values.entries.map((entry) {
-                return _buildKvRow(entry.key, entry.value, cs);
-              }).toList(),
+              children: [
+                Padding(
+                  padding: const EdgeInsets.all(8.0),
+                  child: TextField(
+                    onChanged: (v) => setState(() => _configSearchQuery = v),
+                    decoration: InputDecoration(
+                      hintText: 'Search keys...',
+                      prefixIcon: const Icon(Icons.search, size: 18),
+                      isDense: true,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                  ),
+                ),
+                ...config.values.entries
+                    .where((e) => e.key
+                        .toLowerCase()
+                        .contains(_configSearchQuery.toLowerCase()))
+                    .map((entry) {
+                  return _buildKvRow(entry.key, entry.value, cs);
+                }),
+              ],
             ),
           ),
       ],
@@ -583,7 +702,6 @@ class _EnvDebugPanelState extends State<EnvDebugPanel> {
                       ? Icons.keyboard_arrow_up
                       : Icons.keyboard_arrow_down,
                   size: 18,
-                  // ignore: deprecated_member_use
                   color: cs.onSurface.withOpacity(0.6),
                 ),
                 const SizedBox(width: 4),
@@ -592,7 +710,6 @@ class _EnvDebugPanelState extends State<EnvDebugPanel> {
                   style: TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w600,
-                    // ignore: deprecated_member_use
                     color: cs.onSurface.withOpacity(0.7),
                   ),
                 ),
@@ -603,7 +720,6 @@ class _EnvDebugPanelState extends State<EnvDebugPanel> {
         if (_auditExpanded)
           Container(
             decoration: BoxDecoration(
-              // ignore: deprecated_member_use
               color: cs.surfaceContainerHighest.withOpacity(0.4),
               borderRadius: BorderRadius.circular(8),
             ),
@@ -649,7 +765,6 @@ class _EnvDebugPanelState extends State<EnvDebugPanel> {
             style: TextStyle(
               fontSize: 11,
               fontFamily: 'monospace',
-              // ignore: deprecated_member_use
               color: cs.onSurface.withOpacity(0.55),
             ),
           ),
@@ -669,7 +784,6 @@ class _EnvDebugPanelState extends State<EnvDebugPanel> {
               detail,
               style: TextStyle(
                 fontSize: 11,
-                // ignore: deprecated_member_use
                 color: cs.onSurface.withOpacity(0.75),
                 fontFamily: 'monospace',
                 overflow: TextOverflow.ellipsis,
@@ -703,15 +817,18 @@ class _EnvDebugPanelState extends State<EnvDebugPanel> {
   }
 
   Color _envColor(Env env) {
-    switch (env) {
-      case Env.dev:
-        return Colors.blue.shade600;
-      case Env.staging:
+    if (env.isProduction) return Colors.red.shade700;
+    switch (env.name) {
+      case 'dev':
+        return Colors.blue.shade700;
+      case 'staging':
         return Colors.orange.shade700;
-      case Env.prod:
-        return Colors.red.shade600;
-      case Env.custom:
-        return Colors.purple.shade600;
+      case 'uat':
+        return Colors.purple.shade700;
+      case 'future':
+        return Colors.teal.shade700;
+      default:
+        return Colors.blueGrey.shade700;
     }
   }
 }

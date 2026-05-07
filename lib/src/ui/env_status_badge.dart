@@ -59,15 +59,16 @@ class EnvStatusBadge extends StatelessWidget {
   });
 
   Color _colorForEnv(Env env) {
-    switch (env) {
-      case Env.dev:
+    if (env.isProduction) return Colors.red.shade800;
+    switch (env.name) {
+      case 'dev':
         return Colors.blue.shade700;
-      case Env.staging:
+      case 'staging':
         return Colors.orange.shade700;
-      case Env.prod:
-        return Colors.red.shade800;
-      case Env.custom:
+      case 'uat':
         return Colors.purple.shade700;
+      default:
+        return Colors.blueGrey.shade700;
     }
   }
 

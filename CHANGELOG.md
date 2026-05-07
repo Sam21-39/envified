@@ -5,9 +5,31 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.0] - 2026-05-07
+
+### Implemented
+
+- **Dynamic Auto-Discovery System**: `envified` now automatically scans `assets/env/` for any `.env.*` files. No manual environment-to-URL mapping is required.
+- **Dynamic Env Class**: Replaced the static `Env` enum with a flexible `Env` class. Environment names and labels are now derived dynamically from file extensions (e.g., `.env.future` -> `Env(name: 'future', label: 'Future')`).
+- **Naked `.env` Support**: Standardized logic where a standalone `.env` file is automatically treated as the "Production" environment (fallback for `.env.prod`).
+- **Production-Only Integrity**: Restricted security/integrity checks (SHA-256) exclusively to production environments to simplify development workflows.
+- **Premium PIN UI**: Upgraded the `EnvGate` PIN entry with a modern, glassmorphic design featuring segmented input boxes, smooth animations, and haptic feedback.
+- **Navigator-Resilient Debug Panel**: Fixed "Navigator missing" errors by implementing inline confirmation fallbacks when the panel is used in root-level overlays.
+
+### Changed
+
+- **Class-based Env**: `Env` is now a class instead of an enum. This enables dynamic runtime discovery while maintaining static constants for common environments (`Env.dev`, `Env.staging`, `Env.prod`).
+- **Refactored Service**: Merged `EnvX` and `EnvName` functionality into the core `Env` class for a cleaner API.
+
+### Removed
+
+- Removed legacy `Env.custom` slot in favor of purely dynamic environment discovery.
+- Removed manual `urls` mapping requirement in `EnvConfigService.init`.
+
 ## [2.0.8] - 2026-05-07
 
 ### Improved
+
 - **Showcase Cleanup**: Renamed internal assets for a more professional repository structure (`envified-demo.gif`).
 - **Security Documentation**: Added critical disclaimers about `.env` asset security vs. encrypted runtime persistence.
 - **Developer UX**: Added PIN code best practice comments to documentation snippets.
@@ -16,11 +38,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [2.0.7] - 2026-05-07
 
 ### Removed
+
 - **Removed `local_auth` Dependency**: Removed biometric authentication completely to prevent upstream dependency conflicts, reducing package size and simplifying platform setup. The debug panel is still securely protected via the PIN code gate.
 
 ## [2.0.6] - 2026-05-07
 
 ### Fixed
+
 - Fixed critical bug where `EnvGate` PIN dialog would crash when `EnvifiedOverlay` was placed in `MaterialApp.builder` due to missing `Navigator` context. The PIN dialog is now rendered directly via `OverlayEntry`.
 - Fixed compilation error in `env_gate.dart`: updated `local_auth` API usage
   - Replaced deprecated `AuthenticationOptions` with `AndroidAuthMessages` via `authMessages`
@@ -28,12 +52,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fixed platform declarations in `pubspec.yaml` (`android`, `ios`) for full pub.dev platform support scoring
 
 ### Improved
+
 - Platform support score: now 20/20 points (up from 0/20)
 - Code compiles cleanly (zero errors, zero warnings)
 
 ## [2.0.5] - 2026-05-07
 
 ### Improved
+
 - Added explicit platform declaration (`platforms: flutter`) for full pub.dev platform support scoring
 - Tightened all dependency version constraints for better stability signaling
   - Changed `^x.y.z` to `>=x.y.z <(x+1).0.0` across all dependencies
@@ -43,6 +69,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Complete README overhaul with a premium presentation and feature highlights
 
 ### Fixed
+
 - Dependency resolution confidence (platform support +10 pts, dependency stability +20 pts)
 
 ## [2.0.4] - 2026-05-07
@@ -71,11 +98,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Major Release 🚀 — Eight Improvements
 
 #### 1. Tamper Detection (`verifyIntegrity`)
+
 - `EnvFileParser.verifyIntegrity()` computes a SHA-256 hash of each `.env*` file on first load and stores it in `flutter_secure_storage`.
 - Subsequent loads recompute and compare — a hash mismatch throws the new `EnvifiedTamperException`.
 - Opt-in via `EnvConfigService.init(verifyIntegrity: true)`.
 
 #### 2. Access Token Gate (`EnvGate`)
+
 - New `EnvGate` class exported from the public API.
 - Supports secure PIN-code authentication before allowing access to the debug panel.
 - (Note: Biometric support was temporarily included in early v2 betas but removed in v2.0.7 to ensure upstream dependency stability).
@@ -84,6 +113,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Auto-clears authentication state when the app is backgrounded.
 
 #### 3. Typed Get Helpers
+
 - `getBool(key)` — accepts `'true'`, `'1'`, `'yes'` (case-insensitive).
 - `getInt(key)` — wraps `int.tryParse`.
 - `getDouble(key)` — wraps `double.tryParse`.
@@ -91,18 +121,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `getList(key, {separator})` — splits and trims CSV values.
 
 #### 4. Lifecycle Hooks
+
 - `onBeforeSwitch: Future<void> Function(Env from, Env to)?` — awaited before `switchTo()` changes the active env.
 - `onAfterSwitch: void Function(EnvConfig config)?` — called after `switchTo()` and `setBaseUrl()`.
 - Both hooks are supplied to `EnvConfigService.init()`.
 - New `EnvName` extension on `Env` with `longLabel` (e.g. `"Development"`, `"Production"`).
 
 #### 5. URL History Picker
+
 - `EnvStorage.saveUrlToHistory()` / `loadUrlHistory()` — persists up to 5 recent URLs (deduped, newest-first) in secure storage.
 - `EnvConfigService.urlHistory` exposes the list.
 - `EnvDebugPanel` shows a "Recent" row of tappable `ActionChip` widgets below the URL override field.
 - Tapping a chip applies the URL and updates the text field.
 
 #### 6. Env Status Badge (`EnvStatusBadge`)
+
 - New standalone `EnvStatusBadge` widget.
 - Colour-coded per environment (blue / orange / red / purple).
 - Pulsing opacity animation (1.0 ↔ 0.7, 1.5 s) when `isBaseUrlOverridden` is `true`.
@@ -110,6 +143,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Configurable `alignment` and `margin`.
 
 #### 7. Gesture Trigger Config (`EnvTrigger`)
+
 - New `sealed class EnvTrigger` replacing the hard-coded FAB tap.
 - `EnvTrigger.tap(count: 7)` — N rapid taps within 800 ms (default).
 - `EnvTrigger.shake(threshold: 15.0)` — accelerometer shake via `sensors_plus`, 2 s debounce.
@@ -119,6 +153,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fixed a bug where taps on the panel or FAB incorrectly advanced the hidden tap count, ensuring triggers accurately reflect gesture counts.
 
 #### 8. Audit Log
+
 - `AuditEntry` model (exported) with `timestamp`, `action`, `fromEnv`, `toEnv`, `url`.
 - Every mutation (`switchTo`, `setBaseUrl`, `clearBaseUrlOverride`, `reset`) appends an entry to `flutter_secure_storage`.
 - Log is capped at 50 entries; oldest are dropped.
@@ -126,20 +161,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `EnvDebugPanel` shows an expandable "Activity log (N entries)" tile with the last 10 entries.
 
 #### Auto-lock on Background
+
 - `EnvifiedOverlay` registers an `AppLifecycleListener` on `onHide` / `onPause`.
 - The panel closes and authentication is cleared whenever the app moves to background.
 
 ### New Dependencies
+
 - `sensors_plus: ^5.0.0`
 - `crypto: ^3.0.0`
 - `flutter_secure_storage: ^9.0.0` (Encrypted persistence)
 
 ### Breaking Changes
+
 - `Env.label` now returns short form (`'Dev'`, `'Staging'`, `'Prod'`, `'Custom'`).
   Use the new `Env.longLabel` (via `EnvName` extension) for full names.
 - `EnvStorage.clear()` now also deletes URL history and audit log keys.
 
 ### Migration Guide from 1.0.0
+
 ```dart
 // Before
 await EnvConfigService.instance.init(defaultEnv: Env.dev);
@@ -179,8 +218,10 @@ EnvifiedOverlay(
 - **Bulletproof Reliability** — Comprehensive unit test suite covering parsing, models, storage, and service logic.
 
 ## [0.1.2] - 2026-05-06
+
 - Security upgrade to encrypted storage.
 - Storage injection for unit testing.
 
 ## [0.1.0] - 2026-05-06
+
 - Initial beta release.

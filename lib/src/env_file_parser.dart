@@ -2,40 +2,18 @@ import 'package:crypto/crypto.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
+import 'env_model.dart';
 import 'env_storage.dart';
 import 'envified_exception.dart';
 
 /// Internal parser for `.env*` asset files.
-///
-/// This class is **not exported** from the public API. It is used exclusively
-/// by [EnvConfigService] to load and merge environment configuration at
-/// runtime.
-///
-/// Parsing rules:
-/// - Lines in the form `KEY=VALUE` are accepted.
-/// - Lines starting with `#` are treated as comments and ignored.
-/// - Surrounding double-quotes on values are stripped: `KEY="value"` → `value`.
-/// - Keys with no value (`KEY=`) produce an empty string, not `null`.
-/// - Multiline values are not supported.
-///
-/// @see EnvConfigService
 class EnvFileParser {
   /// Loads and parses a single `.env*` file at [assetPath].
-  ///
-  /// Returns an empty [Map] if the asset is not found (e.g. the developer did
-  /// not declare the file in `pubspec.yaml`). All other I/O errors are
-  /// re-thrown.
-  ///
-  /// ```dart
-  /// final parser = EnvFileParser();
-  /// final values = await parser.parse('.env.dev');
-  /// ```
   Future<Map<String, String>> parse(String assetPath) async {
     String content;
     try {
       content = await rootBundle.loadString(assetPath);
     } on FlutterError {
-      // Asset not registered or not found — treat as empty.
       return <String, String>{};
     } catch (_) {
       return <String, String>{};
@@ -44,21 +22,7 @@ class EnvFileParser {
   }
 
   /// Verifies the integrity of the `.env*` file at [assetPath].
-  ///
-  /// On the **first load** of a given file the raw bytes are SHA-256 hashed
-  /// and the digest is persisted in [storage] under the key
-  /// `envified_hash_<sanitised-path>`.
-  ///
-  /// On **subsequent loads** the hash is recomputed and compared against the
-  /// stored value. If they differ an [EnvifiedTamperException] is thrown.
-  ///
-  /// If the asset does not exist (e.g. `.env.custom` is optional) this method
-  /// returns silently without storing a hash.
-  ///
-  /// @throws [EnvifiedTamperException] when the file hash does not match the
-  ///   stored baseline hash.
   Future<void> verifyIntegrity(String assetPath, EnvStorage storage) async {
-    // Load raw bytes; bail out silently when the asset doesn't exist.
     ByteData? data;
     try {
       data = await rootBundle.load(assetPath);
@@ -75,7 +39,6 @@ class EnvFileParser {
     final String? storedHash = await storage.readRaw(storageKey);
 
     if (storedHash == null) {
-      // First load — persist the baseline.
       await storage.writeRaw(storageKey, currentHash);
     } else if (storedHash != currentHash) {
       throw EnvifiedTamperException(assetPath);
@@ -88,8 +51,6 @@ class EnvFileParser {
 
     for (final rawLine in content.split('\n')) {
       final line = rawLine.trim();
-
-      // Skip blank lines and comments.
       if (line.isEmpty || line.startsWith('#')) continue;
 
       final separatorIndex = line.indexOf('=');
@@ -121,17 +82,78 @@ class EnvFileParser {
   }
 
   /// Merges [fallback] values with [specific] values.
-  ///
-  /// Values present in [specific] override those in [fallback]. Values only in
-  /// [fallback] are retained as-is.
-  ///
-  /// ```dart
-  /// final merged = parser.merge(fallback, specific);
-  /// ```
   Map<String, String> merge(
     Map<String, String> fallback,
     Map<String, String> specific,
   ) {
     return <String, String>{...fallback, ...specific};
+  }
+
+  /// Discovers all `.env.*` files in the asset bundle.
+  Future<Map<Env, String>> discoverAndExtractUrls({
+    String assetDir = '',
+    bool requireBaseUrl = false,
+  }) async {
+    final result = <Env, String>{};
+
+    final envFileRegex = RegExp(r'\.env\.([a-z0-9]+)$');
+
+    try {
+      final manifest = await AssetManifest.loadFromAssetBundle(rootBundle);
+      final allAssets = manifest.listAssets();
+
+      final assets = assetDir.isEmpty
+          ? allAssets
+          : allAssets.where((path) => path.startsWith(assetDir));
+
+      bool hasProdExplicit = allAssets.any((a) => a.endsWith('.env.prod'));
+
+      for (final assetPath in assets) {
+        final fileName = assetPath.split('/').last;
+
+        // Determine if this is an environment file
+        final isProdNaked = fileName == '.env' && !hasProdExplicit;
+        final isEnvFile = isProdNaked || envFileRegex.hasMatch(fileName);
+
+        if (!isEnvFile) continue;
+
+        try {
+          final content = await rootBundle.loadString(assetPath);
+          final baseUrl = _extractBaseUrl(content);
+
+          final env = Env.fromFileName(fileName);
+          result[env] = baseUrl;
+        } catch (e) {
+          if (requireBaseUrl) rethrow;
+        }
+      }
+
+      if (result.isEmpty) {
+        throw const EnvifiedMissingFileException(
+          'No environment files discovered. '
+          'Create at least .env, .env.dev, or .env.prod.',
+        );
+      }
+
+      return result;
+    } catch (e) {
+      if (e is EnvifiedMissingFileException) rethrow;
+      throw EnvifiedMissingFileException(
+        'Failed to discover environments: $e',
+      );
+    }
+  }
+
+  /// Extracts BASE_URL from .env file content.
+  String _extractBaseUrl(String content) {
+    final lines = content.split('\n');
+    for (final line in lines) {
+      final trimmed = line.trim();
+      if (trimmed.startsWith('BASE_URL=')) {
+        final value = trimmed.substring('BASE_URL='.length).trim();
+        return _stripQuotes(value);
+      }
+    }
+    return '';
   }
 }

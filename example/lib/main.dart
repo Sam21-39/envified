@@ -12,6 +12,7 @@ void main() async {
     defaultEnv: Env.dev,
     persistSelection: true,
     allowProdSwitch: false, // prod is locked by default
+    assetDir: 'assets/env/',
   );
 
   runApp(const MyApp());
@@ -97,68 +98,6 @@ class _HomePage extends StatelessWidget {
 
                 const SizedBox(height: 24),
 
-                // ── Typed Getters ──────────────────────────────────────────
-                const _SectionTitle('Typed Getters (Safe Parsing)'),
-                const SizedBox(height: 8),
-                _InfoRow(
-                    label: 'getBool("DEBUG")',
-                    value: service.getBool('DEBUG').toString()),
-                _InfoRow(
-                    label: 'getInt("PORT")',
-                    value: service.getInt('PORT').toString()),
-                _InfoRow(
-                    label: 'getDouble("VERSION")',
-                    value: service.getDouble('VERSION').toString()),
-                _InfoRow(
-                    label: 'getUri("BASE_URL")',
-                    value: service.getUri('BASE_URL')?.toString() ?? 'null'),
-                _InfoRow(
-                    label: 'getList("SCOPES")',
-                    value: service.getList('SCOPES').join(', ')),
-
-                const SizedBox(height: 24),
-
-                // ── Audit Log ──────────────────────────────────────────────
-                const _SectionTitle('Audit Log (Action History)'),
-                const SizedBox(height: 8),
-                StreamBuilder<List<AuditEntry>>(
-                  stream: Stream.fromFuture(service.auditLog),
-                  builder: (context, snapshot) {
-                    if (snapshot.connectionState == ConnectionState.waiting) {
-                      return const Text('Loading...',
-                          style: TextStyle(color: Colors.blueGrey));
-                    }
-                    final log = snapshot.data ?? [];
-                    if (log.isEmpty) {
-                      return const Text('No history yet.',
-                          style: TextStyle(color: Colors.blueGrey));
-                    }
-                    return ListView.builder(
-                      shrinkWrap: true,
-                      physics: const NeverScrollableScrollPhysics(),
-                      itemCount: log.length,
-                      itemBuilder: (context, index) {
-                        final entry = log[index];
-                        final details = entry.action == 'switch'
-                            ? '${entry.fromEnv} -> ${entry.toEnv}'
-                            : (entry.url ?? '');
-                        return Padding(
-                          padding: const EdgeInsets.only(bottom: 6),
-                          child: Text(
-                            '[${entry.timestamp.toIso8601String().substring(11, 19)}] ${entry.action} $details',
-                            style: const TextStyle(
-                                fontSize: 12,
-                                fontFamily: 'monospace',
-                                color: Colors.blueGrey),
-                          ),
-                        );
-                      },
-                    );
-                  },
-                ),
-
-                const SizedBox(height: 24),
-
                 // ── Quick switch buttons ──────────────────────────────────
                 const _SectionTitle('Quick Switch'),
                 const SizedBox(height: 12),
@@ -224,8 +163,8 @@ class _EnvBadge extends StatelessWidget {
         return Colors.orange.shade400;
       case Env.prod:
         return Colors.red.shade400;
-      case Env.custom:
-        return Colors.purple.shade400;
+      default:
+        return Colors.teal.shade400;
     }
   }
 
@@ -310,12 +249,13 @@ class _EnvSwitcher extends StatelessWidget {
         return Wrap(
           spacing: 8,
           runSpacing: 8,
-          children: Env.values.map((env) {
-            final bool isActive = config.env == env;
+          children: service.availableEnvs.map((env) {
+            final bool isActive = config.env.name == env.name;
             return Tooltip(
-              message: locked && env != Env.prod ? 'Locked in production' : '',
+              message:
+                  locked && !env.isProduction ? 'Locked in production' : '',
               child: FilledButton(
-                onPressed: (locked && env != Env.prod)
+                onPressed: (locked && !env.isProduction)
                     ? null
                     : () async {
                         try {

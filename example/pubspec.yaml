@@ -21,7 +21,4 @@ dev_dependencies:
 flutter:
   uses-material-design: true
   assets:
-    - .env
-    - .env.dev
-    - .env.staging
-    - .env.prod
+    - assets/env/

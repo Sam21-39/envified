@@ -84,3 +84,18 @@ class EnvifiedUrlNotAllowedException implements Exception {
   String toString() =>
       'EnvifiedUrlNotAllowedException: URL "$url" is not in the allowed list.';
 }
+
+/// Exception thrown when auto-discovery fails to find any `.env.*` files.
+///
+/// Thrown by [EnvConfigService.init] when `autoDiscover` is `true` but no
+/// matching assets are found in the bundle manifest.
+class EnvifiedMissingFileException implements Exception {
+  /// Human-readable error message.
+  final String message;
+
+  /// Creates an [EnvifiedMissingFileException] with the given [message].
+  const EnvifiedMissingFileException(this.message);
+
+  @override
+  String toString() => 'EnvifiedMissingFileException: $message';
+}
