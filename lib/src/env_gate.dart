@@ -77,10 +77,7 @@ class EnvGate {
             cancelButton: 'Cancel',
           ),
         ],
-        options: const AuthenticationOptions(
-          useErrorDialogs: true,
-          stickyAuth: true,
-        ),
+        persistAcrossBackgrounding: true,
       );
 
       return isAuthenticated;
