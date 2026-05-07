@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.2.0] - 2026-05-07
+
+### Implemented
+
+- **Smart Restart Detection**: `EnvConfigService` now tracks the initial environment and URL. A new `restartNeeded` `ValueNotifier` alerts the UI when changes require a dependency re-initialization (e.g., HTTP clients, Firebase).
+- **Environment Alias Support**: Automatically handles common naming aliases for `dev` (development), `staging` (stag), and `prod` (production) during auto-discovery.
+- **Sensitive Data Protection**: Config keys like `API_KEY`, `TOKEN`, and `PASSWORD` are now automatically identified and blurred by default. Features a secure "Reveal & Copy" workflow with auto-hide timers.
+- **Enterprise UX Overhaul**: Overhauled the `EnvDebugPanel` with a premium card-based layout and hierarchical `_SectionHeader` components.
+- **Timeline Audit Log**: Replaced the basic list with a dedicated `AuditLogViewer` featuring action-specific icons, color coding, and a vertical timeline view.
+- **Live URL Validation**: The custom URL input field now provides real-time validation and visual feedback for valid URI formats.
+- **Visual Status Indicators**: Environment buttons now feature real-time status dots (Available vs. Partial) and lock icons for production safety.
+- **Dark Mode Support**: All new UI components are fully optimized for both Light and Dark themes.
+
+### Changed
+
+- **Refactored UI**: `EnvDebugPanel` migrated to a modular card-based architecture for better scalability.
+- **API Update**: `EnvifiedOverlay` and `EnvDebugPanel` now use the `onRestart` callback to signal when a hard app reset is requested by the user.
+- **Internal**: Optimized configuration merging logic to support naked `.env` files more robustly.
+
 ## [2.1.0] - 2026-05-07
 
 ### Implemented

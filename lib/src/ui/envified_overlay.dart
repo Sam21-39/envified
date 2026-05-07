@@ -63,8 +63,8 @@ class EnvifiedOverlay extends StatefulWidget {
   /// cost. Pass `kDebugMode` here to automatically disable in production builds.
   final bool enabled;
 
-  /// Optional callback forwarded to [EnvDebugPanel.onApply].
-  final VoidCallback? onApply;
+  /// Optional callback forwarded to [EnvDebugPanel.onRestart].
+  final VoidCallback? onRestart;
 
   /// Optional access gate that must be passed before the panel is revealed.
   ///
@@ -88,7 +88,7 @@ class EnvifiedOverlay extends StatefulWidget {
     required this.service,
     required this.child,
     this.enabled = true,
-    this.onApply,
+    this.onRestart,
     this.gate,
     this.trigger = const EnvTrigger.tap(count: 7),
     this.showFab = true,
@@ -108,7 +108,7 @@ class _EnvifiedOverlayState extends State<EnvifiedOverlay> {
       builder: (context) => _OverlayContent(
         service: widget.service,
         appChild: widget.child,
-        onApply: widget.onApply,
+        onRestart: widget.onRestart,
         gate: widget.gate,
         trigger: widget.trigger,
         showFab: widget.showFab,
@@ -141,7 +141,7 @@ class _EnvifiedOverlayState extends State<EnvifiedOverlay> {
 class _OverlayContent extends StatefulWidget {
   final EnvConfigService service;
   final Widget appChild;
-  final VoidCallback? onApply;
+  final VoidCallback? onRestart;
   final EnvGate? gate;
   final EnvTrigger trigger;
   final bool showFab;
@@ -149,7 +149,7 @@ class _OverlayContent extends StatefulWidget {
   const _OverlayContent({
     required this.service,
     required this.appChild,
-    this.onApply,
+    this.onRestart,
     this.gate,
     required this.trigger,
     required this.showFab,
@@ -234,22 +234,25 @@ class _OverlayContentState extends State<_OverlayContent> {
               left: 16,
               right: 16,
               bottom: 80, // Above the FAB
-              child: Material(
-                elevation: 8,
-                borderRadius: BorderRadius.circular(16),
-                child: ClipRRect(
+              child: SafeArea(
+                child: Material(
+                  elevation: 8,
                   borderRadius: BorderRadius.circular(16),
-                  child: Container(
-                    color: Theme.of(context).canvasColor,
-                    constraints: BoxConstraints(
-                      maxHeight:
-                          MediaQuery.maybeOf(context)?.size.height ?? 800 * 0.7,
-                    ),
-                    child: SingleChildScrollView(
-                      padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
-                      child: EnvDebugPanel(
-                        service: widget.service,
-                        onApply: widget.onApply,
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(16),
+                    child: Container(
+                      color: Theme.of(context).canvasColor,
+                      constraints: BoxConstraints(
+                        maxHeight: MediaQuery.of(context).size.height -
+                            MediaQuery.of(context).padding.top -
+                            120, // 80 (bottom) + 40 (top margin)
+                      ),
+                      child: SingleChildScrollView(
+                        padding: const EdgeInsets.fromLTRB(4, 16, 4, 24),
+                        child: EnvDebugPanel(
+                          service: widget.service,
+                          onRestart: widget.onRestart,
+                        ),
                       ),
                     ),
                   ),

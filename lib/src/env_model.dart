@@ -60,20 +60,33 @@ class Env {
     // Strip leading path if present
     final name = fileName.split('/').last;
 
-    if (name == '.env' || name == '.env.prod') {
+    if (name == '.env') {
       return prod.copyWith(assetFileName: name);
     }
 
     final extension = name.startsWith('.env.') ? name.substring(5) : name;
     final cleanName = extension.toLowerCase();
 
+    // Match Production aliases
+    if (cleanName == 'prod' || cleanName == 'production') {
+      return prod.copyWith(assetFileName: name, name: cleanName);
+    }
+
+    // Match Staging aliases
+    if (cleanName == 'stag' || cleanName == 'staging') {
+      return staging.copyWith(assetFileName: name, name: cleanName);
+    }
+
+    // Match Dev aliases
+    if (cleanName == 'dev' || cleanName == 'development') {
+      return dev.copyWith(assetFileName: name, name: cleanName);
+    }
+
     return Env(
       name: cleanName,
-      label: cleanName.isEmpty
-          ? 'Production'
-          : cleanName[0].toUpperCase() + cleanName.substring(1),
+      label: cleanName[0].toUpperCase() + cleanName.substring(1),
       assetFileName: name,
-      isProduction: cleanName == 'prod' || name == '.env',
+      isProduction: false,
     );
   }
 
@@ -143,6 +156,24 @@ class EnvConfig {
       values: values ?? this.values,
       isBaseUrlOverridden: isBaseUrlOverridden ?? this.isBaseUrlOverridden,
     );
+  }
+
+  /// Keys that are considered sensitive and should be blurred by default.
+  static const List<String> _sensitiveKeys = [
+    'API_KEY',
+    'SECRET_KEY',
+    'TOKEN',
+    'PASSWORD',
+    'PRIVATE_KEY',
+    'AUTH_TOKEN',
+    'JWT',
+    'OAUTH_SECRET',
+  ];
+
+  /// Check if a key contains sensitive data.
+  static bool isSensitiveKey(String key) {
+    final upper = key.toUpperCase();
+    return _sensitiveKeys.any((sensitive) => upper.contains(sensitive));
   }
 
   /// Serialises this [EnvConfig] to a JSON-compatible map.

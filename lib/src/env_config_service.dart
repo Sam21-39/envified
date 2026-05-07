@@ -27,6 +27,11 @@ class EnvConfigService {
     ),
   );
 
+  /// True if the environment/URL has changed since last init.
+  /// When true, the app should be restarted for changes to take effect.
+  ValueListenable<bool> get restartNeeded => _restartNeeded;
+  final ValueNotifier<bool> _restartNeeded = ValueNotifier<bool>(false);
+
   // ── Private fields ────────────────────────────────────────────────────────
 
   bool _allowProdSwitch = false;
@@ -38,6 +43,12 @@ class EnvConfigService {
   Map<Env, String> _urls = <Env, String>{};
   String _assetDir = '';
   AssetBundle? _bundle;
+
+  /// The environment that was active when init() was called.
+  late Env _initialEnv;
+
+  /// The base URL that was active when init() was called.
+  late String _initialBaseUrl;
 
   /// Cached fallback `.env` values loaded once during [init].
   Map<String, String> _fallbackValues = <String, String>{};
@@ -155,7 +166,20 @@ class EnvConfigService {
       isBaseUrlOverridden: isOverridden,
     );
 
+    // Remember the initial state to detect if a restart is needed later.
+    _initialEnv = activeEnv;
+    _initialBaseUrl = baseUrl;
+    _restartNeeded.value = false;
+
     _initialised = true;
+  }
+
+  /// Call this when the app has been restarted/re-initialized to reset the
+  /// [restartNeeded] flag and capture the current state as the new baseline.
+  void acknowledgeRestart() {
+    _initialEnv = current.value.env;
+    _initialBaseUrl = current.value.baseUrl;
+    _restartNeeded.value = false;
   }
 
   // ── Switching ─────────────────────────────────────────────────────────────
@@ -199,6 +223,9 @@ class EnvConfigService {
       isBaseUrlOverridden: isOverridden,
     );
 
+    // Check if a restart is needed.
+    _restartNeeded.value = (env != _initialEnv || baseUrl != _initialBaseUrl);
+
     _onAfterSwitch?.call(current.value);
 
     if (_persistSelection) {
@@ -211,6 +238,11 @@ class EnvConfigService {
       fromEnv: fromEnv.name,
       toEnv: env.name,
     ));
+  }
+
+  /// Returns the original BASE_URL for [env] as defined in its `.env` file.
+  String getOriginalUrl(Env env) {
+    return _urls[env] ?? '';
   }
 
   // ── Value access ──────────────────────────────────────────────────────────
@@ -261,6 +293,10 @@ class EnvConfigService {
       isBaseUrlOverridden: true,
     );
 
+    // Check if a restart is needed.
+    _restartNeeded.value =
+        (current.value.env != _initialEnv || url != _initialBaseUrl);
+
     _onAfterSwitch?.call(current.value);
 
     if (_persistSelection) {
@@ -285,6 +321,10 @@ class EnvConfigService {
       baseUrl: restoredUrl,
       isBaseUrlOverridden: false,
     );
+
+    // Check if a restart is needed.
+    _restartNeeded.value =
+        (current.value.env != _initialEnv || restoredUrl != _initialBaseUrl);
 
     if (_persistSelection) {
       await _storage.saveConfig(current.value);

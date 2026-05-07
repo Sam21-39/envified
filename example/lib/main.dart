@@ -1,282 +1,446 @@
-import 'package:flutter/foundation.dart';
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:envified/envified.dart';
+import 'package:http/http.dart' as http;
 
 void main() async {
+  // 1. Ensure Flutter is initialized
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Initialise envified before runApp. This loads all .env* asset files,
-  // restores the previously selected environment from storage, and sets up
-  // the production lock.
+  // 2. Initialize the EnvConfigService before runApp
+  // This loads the default .env files and checks for persisted overrides.
   await EnvConfigService.instance.init(
-    defaultEnv: Env.dev,
-    persistSelection: true,
-    allowProdSwitch: false, // prod is locked by default
-    assetDir: 'assets/env/',
+    defaultEnv: Env.staging,
+    allowProdSwitch: false, // 🔒 Lock production by default
+    verifyIntegrity: false,
+    onAfterSwitch: (config) {
+      debugPrint('Environment changed: ${config.env.name}');
+    },
   );
 
-  runApp(const MyApp());
+  runApp(const EnvifiedDemoApp());
 }
 
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+class EnvifiedDemoApp extends StatefulWidget {
+  const EnvifiedDemoApp({super.key});
+
+  @override
+  State<EnvifiedDemoApp> createState() => _EnvifiedDemoAppState();
+}
+
+class _EnvifiedDemoAppState extends State<EnvifiedDemoApp> {
+  // Use a UniqueKey to trigger a full widget tree rebuild during "Restart Now"
+  Key _appKey = UniqueKey();
+
+  void _handleRestart() {
+    // 4. Reset the restartNeeded flag once the app acknowledges the restart
+    EnvConfigService.instance.acknowledgeRestart();
+
+    setState(() {
+      _appKey = UniqueKey();
+    });
+    debugPrint('App tree re-initialized via Envified restart handler.');
+  }
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'envified Example',
+      key: _appKey,
+      title: 'Envified-Demo',
       debugShowCheckedModeBanner: false,
-      // Use builder to inject the debug panel across all routes.
+      theme: ThemeData(
+        useMaterial3: true,
+        colorSchemeSeed: Colors.teal,
+        brightness: Brightness.light,
+      ),
+      darkTheme: ThemeData(
+        useMaterial3: true,
+        colorSchemeSeed: Colors.teal,
+        brightness: Brightness.dark,
+      ),
+      // 3. Wrap MaterialApp.builder with EnvifiedOverlay
+      // This ensures the debug panel is available across all routes.
       builder: (context, child) => EnvifiedOverlay(
         service: EnvConfigService.instance,
-        gate: const EnvGate(pin: '1234'),
-        trigger: const EnvTrigger.tap(count: 2),
-        enabled: kDebugMode, // remove the panel in release builds
-        child: child ?? const SizedBox.shrink(),
+        enabled: true, // Force enabled for this demo app
+        onRestart: _handleRestart,
+        gate: const EnvGate(pin: '1234'), // Secure with a PIN
+        child: child!,
       ),
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFF1E88E5),
-          brightness: Brightness.dark,
-        ),
-        useMaterial3: true,
-      ),
-      home: const _HomePage(),
+      home: const LoginGate(),
     );
   }
 }
 
-class _HomePage extends StatelessWidget {
-  const _HomePage();
+class LoginGate extends StatefulWidget {
+  const LoginGate({super.key});
+
+  @override
+  State<LoginGate> createState() => _LoginGateState();
+}
+
+class _LoginGateState extends State<LoginGate> {
+  bool _isLoggedIn = false;
+
+  void _login() {
+    setState(() => _isLoggedIn = true);
+  }
+
+  void _logout() {
+    setState(() => _isLoggedIn = false);
+  }
 
   @override
   Widget build(BuildContext context) {
-    final EnvConfigService service = EnvConfigService.instance;
+    if (_isLoggedIn) {
+      return HomePage(onLogout: _logout);
+    }
+    return LoginPage(onLogin: _login);
+  }
+}
+
+class LoginPage extends StatelessWidget {
+  final VoidCallback onLogin;
+
+  const LoginPage({super.key, required this.onLogin});
+
+  @override
+  Widget build(BuildContext context) {
+    final config = EnvConfigService.instance.current.value;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('envified Example'),
-        centerTitle: true,
-      ),
-      body: ValueListenableBuilder<EnvConfig>(
-        valueListenable: service.current,
-        builder: (context, config, _) {
-          return SingleChildScrollView(
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // ── Active env badge ─────────────────────────────────────
-                const _SectionTitle('Active Environment'),
-                const SizedBox(height: 8),
-                _EnvBadge(env: config.env),
-
-                const SizedBox(height: 24),
-
-                // ── Base URL ─────────────────────────────────────────────
-                const _SectionTitle('Base URL'),
-                const SizedBox(height: 8),
-                _InfoRow(
-                  label: 'Current',
-                  value: config.baseUrl,
-                  highlight: config.isBaseUrlOverridden,
-                ),
-                if (config.isBaseUrlOverridden)
-                  _InfoRow(
-                    label: 'From .env',
-                    value: config.values['BASE_URL'] ?? '(not set)',
-                  ),
-
-                const SizedBox(height: 24),
-
-                // ── Values ───────────────────────────────────────────────
-                _SectionTitle('All env values (${config.values.length})'),
-                const SizedBox(height: 8),
-                ...config.values.entries.map(
-                  (e) => _InfoRow(label: e.key, value: e.value),
-                ),
-
-                const SizedBox(height: 24),
-
-                // ── Quick switch buttons ──────────────────────────────────
-                const _SectionTitle('Quick Switch'),
-                const SizedBox(height: 12),
-                _EnvSwitcher(service: service),
-
-                const SizedBox(height: 32),
-
-                // ── Tip ──────────────────────────────────────────────────
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: Colors.blueGrey.shade900,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                      color: Colors.blueGrey.shade700,
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: isDark
+                ? [Colors.teal.shade900, Colors.black]
+                : [Colors.teal.shade50, Colors.white],
+          ),
+        ),
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 400),
+            child: Card(
+              margin: const EdgeInsets.all(24),
+              elevation: 0,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(24),
+                side: BorderSide(color: Colors.teal.withOpacity(0.1)),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(32),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: Colors.teal.withOpacity(0.1),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Text('🌿', style: TextStyle(fontSize: 32)),
                     ),
-                  ),
-                  child: const Text(
-                    '💡 Double-tap anywhere to open the debug panel.\n'
-                    '🔐 PIN is 1234 — or tap 🌿 in the bottom-right corner.',
-                    style: TextStyle(fontSize: 13, height: 1.6),
-                  ),
+                    const SizedBox(height: 24),
+                    Text(
+                      config.values['APP_TITLE'] ?? 'Envified-Demo',
+                      style: const TextStyle(
+                        fontSize: 28,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: -0.5,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: Colors.teal.withOpacity(0.15),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        'Environment: ${config.env.label}',
+                        style: const TextStyle(
+                          color: Colors.teal,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 11,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 32),
+                    const TextField(
+                      decoration: InputDecoration(
+                        labelText: 'Email',
+                        border: OutlineInputBorder(),
+                        prefixIcon: Icon(Icons.email_outlined),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    const TextField(
+                      obscureText: true,
+                      decoration: InputDecoration(
+                        labelText: 'Password',
+                        border: OutlineInputBorder(),
+                        prefixIcon: Icon(Icons.lock_outline),
+                      ),
+                    ),
+                    const SizedBox(height: 32),
+                    SizedBox(
+                      width: double.infinity,
+                      height: 54,
+                      child: FilledButton(
+                        onPressed: onLogin,
+                        style: FilledButton.styleFrom(
+                          backgroundColor: Colors.teal,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        child: const Text(
+                          'Sign In',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    Text(
+                      'API endpoint: ${config.baseUrl}',
+                      style: TextStyle(
+                        fontSize: 10,
+                        color: Colors.grey.shade500,
+                        fontFamily: 'monospace',
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
                 ),
-              ],
+              ),
             ),
-          );
-        },
+          ),
+        ),
       ),
     );
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Helper widgets
-// ─────────────────────────────────────────────────────────────────────────────
+class HomePage extends StatefulWidget {
+  final VoidCallback onLogout;
 
-class _SectionTitle extends StatelessWidget {
-  final String text;
-  const _SectionTitle(this.text);
+  const HomePage({super.key, required this.onLogout});
 
   @override
-  Widget build(BuildContext context) {
-    return Text(
-      text,
-      style: Theme.of(context).textTheme.titleSmall?.copyWith(
-            color: Colors.blueGrey.shade400,
-            fontWeight: FontWeight.w600,
-            letterSpacing: 0.6,
-          ),
-    );
-  }
+  State<HomePage> createState() => _HomePageState();
 }
 
-class _EnvBadge extends StatelessWidget {
-  final Env env;
-  const _EnvBadge({required this.env});
+class _HomePageState extends State<HomePage> {
+  late Future<List<dynamic>> _data;
 
-  Color _color() {
-    switch (env) {
-      case Env.dev:
-        return Colors.blue.shade400;
-      case Env.staging:
-        return Colors.orange.shade400;
-      case Env.prod:
-        return Colors.red.shade400;
-      default:
-        return Colors.teal.shade400;
+  @override
+  void initState() {
+    super.initState();
+    _data = _fetchData();
+  }
+
+  Future<List<dynamic>> _fetchData() async {
+    final baseUrl = EnvConfigService.instance.current.value.baseUrl;
+
+    try {
+      final response = await http.get(Uri.parse(baseUrl));
+      if (response.statusCode == 200) {
+        final List<dynamic> fullList = jsonDecode(response.body);
+        return fullList.take(10).toList(); // Only show first 10
+      } else {
+        throw Exception('Server responded with ${response.statusCode}');
+      }
+    } catch (e) {
+      throw Exception('Network error: $e');
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      decoration: BoxDecoration(
-        // ignore: deprecated_member_use
-        color: _color().withOpacity(0.15),
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: _color(), width: 1.5),
-      ),
-      child: Text(
-        env.label,
-        style: TextStyle(
-          color: _color(),
-          fontWeight: FontWeight.bold,
-          fontSize: 16,
+    final config = EnvConfigService.instance.current.value;
+
+    return Scaffold(
+      appBar: AppBar(
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(config.values['APP_TITLE'] ?? 'Envified-Demo'),
+            Text(
+              '${config.env.label} • ${config.baseUrl}',
+              style:
+                  const TextStyle(fontSize: 10, fontWeight: FontWeight.normal),
+            ),
+          ],
         ),
-      ),
-    );
-  }
-}
-
-class _InfoRow extends StatelessWidget {
-  final String label;
-  final String value;
-  final bool highlight;
-  const _InfoRow({
-    required this.label,
-    required this.value,
-    this.highlight = false,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 3),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SizedBox(
-            width: 120,
-            child: Text(
-              label,
-              style: const TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                fontFamily: 'monospace',
-                color: Colors.blueGrey,
-              ),
-            ),
-          ),
-          Expanded(
-            child: Text(
-              value,
-              style: TextStyle(
-                fontSize: 12,
-                fontFamily: 'monospace',
-                color: highlight ? Colors.amber.shade400 : null,
-              ),
-            ),
+        actions: [
+          IconButton(
+            onPressed: widget.onLogout,
+            icon: const Icon(Icons.logout),
+            tooltip: 'Logout',
           ),
         ],
       ),
-    );
-  }
-}
-
-class _EnvSwitcher extends StatelessWidget {
-  final EnvConfigService service;
-  const _EnvSwitcher({required this.service});
-
-  @override
-  Widget build(BuildContext context) {
-    return ValueListenableBuilder<EnvConfig>(
-      valueListenable: service.current,
-      builder: (context, config, _) {
-        final bool locked = service.isProdLocked;
-
-        return Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: service.availableEnvs.map((env) {
-            final bool isActive = config.env.name == env.name;
-            return Tooltip(
-              message:
-                  locked && !env.isProduction ? 'Locked in production' : '',
-              child: FilledButton(
-                onPressed: (locked && !env.isProduction)
-                    ? null
-                    : () async {
-                        try {
-                          await service.switchTo(env);
-                        } on EnvifiedLockException catch (e) {
-                          if (context.mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(content: Text(e.message)),
-                            );
-                          }
-                        }
-                      },
-                style: FilledButton.styleFrom(
-                  backgroundColor: isActive ? null : Colors.blueGrey.shade800,
-                ),
-                child: Text(env.label),
+      body: FutureBuilder<List<dynamic>>(
+        future: _data,
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          if (snapshot.hasError) {
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(Icons.error_outline, size: 48, color: Colors.red),
+                  const SizedBox(height: 16),
+                  Text('Failed to load data: ${snapshot.error}',
+                      textAlign: TextAlign.center),
+                  const SizedBox(height: 16),
+                  ElevatedButton(
+                    onPressed: () => setState(() => _data = _fetchData()),
+                    child: const Text('Retry'),
+                  ),
+                ],
               ),
             );
-          }).toList(),
-        );
-      },
+          }
+
+          final items = snapshot.data ?? [];
+          return ListView.builder(
+            padding: const EdgeInsets.all(16),
+            itemCount: items.length,
+            itemBuilder: (context, index) {
+              final item = items[index];
+              return Card(
+                margin: const EdgeInsets.only(bottom: 12),
+                elevation: 0,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  side: BorderSide(color: Colors.grey.withOpacity(0.2)),
+                ),
+                child: _buildDynamicItem(item),
+              );
+            },
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildDynamicItem(dynamic item) {
+    // Detect content type based on keys
+    if (item.containsKey('completed')) {
+      return _buildTodoItem(item);
+    } else if (item.containsKey('email')) {
+      return _buildUserItem(item);
+    } else if (item.containsKey('thumbnailUrl')) {
+      return _buildPhotoItem(item);
+    }
+
+    return ListTile(title: Text(item.toString()));
+  }
+
+  Widget _buildTodoItem(dynamic item) {
+    return ListTile(
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      leading: CircleAvatar(
+        backgroundColor: Colors.teal.shade50,
+        child: Text('${item['id']}',
+            style: TextStyle(
+                color: Colors.teal.shade700,
+                fontSize: 12,
+                fontWeight: FontWeight.bold)),
+      ),
+      title: Text(
+        item['title'],
+        style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+      ),
+      subtitle: Padding(
+        padding: const EdgeInsets.only(top: 6),
+        child: Row(
+          children: [
+            Icon(
+              item['completed'] ? Icons.check_circle : Icons.pending_actions,
+              size: 14,
+              color: item['completed'] ? Colors.green : Colors.orange,
+            ),
+            const SizedBox(width: 6),
+            Text(
+              item['completed'] ? 'Completed' : 'Pending',
+              style: TextStyle(
+                color: item['completed']
+                    ? Colors.green.shade700
+                    : Colors.orange.shade700,
+                fontSize: 11,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ],
+        ),
+      ),
+      trailing: Icon(Icons.chevron_right, color: Colors.grey.shade400),
+    );
+  }
+
+  Widget _buildUserItem(dynamic item) {
+    return ListTile(
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      leading: CircleAvatar(
+        backgroundColor: Colors.blue.shade50,
+        child: const Icon(Icons.person, color: Colors.blue),
+      ),
+      title: Text(
+        item['name'],
+        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+      ),
+      subtitle: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(item['email'], style: const TextStyle(fontSize: 12)),
+          Text(
+            item['company']?['name'] ?? '',
+            style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
+          ),
+        ],
+      ),
+      trailing: const Icon(Icons.business_outlined, size: 18),
+    );
+  }
+
+  Widget _buildPhotoItem(dynamic item) {
+    return ListTile(
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      leading: ClipRRect(
+        borderRadius: BorderRadius.circular(8),
+        child: Image.network(
+          item['thumbnailUrl'],
+          width: 48,
+          height: 48,
+          fit: BoxFit.cover,
+          errorBuilder: (_, __, ___) => Container(
+            width: 48,
+            height: 48,
+            color: Colors.grey.shade200,
+            child: const Icon(Icons.image_not_supported, size: 20),
+          ),
+        ),
+      ),
+      title: Text(
+        item['title'],
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+      ),
+      subtitle:
+          const Text('Environment: Production', style: TextStyle(fontSize: 11)),
+      trailing: const Icon(Icons.photo_library_outlined, size: 18),
     );
   }
 }

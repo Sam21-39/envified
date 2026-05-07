@@ -26,12 +26,14 @@ That's `envified`.
 `envified` is a **production-grade environment manager** for Flutter that lives entirely at runtime.
 
 - 🚀 **Swap dev ↔ prod in 200ms** — no rebuild, no hot reload
+- 🔄 **Smart Restart Detection** — know when dependencies need re-initialization
 - 🔒 **Prod lock by default** — prevent accidental data disasters  
+- 🔐 **Sensitive Data Protection** — automatic blurring of API keys and tokens
 - 🧪 **Override any URL** — test against local tunnels, PR branches, anywhere
-- 🔐 **Premium PIN gate** — secure the debug panel with glassmorphic UI
-- 📋 **Full audit trail** — log every switch and URL change
-- ⚙️ **Zero production overhead** — stripped out completely in release builds
-- 🎨 **Premium debug UI** — dark-luxury design, fully customizable
+- 🛡️ **Premium PIN gate** — secure the debug panel with modern UI
+- 📋 **Full audit trail** — visual timeline of every switch and URL change
+- ⚙️ **Zero production overhead** — stripped out entirely in release builds
+- 🎨 **Enterprise UX** — premium card-based design with dark mode support
 
 It's not just a config switcher. It's **enterprise-grade security** meets **developer quality of life**.
 
@@ -48,9 +50,30 @@ It's not just a config switcher. It's **enterprise-grade security** meets **deve
 
 ---
 
-## 🚀 Zero-Config Auto-Discovery (v2.1.0+)
+## 🔄 Smart Restart Detection (v2.2.0+)
 
-`envified` now automatically scans your `assets/env/` directory for any `.env.*` files. No manual mapping required!
+When you switch environments or override the API URL, `envified` knows that dependency re-initialization is needed. It shows a prominent banner:
+
+**"Restart app to apply changes"**
+
+One tap "Restart now" and the app re-initializes cleanly. This prevents silent bugs where HTTP clients or Firebase remain bound to the old environment.
+
+---
+
+## 🔐 Sensitive Data Protection (v2.2.0+)
+
+API keys, tokens, and secrets in your `.env` files are automatically detected and blurred by default:
+
+- **Tap to reveal** sensitive values
+- **One-tap copy** to clipboard
+- **Stay hidden** in screenshots or screen shares
+- Detected keys: `API_KEY`, `SECRET_KEY`, `TOKEN`, `PASSWORD`, `JWT`, etc.
+
+---
+
+## 🚀 Zero-Config Auto-Discovery
+
+`envified` automatically scans your `assets/env/` directory for any `.env.*` files. No manual mapping required!
 
 ```dart
 // No need to specify URLs — they're discovered automatically!
@@ -61,23 +84,22 @@ await EnvConfigService.instance.init();
 // ✅ Auto-populates the UI
 ```
 
-The debug panel automatically generates buttons for every discovered environment. A standalone `.env` file is treated as **Production** by default.
-
 ---
 
 ## 📦 Features
 
 | Feature | What It Does | Why You Care |
 |---------|-------------|--------------|
+| **Smart Restart** | Detects when env changes require restart | Prevents connection/state caching bugs |
+| **Data Protection** | Blurs sensitive keys (API_KEY, etc.) | Security in screenshots & screen shares |
 | **Auto-Discovery** | Scans assets for `.env.*` files | Zero config; just add a file and it works |
+| **Alias Support** | Handles `dev`, `stag`, `production`, etc. | Follows industry standard naming conventions |
 | **Tamper Detection** | SHA-256 hashes `.env*` files | Catch rogue config changes on rooted devices |
-| **Access Gate** | Premium PIN dialog before opening panel | QA devices don't leak sensitive switches |
-| **Typed Getters** | `getBool()`, `getInt()`, `getUri()`, `getList()` | No more string parsing bugs |
-| **Lifecycle Hooks** | `onBeforeSwitch` / `onAfterSwitch` callbacks | Flush HTTP queues, log analytics, etc. |
-| **URL History** | Last 5 URLs one-tap available | Faster testing against recent tunnels |
+| **Access Gate** | Modern PIN dialog before opening panel | QA devices don't leak sensitive switches |
+| **URL Validation** | Live feedback on custom API URLs | Prevent typos and invalid endpoint formats |
+| **Audit Log** | Vertical timeline of every switch | "Who changed prod at 3pm?" |
 | **Status Badge** | Persistent `[DEV]` indicator in your app | Never forget what env you're testing |
-| **Gesture Triggers** | Tap N times, shake, or swipe edge to open | Customize to your preference |
-| **Audit Log** | Encrypted log of every switch | "Who changed prod at 3pm?" |
+| **Gesture Triggers** | Tap N times, shake, or swipe edge to open | Access the panel your way |
 
 ---
 
@@ -87,7 +109,7 @@ The debug panel automatically generates buttons for every discovered environment
 
 ```yaml
 dependencies:
-  envified: ^2.1.0
+  envified: ^2.2.0
 ```
 
 ### 2️⃣ Add `.env` Files
@@ -97,11 +119,11 @@ Create in `assets/env/`:
 ```env
 # .env.dev
 BASE_URL=https://dev.api.myapp.com
-DEBUG=true
+API_KEY=sk_test_51Mz...
 
 # .env.prod
 BASE_URL=https://api.myapp.com
-DEBUG=false
+API_KEY=sk_live_92A...
 ```
 
 Register in `pubspec.yaml`:
@@ -114,16 +136,18 @@ flutter:
 
 ### 3️⃣ Initialize
 
-In `main.dart`, before `runApp()`:
-
 ```dart
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   await EnvConfigService.instance.init(
     defaultEnv: Env.dev,
-    allowProdSwitch: false,    // ⚠️ Lock prod by default
-    verifyIntegrity: true,     // 🔐 Detect tampering (Prod only)
+    onAfterSwitch: (config) {
+      // Listen for restart needed
+      EnvConfigService.instance.restartNeeded.addListener(() {
+        debugPrint('Dependencies must re-initialize');
+      });
+    },
   );
 
   runApp(const MyApp());
@@ -136,69 +160,17 @@ Wrap your app with the overlay:
 MaterialApp(
   builder: (context, child) => EnvifiedOverlay(
     service: EnvConfigService.instance,
-    enabled: kDebugMode,                        // 🚫 Hidden in production
-    gate: EnvGate(pin: '1234'),                 // 🔐 Secure PIN gate
-    child: child ?? const SizedBox.shrink(),
+    enabled: kDebugMode,
+    gate: EnvGate(pin: '1234'),
+    onRestart: () {
+      // Trigger a hard restart (e.g. using phoenix or SystemNavigator)
+      SystemNavigator.pop();
+    },
+    child: child!,
   ),
-  home: const MyApp(),
+  home: const MyHomePage(),
 )
 ```
-
----
-
-## Core Usage Patterns
-
-### Reading Values
-
-```dart
-final svc = EnvConfigService.instance;
-
-final name     = svc.get('APP_NAME');
-final timeout  = svc.getInt('TIMEOUT', fallback: 30);
-final debug    = svc.getBool('DEBUG');
-final apiUrl   = svc.getUri('BASE_URL');
-```
-
-### Reacting to Switches
-
-`EnvConfigService.current` is a `ValueNotifier`.
-
-```dart
-EnvConfigService.instance.current.addListener(() {
-  final config = EnvConfigService.instance.current.value;
-  dio.options.baseUrl = config.baseUrl;
-  print('Active env: ${config.env.name}');
-});
-```
-
----
-
-## Security & Production Safety
-
-### 🔒 Production Lock
-By default, `allowProdSwitch: false` locks the production environment. Once the app starts in a production-identified environment (e.g., via `.env.prod`), switching is disabled.
-
-### ✅ Tamper Detection
-When `verifyIntegrity: true` is set, `envified` computes a SHA-256 hash of your production `.env` files. If the files are modified (e.g., on a rooted device), it throws `EnvifiedTamperException`.
-
-### ⚙️ Zero Production Overhead
-All debug components (buttons, panels, gates) are wrapped in `kDebugMode` checks. Flutter's tree-shaker removes them entirely from release builds. **Zero bytes added to your production IPA/APK.**
-
----
-
-## 🔄 API Reference
-
-### Env (Class)
-Replaced the enum with a dynamic class.
-- `Env.dev`, `Env.staging`, `Env.prod` (Standard constants)
-- `Env.fromFileName(name)` (Factory for discovered files)
-- `env.isProduction` (Boolean flag)
-
-### EnvConfigService
-- `init()`: Discover files and load state.
-- `switchTo(Env)`: Change environment at runtime.
-- `setBaseUrl(url)`: Override the current URL.
-- `current`: `ValueNotifier<EnvConfig>`.
 
 ---
 

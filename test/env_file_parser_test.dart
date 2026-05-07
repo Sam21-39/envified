@@ -1,4 +1,3 @@
-import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:envified/src/env_file_parser.dart';
@@ -58,7 +57,7 @@ void main() {
     test('discoverAndExtractUrls handles .env as production', () async {
       bundle.register('.env', 'BASE_URL=https://root.com');
       final urls = await parser.discoverAndExtractUrls(bundle: bundle);
-      
+
       expect(urls.length, 1);
       final env = urls.keys.first;
       expect(env.isProduction, isTrue);

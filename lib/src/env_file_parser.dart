@@ -9,7 +9,8 @@ import 'envified_exception.dart';
 /// Internal parser for `.env*` asset files.
 class EnvFileParser {
   /// Loads and parses a single `.env*` file at [assetPath].
-  Future<Map<String, String>> parse(String assetPath, {AssetBundle? bundle}) async {
+  Future<Map<String, String>> parse(String assetPath,
+      {AssetBundle? bundle}) async {
     final activeBundle = bundle ?? rootBundle;
     String content;
     try {
