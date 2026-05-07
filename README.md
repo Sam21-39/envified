@@ -28,7 +28,7 @@ That's `envified`.
 - 🚀 **Swap dev ↔ prod in 200ms** — no rebuild, no hot reload
 - 🔒 **Prod lock by default** — prevent accidental data disasters  
 - 🧪 **Override any URL** — test against local tunnels, PR branches, anywhere
-- 🔐 **PIN/biometric gate** — secure the debug panel
+- 🔐 **PIN gate** — secure the debug panel
 - 📋 **Full audit trail** — log every switch and URL change
 - ⚙️ **Zero production overhead** — stripped out completely in release builds
 - 🎨 **Premium debug UI** — dark-luxury design, fully customizable
@@ -131,7 +131,7 @@ MaterialApp(
   builder: (context, child) => EnvifiedOverlay(
     service: EnvConfigService.instance,
     enabled: kDebugMode,                        // 🚫 Hidden in production
-    gate: EnvGate(pin: '1234', biometric: true), // 🔐 PIN + Face ID
+    gate: EnvGate(pin: '1234'), // 🔐 PIN
     trigger: const EnvTrigger.tap(count: 7),    // 7-tap to open
     child: child ?? const SizedBox.shrink(),
   ),
@@ -234,14 +234,12 @@ This prevents accidental data disasters. To unlock (dev only):
 allowProdSwitch: true  // Use only in debug/test builds
 ```
 
-### 🔐 Access Gate (PIN / Biometric)
+### 🔐 Access Gate (PIN)
 
 Require authentication before opening the debug panel:
 
 ```dart
 EnvGate(pin: '1234')                          // PIN only
-EnvGate(biometric: true)                      // Face ID / Fingerprint
-EnvGate(pin: '1234', biometric: true)         // Either works
 ```
 
 The gate auto-clears when the app is backgrounded. Next open requires re-auth.
@@ -306,40 +304,6 @@ EnvifiedOverlay(
   child: child!,
 )
 ```
-
----
-
-## Platform Setup
-
-### iOS — Biometric (Face ID / Fingerprint)
-
-Edit `ios/Runner/Info.plist`:
-
-```xml
-<key>NSFaceIDUsageDescription</key>
-<string>Used to authenticate access to the envified debug panel.</string>
-```
-
-### Android — Biometric
-
-Edit `android/app/src/main/AndroidManifest.xml`:
-
-```xml
-<uses-permission android:name="android.permission.USE_BIOMETRIC"/>
-<uses-permission android:name="android.permission.USE_FINGERPRINT"/>
-```
-
-Ensure `MainActivity` extends `FlutterFragmentActivity`:
-
-```kotlin
-import io.flutter.embedding.android.FlutterFragmentActivity
-
-class MainActivity : FlutterFragmentActivity()
-```
-
-### Shake Trigger (iOS + Android)
-
-No setup needed — works out of the box via accelerometer.
 
 ---
 
@@ -445,7 +409,7 @@ A: No. All debug code is wrapped in `if (kDebugMode)` and stripped via tree-shak
 A: Yes. Pass `EnvifiedTheme` to `EnvifiedOverlay` to override everything.
 
 **Q: Works with web?**  
-A: Partially. Web doesn't support biometric auth or shake detection. Tap trigger and PIN gate work fine.
+A: Partially. Web doesn't support shake detection. Tap trigger and PIN gate work fine.
 
 ---
 
@@ -522,7 +486,7 @@ class EnvConfig {
 }
 
 class EnvGate {
-  EnvGate({String? pin, bool biometric = false});
+  EnvGate({String? pin});
 }
 
 sealed class EnvTrigger {

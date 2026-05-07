@@ -1,9 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:local_auth/local_auth.dart';
-import 'package:local_auth_android/local_auth_android.dart';
 
-/// Gate for accessing the debug panel — PIN, biometric, or both.
+/// Gate for accessing the debug panel.
 ///
 /// Provides authentication before allowing access to the [EnvDebugPanel].
 /// The gate is automatically cleared when the app is backgrounded.
@@ -11,80 +9,28 @@ import 'package:local_auth_android/local_auth_android.dart';
 /// ```dart
 /// // PIN only
 /// EnvGate(pin: '1234')
-///
-/// // Biometric only
-/// EnvGate(biometric: true)
-///
-/// // Either method works
-/// EnvGate(pin: '1234', biometric: true)
 /// ```
 class EnvGate {
   final String? _pin;
-  final bool _biometric;
 
   const EnvGate({
     String? pin,
-    bool biometric = false,
-  })  : _pin = pin,
-        _biometric = biometric;
+  }) : _pin = pin;
 
-  /// Authenticate using PIN or biometric.
+  /// Authenticate using PIN.
   ///
   /// Returns `true` if authentication succeeds, `false` if it fails or is cancelled.
   Future<bool> authenticate(BuildContext context) async {
-    // If neither PIN nor biometric is configured, allow access
-    if (_pin == null && !_biometric) {
+    // If no PIN is configured, allow access
+    if (_pin == null) {
       return true;
     }
 
-    // Try biometric first if enabled
-    if (_biometric) {
-      final authenticated = await _authenticateBiometric();
-      if (authenticated) return true;
-    }
-
-    // Fall back to PIN if biometric failed or not enabled
-    if (_pin != null) {
-      if (context.mounted) {
-        return _showPinDialog(context);
-      }
+    if (context.mounted) {
+      return _showPinDialog(context);
     }
 
     return false;
-  }
-
-  /// Authenticate using device biometrics (Face ID, fingerprint).
-  Future<bool> _authenticateBiometric() async {
-    try {
-      final localAuth = LocalAuthentication();
-
-      // Check if device supports biometric
-      final canAuthenticateWithBiometrics = await localAuth.canCheckBiometrics;
-      final canAuthenticate =
-          canAuthenticateWithBiometrics || await localAuth.isDeviceSupported();
-
-      if (!canAuthenticate) {
-        return false;
-      }
-
-      // Attempt biometric authentication
-      // Using the new API (local_auth >= 2.2.0)
-      final isAuthenticated = await localAuth.authenticate(
-        localizedReason: 'Authenticate to access envified debug panel',
-        authMessages: const <AuthMessages>[
-          AndroidAuthMessages(
-            signInTitle: 'Unlock Debug Panel',
-            cancelButton: 'Cancel',
-          ),
-        ],
-        persistAcrossBackgrounding: true,
-      );
-
-      return isAuthenticated;
-    } catch (e) {
-      // Biometric failed or not available
-      return false;
-    }
   }
 
   /// Show PIN entry dialog using Overlay to avoid Navigator dependency.

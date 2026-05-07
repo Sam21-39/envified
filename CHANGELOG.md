@@ -7,9 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [2.0.7] - 2026-05-07
 
-### Changed
-- **Breaking Dependency Update**: Upgraded `local_auth` to `^3.0.0` to resolve `pub.dev` static analysis failures caused by upstream breaking changes.
-- Updated `EnvGate` to use the new `persistAcrossBackgrounding` API instead of the deprecated `AuthenticationOptions`.
+### Removed
+- **Removed `local_auth` Dependency**: Removed biometric authentication completely to prevent upstream dependency conflicts, reducing package size and simplifying platform setup. The debug panel is still securely protected via the PIN code gate.
 
 ## [2.0.6] - 2026-05-07
 
