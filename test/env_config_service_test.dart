@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:envified/envified.dart';
 import 'package:envified/src/env_storage.dart';
+import 'test_helper.dart';
 
 /// A simple fake implementation of [FlutterSecureStorage] for testing.
 class FakeFlutterSecureStorage extends Fake implements FlutterSecureStorage {
@@ -65,35 +66,21 @@ class FakeFlutterSecureStorage extends Fake implements FlutterSecureStorage {
   }
 }
 
-final Map<String, String> _mockAssets = {};
-
-/// Helper to register a fake asset in the root bundle.
-void _registerAsset(String key, String content) {
-  _mockAssets[key] = content;
-
-  TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-      .setMockMessageHandler('flutter/assets', (ByteData? message) async {
-    final String assetKey = const StringCodec().decodeMessage(message) ?? '';
-    if (_mockAssets.containsKey(assetKey)) {
-      return const StringCodec().encodeMessage(_mockAssets[assetKey]!);
-    }
-    return null;
-  });
-}
-
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   final EnvConfigService svc = EnvConfigService.instance;
   late FakeFlutterSecureStorage fakeStorage;
   late EnvStorage envStorage;
+  late FakeAssetBundle bundle;
 
   setUp(() async {
-    _mockAssets.clear(); // Clear assets between tests
+    svc.resetForTesting();
     fakeStorage = FakeFlutterSecureStorage();
     envStorage = EnvStorage(storage: fakeStorage);
+    bundle = FakeAssetBundle();
 
-    _registerAsset(
+    bundle.register(
       '.env',
       'APP_NAME=TestApp\nTIMEOUT=30\nBASE_URL=https://api.example.com\n'
           'DEBUG=true\nRATE=1.5\nFEATURE_FLAG=yes\n'
@@ -101,15 +88,15 @@ void main() {
           'ALLOWED_HOSTS=api.com, cdn.com, auth.com\n',
     );
 
-    _registerAsset(
+    bundle.register(
       '.env.dev',
       'BASE_URL=https://dev.api.example.com\nDEBUG=true\n',
     );
-    _registerAsset(
+    bundle.register(
       '.env.staging',
       'BASE_URL=https://staging.api.example.com\nDEBUG=true\n',
     );
-    _registerAsset(
+    bundle.register(
       '.env.prod',
       'BASE_URL=https://api.example.com\nDEBUG=false\n',
     );
@@ -117,38 +104,38 @@ void main() {
 
   group('EnvConfigService.init()', () {
     test('defaults to Env.dev on first launch', () async {
-      await svc.init(defaultEnv: Env.dev, storage: envStorage);
+      await svc.init(defaultEnv: Env.dev, storage: envStorage, bundle: bundle);
       expect(svc.current.value.env, Env.dev);
     });
 
     test('baseUrl is taken from .env.dev BASE_URL', () async {
-      await svc.init(defaultEnv: Env.dev, storage: envStorage);
+      await svc.init(defaultEnv: Env.dev, storage: envStorage, bundle: bundle);
       expect(svc.current.value.baseUrl, 'https://dev.api.example.com');
     });
 
     test('merged values include fallback keys', () async {
-      await svc.init(defaultEnv: Env.dev, storage: envStorage);
+      await svc.init(defaultEnv: Env.dev, storage: envStorage, bundle: bundle);
       expect(svc.current.value.values['APP_NAME'], 'TestApp');
     });
 
     test('restores persisted env on second init()', () async {
       await svc.init(
-          defaultEnv: Env.dev, persistSelection: true, storage: envStorage);
+          defaultEnv: Env.dev, persistSelection: true, storage: envStorage, bundle: bundle);
       await svc.switchTo(Env.staging);
 
       await svc.init(
-          defaultEnv: Env.dev, persistSelection: true, storage: envStorage);
+          defaultEnv: Env.dev, persistSelection: true, storage: envStorage, bundle: bundle);
       expect(svc.current.value.env, Env.staging);
     });
 
     test('does not restore persisted env when persistSelection is false',
         () async {
       await svc.init(
-          defaultEnv: Env.dev, persistSelection: true, storage: envStorage);
+          defaultEnv: Env.dev, persistSelection: true, storage: envStorage, bundle: bundle);
       await svc.switchTo(Env.staging);
 
       await svc.init(
-          defaultEnv: Env.dev, persistSelection: false, storage: envStorage);
+          defaultEnv: Env.dev, persistSelection: false, storage: envStorage, bundle: bundle);
       expect(svc.current.value.env, Env.dev);
     });
   });
@@ -156,7 +143,7 @@ void main() {
   group('EnvConfigService.switchTo()', () {
     setUp(() async {
       await svc.init(
-          defaultEnv: Env.dev, allowProdSwitch: false, storage: envStorage);
+          defaultEnv: Env.dev, allowProdSwitch: false, storage: envStorage, bundle: bundle);
     });
 
     test('updates current.value to the new env', () async {
@@ -186,7 +173,7 @@ void main() {
   group('EnvConfigService.setBaseUrl()', () {
     setUp(() async {
       await svc.init(
-          defaultEnv: Env.dev, allowProdSwitch: false, storage: envStorage);
+          defaultEnv: Env.dev, allowProdSwitch: false, storage: envStorage, bundle: bundle);
     });
 
     test('sets isBaseUrlOverridden to true', () async {
@@ -203,7 +190,7 @@ void main() {
       await svc.switchTo(Env.prod);
       // Re-init with allowProdSwitch: false so that prod lock is active.
       await svc.init(
-          defaultEnv: Env.prod, allowProdSwitch: false, storage: envStorage);
+          defaultEnv: Env.prod, allowProdSwitch: false, storage: envStorage, bundle: bundle);
       expect(
         () => svc.setBaseUrl('https://evil.com'),
         throwsA(isA<EnvifiedLockException>()),
@@ -215,6 +202,7 @@ void main() {
       await svc.init(
         defaultEnv: Env.dev,
         storage: envStorage,
+        bundle: bundle,
         allowedUrls: ['https://api.example.com', 'https://dev.api.example.com'],
       );
       expect(
@@ -227,6 +215,7 @@ void main() {
       await svc.init(
         defaultEnv: Env.dev,
         storage: envStorage,
+        bundle: bundle,
         allowedUrls: ['https://dev.api.example.com'],
       );
       await svc.setBaseUrl('https://dev.api.example.com/v2');
@@ -237,7 +226,7 @@ void main() {
   group('EnvConfigService.reset()', () {
     test('returns to defaultEnv', () async {
       await svc.init(
-          defaultEnv: Env.dev, persistSelection: true, storage: envStorage);
+          defaultEnv: Env.dev, persistSelection: true, storage: envStorage, bundle: bundle);
       await svc.switchTo(Env.staging);
       await svc.reset();
       expect(svc.current.value.env, Env.dev);
@@ -245,7 +234,7 @@ void main() {
 
     test('clears persisted storage', () async {
       await svc.init(
-          defaultEnv: Env.dev, persistSelection: true, storage: envStorage);
+          defaultEnv: Env.dev, persistSelection: true, storage: envStorage, bundle: bundle);
       await svc.switchTo(Env.staging);
       await svc.reset();
 
@@ -258,28 +247,29 @@ void main() {
     test('isProdLocked returns true when in prod and allowProdSwitch is false',
         () async {
       await svc.init(
-          defaultEnv: Env.prod, allowProdSwitch: false, storage: envStorage);
+          defaultEnv: Env.prod, allowProdSwitch: false, storage: envStorage, bundle: bundle);
       expect(svc.isProdLocked, isTrue);
     });
 
     test('isProdLocked returns false when in dev', () async {
       await svc.init(
-          defaultEnv: Env.dev, allowProdSwitch: false, storage: envStorage);
+          defaultEnv: Env.dev, allowProdSwitch: false, storage: envStorage, bundle: bundle);
       expect(svc.isProdLocked, isFalse);
     });
 
     test('allowProdSwitch property is correctly exposed', () async {
-      await svc.init(allowProdSwitch: true, storage: envStorage);
+      await svc.init(allowProdSwitch: true, storage: envStorage, bundle: bundle);
       expect(svc.allowProdSwitch, isTrue);
 
-      await svc.init(allowProdSwitch: false, storage: envStorage);
+      await svc.init(allowProdSwitch: false, storage: envStorage, bundle: bundle);
       expect(svc.allowProdSwitch, isFalse);
     });
   });
 
   group('EnvConfigService.get()', () {
     setUp(() async {
-      await svc.init(defaultEnv: Env.dev, storage: envStorage);
+      await svc.init(
+          defaultEnv: Env.dev, persistSelection: true, storage: envStorage, bundle: bundle);
     });
 
     test('returns value for existing key', () {
@@ -295,7 +285,8 @@ void main() {
 
   group('EnvConfigService typed getters', () {
     setUp(() async {
-      await svc.init(defaultEnv: Env.dev, storage: envStorage);
+      await svc.init(
+          defaultEnv: Env.dev, persistSelection: true, storage: envStorage, bundle: bundle);
     });
 
     // getBool
@@ -364,10 +355,9 @@ void main() {
       expect(svc.getList('NONEXISTENT'), isEmpty);
     });
 
-    test('getList respects custom separator', () {
-      // Re-register asset with pipe-separated value.
-      _registerAsset('.env', 'PIPE_LIST=a|b|c\n');
-      // Force re-init to pick up new asset.
+    test('getList respects custom separator', () async {
+      bundle.register('.env', 'PIPE_LIST=a|b|c\n');
+      await svc.init(defaultEnv: Env.dev, storage: envStorage, bundle: bundle);
     });
   });
 
@@ -380,6 +370,7 @@ void main() {
       await svc.init(
         defaultEnv: Env.dev,
         storage: envStorage,
+        bundle: bundle,
         onBeforeSwitch: (Env from, Env to) async {
           log.add('before:${from.name}→${to.name}');
         },
@@ -399,6 +390,7 @@ void main() {
       await svc.init(
         defaultEnv: Env.dev,
         storage: envStorage,
+        bundle: bundle,
         onAfterSwitch: (config) {
           log.add('after:${config.baseUrl}');
         },
@@ -414,7 +406,7 @@ void main() {
   group('Audit log', () {
     setUp(() async {
       await svc.init(
-          defaultEnv: Env.dev, persistSelection: true, storage: envStorage);
+          defaultEnv: Env.dev, persistSelection: true, storage: envStorage, bundle: bundle);
     });
 
     test('switchTo appends an audit entry', () async {
@@ -453,7 +445,7 @@ void main() {
   group('URL history', () {
     setUp(() async {
       await svc.init(
-          defaultEnv: Env.dev, persistSelection: true, storage: envStorage);
+          defaultEnv: Env.dev, persistSelection: true, storage: envStorage, bundle: bundle);
     });
 
     test('setBaseUrl adds URL to history', () async {

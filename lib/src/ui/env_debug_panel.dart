@@ -289,7 +289,8 @@ class _EnvDebugPanelState extends State<EnvDebugPanel> {
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
           decoration: BoxDecoration(
-            color: _envColor(config.env).withValues(alpha: 0.15),
+            // ignore: deprecated_member_use
+            color: _envColor(config.env).withOpacity(0.15),
             borderRadius: BorderRadius.circular(20),
             border: Border.all(color: _envColor(config.env), width: 1.5),
           ),
@@ -314,7 +315,8 @@ class _EnvDebugPanelState extends State<EnvDebugPanel> {
           '🌿 envified',
           style: TextStyle(
             fontSize: 12,
-            color: cs.onSurface.withValues(alpha: 0.5),
+            // ignore: deprecated_member_use
+            color: cs.onSurface.withOpacity(0.5),
           ),
         ),
       ],
@@ -348,7 +350,8 @@ class _EnvDebugPanelState extends State<EnvDebugPanel> {
               ),
               selected: isSelected,
               onSelected: locked ? null : (_) => _switchEnv(e),
-              selectedColor: _envColor(e).withValues(alpha: 0.2),
+              // ignore: deprecated_member_use
+              selectedColor: _envColor(e).withOpacity(0.2),
               labelStyle: TextStyle(
                 color: isSelected ? _envColor(e) : cs.onSurface,
                 fontWeight: isSelected ? FontWeight.bold : null,
@@ -420,7 +423,8 @@ class _EnvDebugPanelState extends State<EnvDebugPanel> {
           'BASE_URL from ${config.env.assetFileName}',
           style: TextStyle(
             fontSize: 11,
-            color: cs.onSurface.withValues(alpha: 0.55),
+            // ignore: deprecated_member_use
+            color: cs.onSurface.withOpacity(0.55),
             fontWeight: FontWeight.w600,
             letterSpacing: 0.4,
           ),
@@ -433,7 +437,8 @@ class _EnvDebugPanelState extends State<EnvDebugPanel> {
                 fileUrl,
                 style: TextStyle(
                   fontSize: 13,
-                  color: cs.onSurface.withValues(alpha: 0.8),
+                  // ignore: deprecated_member_use
+                  color: cs.onSurface.withOpacity(0.8),
                   fontFamily: 'monospace',
                 ),
               ),
@@ -517,7 +522,8 @@ class _EnvDebugPanelState extends State<EnvDebugPanel> {
           'Recent',
           style: TextStyle(
             fontSize: 12,
-            color: cs.onSurface.withValues(alpha: 0.45),
+            // ignore: deprecated_member_use
+            color: cs.onSurface.withOpacity(0.45),
           ),
         ),
         const SizedBox(height: 6),
@@ -597,7 +603,8 @@ class _EnvDebugPanelState extends State<EnvDebugPanel> {
                       ? Icons.keyboard_arrow_up
                       : Icons.keyboard_arrow_down,
                   size: 18,
-                  color: cs.onSurface.withValues(alpha: 0.6),
+                  // ignore: deprecated_member_use
+                  color: cs.onSurface.withOpacity(0.6),
                 ),
                 const SizedBox(width: 4),
                 Text(
@@ -605,7 +612,8 @@ class _EnvDebugPanelState extends State<EnvDebugPanel> {
                   style: TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w600,
-                    color: cs.onSurface.withValues(alpha: 0.7),
+                    // ignore: deprecated_member_use
+                    color: cs.onSurface.withOpacity(0.7),
                   ),
                 ),
               ],
@@ -616,7 +624,8 @@ class _EnvDebugPanelState extends State<EnvDebugPanel> {
           Container(
             padding: const EdgeInsets.only(bottom: 8),
             decoration: BoxDecoration(
-              color: cs.surfaceContainerHighest.withValues(alpha: 0.4),
+              // ignore: deprecated_member_use
+              color: cs.surfaceContainerHighest.withOpacity(0.4),
               borderRadius: BorderRadius.circular(8),
             ),
             child: Column(
@@ -702,7 +711,8 @@ class _EnvDebugPanelState extends State<EnvDebugPanel> {
                       ? Icons.keyboard_arrow_up
                       : Icons.keyboard_arrow_down,
                   size: 18,
-                  color: cs.onSurface.withValues(alpha: 0.6),
+                  // ignore: deprecated_member_use
+                  color: cs.onSurface.withOpacity(0.6),
                 ),
                 const SizedBox(width: 4),
                 Text(
@@ -710,7 +720,8 @@ class _EnvDebugPanelState extends State<EnvDebugPanel> {
                   style: TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w600,
-                    color: cs.onSurface.withValues(alpha: 0.7),
+                    // ignore: deprecated_member_use
+                    color: cs.onSurface.withOpacity(0.7),
                   ),
                 ),
               ],
@@ -720,7 +731,8 @@ class _EnvDebugPanelState extends State<EnvDebugPanel> {
         if (_auditExpanded)
           Container(
             decoration: BoxDecoration(
-              color: cs.surfaceContainerHighest.withValues(alpha: 0.4),
+              // ignore: deprecated_member_use
+              color: cs.surfaceContainerHighest.withOpacity(0.4),
               borderRadius: BorderRadius.circular(8),
             ),
             child: _auditEntries.isEmpty
@@ -765,7 +777,8 @@ class _EnvDebugPanelState extends State<EnvDebugPanel> {
             style: TextStyle(
               fontSize: 11,
               fontFamily: 'monospace',
-              color: cs.onSurface.withValues(alpha: 0.55),
+              // ignore: deprecated_member_use
+              color: cs.onSurface.withOpacity(0.55),
             ),
           ),
           const SizedBox(width: 10),
@@ -784,7 +797,8 @@ class _EnvDebugPanelState extends State<EnvDebugPanel> {
               detail,
               style: TextStyle(
                 fontSize: 11,
-                color: cs.onSurface.withValues(alpha: 0.75),
+                // ignore: deprecated_member_use
+                color: cs.onSurface.withOpacity(0.75),
                 fontFamily: 'monospace',
                 overflow: TextOverflow.ellipsis,
               ),

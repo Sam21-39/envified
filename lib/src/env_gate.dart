@@ -166,7 +166,8 @@ class _PinOverlayState extends State<_PinOverlay>
                   sigmaY: _blurAnim.value,
                 ),
                 child: Container(
-                  color: Colors.black.withValues(alpha: 0.3),
+                  // ignore: deprecated_member_use
+                  color: Colors.black.withOpacity(0.3),
                 ),
               ),
             ),
@@ -183,12 +184,14 @@ class _PinOverlayState extends State<_PinOverlay>
                   color: const Color(0xFF1A1F2E),
                   borderRadius: BorderRadius.circular(28),
                   border: Border.all(
-                    color: Colors.white.withValues(alpha: 0.1),
+                    // ignore: deprecated_member_use
+                    color: Colors.white.withOpacity(0.1),
                     width: 1.5,
                   ),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.5),
+                      // ignore: deprecated_member_use
+                      color: Colors.black.withOpacity(0.5),
                       blurRadius: 40,
                       spreadRadius: 10,
                     ),
@@ -201,7 +204,8 @@ class _PinOverlayState extends State<_PinOverlay>
                     Container(
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
-                        color: Colors.blue.withValues(alpha: 0.1),
+                        // ignore: deprecated_member_use
+                        color: Colors.blue.withOpacity(0.1),
                         shape: BoxShape.circle,
                       ),
                       child: const Icon(
@@ -225,7 +229,8 @@ class _PinOverlayState extends State<_PinOverlay>
                     Text(
                       'Enter the secure PIN to continue',
                       style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.5),
+                        // ignore: deprecated_member_use
+                        color: Colors.white.withOpacity(0.5),
                         fontSize: 13,
                       ),
                     ),
@@ -279,7 +284,8 @@ class _PinOverlayState extends State<_PinOverlay>
                           child: Text(
                             'Cancel',
                             style: TextStyle(
-                              color: Colors.white.withValues(alpha: 0.4),
+                              // ignore: deprecated_member_use
+                              color: Colors.white.withOpacity(0.4),
                               fontWeight: FontWeight.w600,
                             ),
                           ),
@@ -313,21 +319,25 @@ class _PinOverlayState extends State<_PinOverlay>
           alignment: Alignment.center,
           decoration: BoxDecoration(
             color: _isError
-                ? Colors.red.withValues(alpha: 0.1)
-                : Colors.white.withValues(alpha: 0.05),
+                // ignore: deprecated_member_use
+                ? Colors.red.withOpacity(0.1)
+                // ignore: deprecated_member_use
+                : Colors.white.withOpacity(0.05),
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
               color: _isError
                   ? Colors.red
                   : isFocused
                       ? Colors.blue
-                      : Colors.white.withValues(alpha: 0.1),
+                      // ignore: deprecated_member_use
+                      : Colors.white.withOpacity(0.1),
               width: isFocused ? 2 : 1.5,
             ),
             boxShadow: [
               if (isFocused && !_isError)
                 BoxShadow(
-                  color: Colors.blue.withValues(alpha: 0.2),
+                  // ignore: deprecated_member_use
+                  color: Colors.blue.withOpacity(0.2),
                   blurRadius: 8,
                   spreadRadius: 1,
                 ),

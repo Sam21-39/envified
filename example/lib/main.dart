@@ -173,7 +173,8 @@ class _EnvBadge extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       decoration: BoxDecoration(
-        color: _color().withValues(alpha: 0.15),
+        // ignore: deprecated_member_use
+        color: _color().withOpacity(0.15),
         borderRadius: BorderRadius.circular(24),
         border: Border.all(color: _color(), width: 1.5),
       ),

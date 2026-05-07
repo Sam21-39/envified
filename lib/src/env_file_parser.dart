@@ -9,10 +9,11 @@ import 'envified_exception.dart';
 /// Internal parser for `.env*` asset files.
 class EnvFileParser {
   /// Loads and parses a single `.env*` file at [assetPath].
-  Future<Map<String, String>> parse(String assetPath) async {
+  Future<Map<String, String>> parse(String assetPath, {AssetBundle? bundle}) async {
+    final activeBundle = bundle ?? rootBundle;
     String content;
     try {
-      content = await rootBundle.loadString(assetPath);
+      content = await activeBundle.loadString(assetPath);
     } on FlutterError {
       return <String, String>{};
     } catch (_) {
@@ -22,10 +23,15 @@ class EnvFileParser {
   }
 
   /// Verifies the integrity of the `.env*` file at [assetPath].
-  Future<void> verifyIntegrity(String assetPath, EnvStorage storage) async {
+  Future<void> verifyIntegrity(
+    String assetPath,
+    EnvStorage storage, {
+    AssetBundle? bundle,
+  }) async {
+    final activeBundle = bundle ?? rootBundle;
     ByteData? data;
     try {
-      data = await rootBundle.load(assetPath);
+      data = await activeBundle.load(assetPath);
     } on FlutterError {
       return;
     } catch (_) {
@@ -93,13 +99,15 @@ class EnvFileParser {
   Future<Map<Env, String>> discoverAndExtractUrls({
     String assetDir = '',
     bool requireBaseUrl = false,
+    AssetBundle? bundle,
   }) async {
+    final activeBundle = bundle ?? rootBundle;
     final result = <Env, String>{};
 
     final envFileRegex = RegExp(r'\.env\.([a-z0-9]+)$');
 
     try {
-      final manifest = await AssetManifest.loadFromAssetBundle(rootBundle);
+      final manifest = await AssetManifest.loadFromAssetBundle(activeBundle);
       final allAssets = manifest.listAssets();
 
       final assets = assetDir.isEmpty
@@ -118,7 +126,7 @@ class EnvFileParser {
         if (!isEnvFile) continue;
 
         try {
-          final content = await rootBundle.loadString(assetPath);
+          final content = await activeBundle.loadString(assetPath);
           final baseUrl = _extractBaseUrl(content);
 
           final env = Env.fromFileName(fileName);

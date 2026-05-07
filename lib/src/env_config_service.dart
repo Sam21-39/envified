@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart';
 
 import 'audit_entry.dart';
 import 'env_file_parser.dart';
@@ -36,6 +37,7 @@ class EnvConfigService {
   List<String>? _allowedUrls;
   Map<Env, String> _urls = <Env, String>{};
   String _assetDir = '';
+  AssetBundle? _bundle;
 
   /// Cached fallback `.env` values loaded once during [init].
   Map<String, String> _fallbackValues = <String, String>{};
@@ -62,6 +64,7 @@ class EnvConfigService {
     Map<Env, String>? urls,
     bool autoDiscover = true,
     String assetDir = '',
+    AssetBundle? bundle,
   }) async {
     _defaultEnv = defaultEnv;
     _persistSelection = persistSelection;
@@ -71,10 +74,14 @@ class EnvConfigService {
     _onAfterSwitch = onAfterSwitch;
     _allowedUrls = allowedUrls;
     _assetDir = assetDir;
+    _bundle = bundle;
 
     // Auto-discover if urls not provided and autoDiscover is true
     if ((urls == null || urls.isEmpty) && autoDiscover) {
-      urls = await _parser.discoverAndExtractUrls(assetDir: assetDir);
+      urls = await _parser.discoverAndExtractUrls(
+        assetDir: assetDir,
+        bundle: bundle,
+      );
     }
 
     if (urls == null || urls.isEmpty) {
@@ -94,7 +101,7 @@ class EnvConfigService {
     // We treat .env as Production for integrity purposes if it's our only prod source
     // or simply always verify it if requested, but requirement says only Prod envs.
     // However, .env is often a fallback for all.
-    _fallbackValues = await _parser.parse(fallbackPath);
+    _fallbackValues = await _parser.parse(fallbackPath, bundle: _bundle);
 
     // Restore persisted state if enabled.
     Env activeEnv = defaultEnv;
@@ -120,10 +127,10 @@ class EnvConfigService {
 
     // REQUIREMENT: verifyIntegrity should only do verification for Production related env.
     if (_verifyIntegrity && activeEnv.isProduction) {
-      await _parser.verifyIntegrity(specificPath, _storage);
+      await _parser.verifyIntegrity(specificPath, _storage, bundle: _bundle);
       // Also verify fallback if it's the prod file
       if (activeEnv.assetFileName == '.env') {
-        await _parser.verifyIntegrity(fallbackPath, _storage);
+        await _parser.verifyIntegrity(fallbackPath, _storage, bundle: _bundle);
       }
     }
 
@@ -175,7 +182,8 @@ class EnvConfigService {
 
     // Verify integrity if switching to production
     if (_verifyIntegrity && env.isProduction) {
-      await _parser.verifyIntegrity('$_assetDir${env.assetFileName}', _storage);
+      await _parser.verifyIntegrity('$_assetDir${env.assetFileName}', _storage,
+          bundle: _bundle);
     }
 
     final merged = await _loadMerged(env);
@@ -307,10 +315,12 @@ class EnvConfigService {
       persistSelection: _persistSelection,
       allowProdSwitch: _allowProdSwitch,
       verifyIntegrity: _verifyIntegrity,
+      storage: _storage,
       onBeforeSwitch: _onBeforeSwitch,
       onAfterSwitch: _onAfterSwitch,
       allowedUrls: _allowedUrls,
       assetDir: _assetDir,
+      bundle: _bundle,
     );
   }
 
@@ -339,7 +349,7 @@ class EnvConfigService {
 
   Future<Map<String, String>> _loadMerged(Env env) async {
     final assetPath = '$_assetDir${env.assetFileName}';
-    final specific = await _parser.parse(assetPath);
+    final specific = await _parser.parse(assetPath, bundle: _bundle);
     return _parser.merge(_fallbackValues, specific);
   }
 
@@ -364,5 +374,27 @@ class EnvConfigService {
     if (!permitted) {
       throw EnvifiedUrlNotAllowedException(url);
     }
+  }
+
+  /// Internal reset for unit testing only.
+  @visibleForTesting
+  void resetForTesting() {
+    _initialised = false;
+    current.value = const EnvConfig(
+      env: Env.dev,
+      baseUrl: '',
+      values: <String, String>{},
+    );
+    _urls = <Env, String>{};
+    _fallbackValues = <String, String>{};
+    _allowProdSwitch = false;
+    _persistSelection = true;
+    _defaultEnv = Env.dev;
+    _verifyIntegrity = false;
+    _allowedUrls = null;
+    _assetDir = '';
+    _bundle = null;
+    _onBeforeSwitch = null;
+    _onAfterSwitch = null;
   }
 }
