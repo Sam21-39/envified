@@ -35,12 +35,15 @@ That's `envified`.
 
 It's not just a config switcher. It's **enterprise-grade security** meets **developer quality of life**.
 
+> [!NOTE]  
+> **Security Note:** While `envified` encrypts the active configuration state and overrides on the device (via Keychain/Keystore), the base `.env` files stored in your Flutter assets remain plaintext. Never store high-stakes production secrets directly in `.env` files; they should be fetched at runtime from a secure vault or used for non-sensitive configuration only.
+
 ---
 
 ## 📸 See It In Action
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/Sam21-39/envified/main/example/assets/gifs/SimulatorScreenRecording-iPhone17ProMax-2026-05-07at04.38.55-ezgif.com-video-to-gif-converter.gif" width="280" alt="Live demo: tap to switch" />
+  <img src="https://raw.githubusercontent.com/Sam21-39/envified/main/example/assets/gifs/envified-demo.gif" width="280" alt="Live demo: tap to switch" />
 </p>
 
 ---
@@ -50,7 +53,7 @@ It's not just a config switcher. It's **enterprise-grade security** meets **deve
 | Feature | What It Does | Why You Care |
 |---------|-------------|--------------|
 | **Tamper Detection** | SHA-256 hashes `.env*` files; throws if modified | Catch rogue config changes on rooted devices |
-| **Access Gate** | PIN dialog or Face ID / fingerprint before opening panel | QA devices don't leak sensitive switches |
+| **Access Gate** | PIN dialog before opening panel | QA devices don't leak sensitive switches |
 | **Typed Getters** | `getBool()`, `getInt()`, `getUri()`, `getList()` | No more string parsing bugs |
 | **Lifecycle Hooks** | `onBeforeSwitch` / `onAfterSwitch` callbacks | Flush HTTP queues, log analytics, etc. |
 | **URL History** | Last 5 URLs one-tap available | Faster testing against recent tunnels |
@@ -131,7 +134,7 @@ MaterialApp(
   builder: (context, child) => EnvifiedOverlay(
     service: EnvConfigService.instance,
     enabled: kDebugMode,                        // 🚫 Hidden in production
-    gate: EnvGate(pin: '1234'), // 🔐 PIN
+    gate: EnvGate(pin: '1234'), // 🔐 PIN (Don't hardcode in a real app)
     trigger: const EnvTrigger.tap(count: 7),    // 7-tap to open
     child: child ?? const SizedBox.shrink(),
   ),
@@ -189,7 +192,7 @@ EnvConfigService.instance.current.addListener(() {
 EnvifiedOverlay(
   service: EnvConfigService.instance,
   trigger: EnvTrigger.shake(),                    // Shake to open
-  gate: EnvGate(pin: '0000'),                     // PIN only
+  gate: EnvGate(pin: '0000'),                     // PIN only (fetch securely in prod)
   showFab: false,                                 // Stealth mode (hidden button)
   child: child!,
 )
@@ -239,7 +242,7 @@ allowProdSwitch: true  // Use only in debug/test builds
 Require authentication before opening the debug panel:
 
 ```dart
-EnvGate(pin: '1234')                          // PIN only
+EnvGate(pin: '1234')                          // PIN only (Don't hardcode in real apps)
 ```
 
 The gate auto-clears when the app is backgrounded. Next open requires re-auth.
@@ -535,15 +538,11 @@ See [CONTRIBUTING.md](https://github.com/Sam21-39/envified/blob/main/CONTRIBUTIN
 
 If it saves you hours of rebuild time, consider buying me a chai. Direct UPI — zero fees, 100% goes to me.
 
-[![Buy me a Chai](https://img.shields.io/badge/☕%20Buy%20me%20a%20Chai-FF5722?style=for-the-badge&logo=upi&logoColor=white)](https://paywithchai.in/appamania)
-
 | | Amount | What it means |
 |---|---|---|
 | ☕ | [₹20](https://paywithchai.in/appamania) | You liked it |
 | 🍵 | [₹50](https://paywithchai.in/appamania) | Saved you time |
 | 🚀 | [₹100](https://paywithchai.in/appamania) | In production |
-
-**→ [paywithchai.in/appamania](https://paywithchai.in/appamania)**
 
 ---
 

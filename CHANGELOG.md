@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.8] - 2026-05-07
+
+### Improved
+- **Showcase Cleanup**: Renamed internal assets for a more professional repository structure (`envified-demo.gif`).
+- **Security Documentation**: Added critical disclaimers about `.env` asset security vs. encrypted runtime persistence.
+- **Developer UX**: Added PIN code best practice comments to documentation snippets.
+- **Documentation Polish**: De-duplicated support links and synced all feature tables with recent API changes.
+
 ## [2.0.7] - 2026-05-07
 
 ### Removed
@@ -69,7 +77,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 #### 2. Access Token Gate (`EnvGate`)
 - New `EnvGate` class exported from the public API.
-- Supports PIN-only, biometric-only, or either-method authentication.
+- Supports secure PIN-code authentication before allowing access to the debug panel.
+- (Note: Biometric support was temporarily included in early v2 betas but removed in v2.0.7 to ensure upstream dependency stability).
 - Pass `gate: EnvGate(pin: '1234')` to `EnvifiedOverlay` to require auth before revealing the debug panel.
 - PIN dialog implemented inline (no third-party packages) with 4 obscured digit fields.
 - Auto-clears authentication state when the app is backgrounded.
@@ -121,9 +130,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The panel closes and authentication is cleared whenever the app moves to background.
 
 ### New Dependencies
-- `local_auth: ^2.2.0`
 - `sensors_plus: ^5.0.0`
 - `crypto: ^3.0.0`
+- `flutter_secure_storage: ^9.0.0` (Encrypted persistence)
 
 ### Breaking Changes
 - `Env.label` now returns short form (`'Dev'`, `'Staging'`, `'Prod'`, `'Custom'`).
