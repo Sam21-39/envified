@@ -70,7 +70,7 @@ It's not just a config switcher. It's **enterprise-grade security** meets **deve
 
 ```yaml
 dependencies:
-  envified: ^2.0.7
+  envified: ^2.0.8
 ```
 
 ### 2️⃣ Add `.env` Files
