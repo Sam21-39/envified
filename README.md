@@ -182,9 +182,9 @@ See [CONTRIBUTING.md](https://github.com/Sam21-39/envified/blob/main/CONTRIBUTIN
 
 ## Support the Project ☕
 
-`envified` is **100% open source and free**. If it saves you hours of rebuild time, consider supporting the maintainer:
+If `envified` saves your rebuild time and improves your workflow, you can support the project here:
 
-[₹20 — Support](https://paywithchai.in/appamania) | [₹100 — Production Use](https://paywithchai.in/appamania)
+👉 https://paywithchai.in/appamania
 
 ---
 
