@@ -49,4 +49,4 @@ jobs:
       - name: Build example app (dry run)
         run: |
           cd example
-          flutter build apk --dry-run
+          flutter build apk --debug
