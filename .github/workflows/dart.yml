@@ -2,30 +2,51 @@ name: Dart CI
 
 on:
   push:
-    branches: [ main ]
+    branches: [main, dev]
   pull_request:
-    branches: [ main ]
+    branches: [main, dev]
 
 jobs:
-  build:
+  analyze:
     runs-on: ubuntu-latest
-
     steps:
       - uses: actions/checkout@v4
+      - uses: dart-lang/setup-dart@v1
+        with:
+          sdk: stable
+      
+      - name: Install dependencies
+        run: dart pub get
+      
+      - name: Analyze code
+        run: dart analyze --fatal-infos
+      
+      - name: Format check
+        run: dart format --output=none --set-exit-if-changed .
+      
+      - name: Run tests
+        run: dart test --coverage=coverage
+      
+      - name: Upload coverage
+        uses: codecov/codecov-action@v3
+        with:
+          files: ./coverage/lcov.info
 
+  flutter-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
       - uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.24.0'
-          channel: 'stable'
-
-      - name: Install dependencies
+          flutter-version: 'stable'
+      
+      - name: Get dependencies
         run: flutter pub get
-
-      - name: Verify formatting
-        run: dart format --output=none --set-exit-if-changed .
-
-      - name: Analyze project source
-        run: flutter analyze
-
-      - name: Run tests
+      
+      - name: Run widget tests
         run: flutter test
+      
+      - name: Build example app (dry run)
+        run: |
+          cd example
+          flutter build apk --dry-run

@@ -1,0 +1,48 @@
+name: PR Checks
+
+on:
+  pull_request:
+    branches: [main, dev]
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - uses: dart-lang/setup-dart@v1
+      
+      - name: Check branch name
+        run: |
+          BRANCH=${{ github.head_ref }}
+          if [[ ! $BRANCH =~ ^(feature|fix|docs|release)\/ ]] && [[ $BRANCH != "dev" ]]; then
+            echo "❌ Invalid branch name: $BRANCH"
+            echo "Use: feature/*, fix/*, docs/*, or release/*"
+            exit 1
+          fi
+          echo "✅ Branch name valid: $BRANCH"
+      
+      - name: Check CHANGELOG updated
+        run: |
+          if git diff origin/dev HEAD -- CHANGELOG.md | grep -q "^[+-]"; then
+            echo "✅ CHANGELOG updated"
+          else
+            echo "⚠️ CHANGELOG not updated (required for feature/fix branches)"
+          fi
+      
+      - name: Check pubspec.yaml version
+        run: |
+          # Warn if version not bumped
+          if ! git diff origin/dev HEAD -- pubspec.yaml | grep -q "version:"; then
+            echo "⚠️ Version not bumped in pubspec.yaml"
+          fi
+      
+      - name: Run all checks
+        run: |
+          dart pub get
+          dart format --output=none --set-exit-if-changed .
+          dart analyze --fatal-infos
+          dart test

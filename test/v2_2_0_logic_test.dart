@@ -45,7 +45,7 @@ void main() {
     when(() => storage.saveUrlToHistory(any())).thenAnswer((_) async => {});
   });
 
-  group('v2.2.0 Logic Tests', () {
+  group('v2.2.x Logic Tests', () {
     test('restartNeeded is false after init', () async {
       await service.init(
         bundle: bundle,

@@ -5,24 +5,38 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [2.2.0] - 2026-05-07
+## [2.2.1] - 2026-05-08
 
-### Implemented
+### Added
+- Comprehensive documentation for core features and guides
+- Robust GitHub Actions workflows for CI/CD and PR validation
+- Community standards (CONTRIBUTING, CODE_OF_CONDUCT, Issue Templates)
 
-- **Smart Restart Detection**: `EnvConfigService` now tracks the initial environment and URL. A new `restartNeeded` `ValueNotifier` alerts the UI when changes require a dependency re-initialization (e.g., HTTP clients, Firebase).
-- **Environment Alias Support**: Automatically handles common naming aliases for `dev` (development), `staging` (stag), and `prod` (production) during auto-discovery.
-- **Sensitive Data Protection**: Config keys like `API_KEY`, `TOKEN`, and `PASSWORD` are now automatically identified and blurred by default. Features a secure "Reveal & Copy" workflow with auto-hide timers.
-- **Enterprise UX Overhaul**: Overhauled the `EnvDebugPanel` with a premium card-based layout and hierarchical `_SectionHeader` components.
-- **Timeline Audit Log**: Replaced the basic list with a dedicated `AuditLogViewer` featuring action-specific icons, color coding, and a vertical timeline view.
-- **Live URL Validation**: The custom URL input field now provides real-time validation and visual feedback for valid URI formats.
-- **Visual Status Indicators**: Environment buttons now feature real-time status dots (Available vs. Partial) and lock icons for production safety.
-- **Dark Mode Support**: All new UI components are fully optimized for both Light and Dark themes.
+## [2.2.0] - 2026-05-08
+
+### Added
+- Smart restart detection when environment changes
+- Sensitive data blur/unblur for API keys, tokens, secrets
+- Copy/paste functionality for config values and URLs
+- Card-based UI layout with improved hierarchy
+- Status indicators (✅ available, ⚠️ partial, 🔒 locked)
+- Info tooltips on all controls
+- URL validation with live feedback
+- Config search/filter for large .env files
+- Enhanced audit log with timeline display
+- Dark mode full support
+- restartNeeded ValueNotifier on EnvConfigService
 
 ### Changed
+- EnvDebugPanel completely redesigned (card-based)
+- Status badge now pulsing with better colors
+- Audit log display changed from table to timeline
+- Error messages more descriptive
 
-- **Refactored UI**: `EnvDebugPanel` migrated to a modular card-based architecture for better scalability.
-- **API Update**: `EnvifiedOverlay` and `EnvDebugPanel` now use the `onRestart` callback to signal when a hard app reset is requested by the user.
-- **Internal**: Optimized configuration merging logic to support naked `.env` files more robustly.
+### Fixed
+- AuthenticationOptions API compatibility with local_auth >= 2.2.0
+- Platform support declarations
+- Dartdoc cross-references
 
 ## [2.1.0] - 2026-05-07
 
