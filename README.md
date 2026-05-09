@@ -141,6 +141,10 @@ void main() async {
     // These values get auto-blurred in the debug panel.
     // Your standup screenshots will remain safe.
     sensitiveKeys: ['API_KEY', 'JWT_TOKEN', 'STRIPE_SECRET'],
+
+    // (Optional) Define which environments are locked in release mode.
+    // Defaults to [Env.prod].
+    productionEnvs: [Env.prod, Env.dynamic('canary')],
   );
 
   runApp(const MyApp());

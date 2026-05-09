@@ -22,10 +22,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Typed Getters**: Added `getBool`, `getInt`, `getDouble`, `getUri`, and `getList` to `EnvConfigService`.
 - **Audit Ring Buffer**: Secure storage now limits audit logs to the 50 most recent entries.
 - **URL History**: Persists the last 5 manual base URL overrides.
+- **Flexible Production Definition**: Added `productionEnvs` to `EnvConfigService.init` to support locking multiple staging or production-grade environments.
 
 ### Changed
 - **Premium UI Overhaul**: New card-based debug panel with better hierarchy, blurring, and live updates.
 - **Reactive State**: Switched to `ValueNotifier` for real-time reactivity without complex dependencies.
+- **Graceful Lock UX**: Added informative Snackbar feedback when attempting to switch or override URLs while locked.
+- **Android Build Stability**: Upgraded example project to AGP 8.7.2, Kotlin 2.1.0, and Java 17 for modern compatibility.
 
 ## [2.2.1] - 2026-05-08
 
