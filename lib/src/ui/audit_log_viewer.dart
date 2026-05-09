@@ -46,7 +46,8 @@ class AuditLogViewer extends StatelessWidget {
                       height: 24,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        color: _actionColor(entry.action).withValues(alpha: 0.15),
+                        color:
+                            _actionColor(entry.action).withValues(alpha: 0.15),
                       ),
                       child: Icon(
                         _actionIcon(entry.action),

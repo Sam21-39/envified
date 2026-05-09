@@ -73,33 +73,33 @@ void main() {
     svc = EnvConfigService.instance;
 
     bundle.register(
-        'assets/env/.env.dev', 'BASE_URL=https://dev.api.com\nKEY=DEV_VALUE');
+        'assets/env/.env', 'BASE_URL=https://dev.api.com\nKEY=DEV_VALUE');
     bundle.register(
         'assets/env/.env.prod', 'BASE_URL=https://api.com\nKEY=PROD_VALUE');
   });
 
   group('EnvConfigService.init()', () {
     test('loads default environment', () async {
-      await svc.init(defaultEnv: Env.dev);
+      await svc.init(defaultEnv: Env.dev, bundle: bundle);
       expect(svc.current.value.env, Env.dev);
       expect(svc.current.value.baseUrl, 'https://dev.api.com');
     });
 
     test('restores persisted environment', () async {
       await envStorage.saveActiveEnv('prod');
-      await svc.init();
+      await svc.init(bundle: bundle);
       expect(svc.current.value.env, Env.prod);
     });
 
     test('applies additional sensitive keys', () async {
-      await svc.init(sensitiveKeys: ['MY_SECRET']);
+      await svc.init(sensitiveKeys: ['MY_SECRET'], bundle: bundle);
       expect(svc.isSensitive('MY_SECRET'), isTrue);
     });
   });
 
   group('EnvConfigService.switchTo()', () {
     test('updates configuration and persists selection', () async {
-      await svc.init(defaultEnv: Env.dev);
+      await svc.init(defaultEnv: Env.dev, bundle: bundle);
       await svc.switchTo(Env.prod);
 
       expect(svc.current.value.env, Env.prod);
@@ -107,7 +107,7 @@ void main() {
     });
 
     test('throws EnvifiedLockException when locked in Prod', () async {
-      await svc.init(defaultEnv: Env.prod, allowProdSwitch: false);
+      await svc.init(defaultEnv: Env.prod, allowProdSwitch: false, bundle: bundle);
       expect(
           () => svc.switchTo(Env.dev), throwsA(isA<EnvifiedLockException>()));
     });
@@ -115,7 +115,7 @@ void main() {
 
   group('EnvConfigService.setBaseUrl()', () {
     test('overrides base URL and appends to history', () async {
-      await svc.init();
+      await svc.init(bundle: bundle);
       await svc.setBaseUrl('https://custom.com');
 
       expect(svc.current.value.baseUrl, 'https://custom.com');
@@ -124,7 +124,7 @@ void main() {
     });
 
     test('throws EnvifiedLockException when locked in Prod', () async {
-      await svc.init(defaultEnv: Env.prod, allowProdSwitch: false);
+      await svc.init(defaultEnv: Env.prod, allowProdSwitch: false, bundle: bundle);
       expect(() => svc.setBaseUrl('https://evil.com'),
           throwsA(isA<EnvifiedLockException>()));
     });
@@ -132,15 +132,15 @@ void main() {
 
   group('typed getters', () {
     test('getInt parses correctly', () async {
-      bundle.register('assets/env/.env.dev', 'PORT=8080');
-      await svc.init();
+      bundle.register('assets/env/.env', 'PORT=8080');
+      await svc.init(bundle: bundle);
       expect(svc.getInt('PORT'), 8080);
     });
 
     test('getBool handles various truthy values', () async {
       bundle.register(
-          'assets/env/.env.dev', 'DEBUG=true\nENABLED=1\nFEATURE=yes');
-      await svc.init();
+          'assets/env/.env', 'DEBUG=true\nENABLED=1\nFEATURE=yes');
+      await svc.init(bundle: bundle);
       expect(svc.getBool('DEBUG'), isTrue);
       expect(svc.getBool('ENABLED'), isTrue);
       expect(svc.getBool('FEATURE'), isTrue);
@@ -149,7 +149,7 @@ void main() {
 
   group('Audit Log', () {
     test('operations append to audit log notifier', () async {
-      await svc.init(defaultEnv: Env.dev);
+      await svc.init(defaultEnv: Env.dev, bundle: bundle);
       await svc.switchTo(Env.prod);
 
       expect(svc.auditLog.value.length, 1);
@@ -159,19 +159,19 @@ void main() {
 
   group('Restart Needed Logic', () {
     test('restartNeeded is false after init', () async {
-      await svc.init();
+      await svc.init(bundle: bundle);
       expect(svc.restartNeeded.value, isFalse);
     });
 
     test('restartNeeded is true after environment switch', () async {
-      await svc.init(defaultEnv: Env.dev);
+      await svc.init(defaultEnv: Env.dev, bundle: bundle);
       await svc.switchTo(Env.prod);
       expect(svc.restartNeeded.value, isTrue);
     });
 
     test('restartNeeded returns to false after switching back to initial',
         () async {
-      await svc.init(defaultEnv: Env.dev);
+      await svc.init(defaultEnv: Env.dev, bundle: bundle);
       await svc.switchTo(Env.prod);
       expect(svc.restartNeeded.value, isTrue);
 
@@ -180,7 +180,7 @@ void main() {
     });
 
     test('acknowledgeRestart clears the flag', () async {
-      await svc.init(defaultEnv: Env.dev);
+      await svc.init(defaultEnv: Env.dev, bundle: bundle);
       await svc.switchTo(Env.prod);
       expect(svc.restartNeeded.value, isTrue);
 

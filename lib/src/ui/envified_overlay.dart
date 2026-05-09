@@ -35,7 +35,7 @@ class EnvifiedOverlay extends StatefulWidget {
   /// Whether to show the floating 🌿 button.
   final bool showFab;
 
-    const EnvifiedOverlay({
+  const EnvifiedOverlay({
     super.key,
     required this.child,
     this.enabled = true,
