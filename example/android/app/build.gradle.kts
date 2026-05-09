@@ -41,3 +41,7 @@ android {
 flutter {
     source = "../.."
 }
+
+dependencies {
+    implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk8:2.2.20")
+}
