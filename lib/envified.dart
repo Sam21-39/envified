@@ -6,6 +6,7 @@ library envified;
 
 export 'src/models/env.dart';
 export 'src/models/env_config.dart';
+export 'src/models/envified_exception.dart';
 export 'src/models/audit_entry.dart' show AuditEntry, AuditAction;
 
 export 'src/gate/env_gate.dart';

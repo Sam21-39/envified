@@ -1,6 +1,5 @@
-import 'dart:convert';
 import 'package:crypto/crypto.dart';
-import 'package:flutter/services.dart' show rootBundle;
+import 'package:flutter/services.dart' show AssetBundle, rootBundle;
 
 /// A pure-Dart parser for .env files.
 ///
@@ -16,7 +15,7 @@ class EnvFileParser {
   /// - Inline comments (outside of quotes)
   /// - Blank lines
   /// - Quoted values (single or double quotes)
-  Map<String, String> parse(String content) {
+  Map<String, String> parseString(String content) {
     final result = <String, String>{};
     for (final line in content.split('\n')) {
       final trimmed = line.trim();
@@ -52,13 +51,17 @@ class EnvFileParser {
     return hashIndex >= 0 ? value.substring(0, hashIndex).trim() : value;
   }
 
-  /// Loads an asset from the [rootBundle] and parses it.
+  /// Loads an asset from the [bundle] (defaults to [rootBundle]) and parses it.
   ///
   /// Returns null if the file is not found or cannot be read.
-  Future<Map<String, String>?> loadAsset(String assetPath) async {
+  Future<Map<String, String>?> loadAsset(
+    String assetPath, {
+    AssetBundle? bundle,
+  }) async {
     try {
-      final content = await rootBundle.loadString(assetPath);
-      return parse(content);
+      final activeBundle = bundle ?? rootBundle;
+      final content = await activeBundle.loadString(assetPath);
+      return parseString(content);
     } catch (_) {
       return null;
     }

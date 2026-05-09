@@ -1,7 +1,8 @@
-import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart' show AssetBundle;
 import '../models/audit_entry.dart';
 import '../models/env.dart';
 import '../models/env_config.dart';
+import '../models/envified_exception.dart';
 import '../parser/env_file_parser.dart';
 import '../storage/env_storage.dart';
 
@@ -53,6 +54,15 @@ class EnvConfigService {
   final ValueNotifier<List<AuditEntry>> auditLog = ValueNotifier([]);
 
   EnvConfig? _initialConfig;
+  bool _allowProdSwitch = true;
+
+  /// Whether switching away from production is allowed.
+  bool get allowProdSwitch => _allowProdSwitch;
+
+  /// Returns true if the service is currently in production and [allowProdSwitch] is false.
+  bool get isProdLocked => current.value.env == Env.prod && !_allowProdSwitch;
+
+  AssetBundle? _bundle;
 
   static EnvConfig get _defaultConfig => EnvConfig(
         env: Env.dev,
@@ -83,13 +93,19 @@ class EnvConfigService {
   /// [defaultEnv] — The environment to load if none is persisted.
   /// [autoDiscover] — Whether to scan for .env files automatically.
   /// [verifyIntegrity] — Whether to verify SHA-256 hashes of .env files.
+  /// [allowProdSwitch] — Whether to allow switching away from production.
   /// [sensitiveKeys] — Additional keys to blur in the UI.
+  /// [bundle] — Custom asset bundle for loading .env files (useful for tests).
   Future<void> init({
     Env defaultEnv = Env.dev,
     bool autoDiscover = true,
     bool verifyIntegrity = false,
+    bool allowProdSwitch = true,
     List<String>? sensitiveKeys,
+    AssetBundle? bundle,
   }) async {
+    _bundle = bundle;
+    _allowProdSwitch = allowProdSwitch;
     if (sensitiveKeys != null) {
       _sensitiveKeys.addAll(sensitiveKeys.map((k) => k.toUpperCase()));
     }
@@ -104,6 +120,9 @@ class EnvConfigService {
 
   /// Switches the active environment.
   Future<void> switchTo(Env env) async {
+    if (isProdLocked) {
+      throw EnvifiedLockException('Cannot switch environment while locked in Production.');
+    }
     final from = current.value.env;
     if (from == env) return;
 
@@ -115,6 +134,9 @@ class EnvConfigService {
 
   /// Overrides the base URL for the current environment.
   Future<void> setBaseUrl(String url) async {
+    if (isProdLocked) {
+      throw EnvifiedLockException('Cannot override URL while locked in Production.');
+    }
     if (!_isValidUrl(url)) throw ArgumentError('Invalid URL: $url');
 
     await _storage.saveUrlToHistory(url);
@@ -129,9 +151,23 @@ class EnvConfigService {
     restartNeeded.value = false;
   }
 
+  /// Returns the recent URL override history.
+  Future<List<String>> loadUrlHistory() => _storage.loadUrlHistory();
+
+  /// Resets the configuration and storage to defaults.
+  Future<void> reset() async {
+    await _storage.clear();
+    await init(defaultEnv: Env.dev);
+    await _appendAudit(AuditAction.reset);
+  }
+
   Future<void> _loadEnv(Env env) async {
     final path = env.name == 'dev' ? '.env' : '.env.${env.name}';
-    final values = await _parser.loadAsset('assets/env/$path') ?? {};
+    final values = await _parser.loadAsset(
+          'assets/env/$path',
+          bundle: _bundle,
+        ) ??
+        {};
 
     current.value = EnvConfig(
       env: env,
