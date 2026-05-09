@@ -7,8 +7,8 @@ class AuditLogViewer extends StatelessWidget {
   final List<AuditEntry> entries;
 
   const AuditLogViewer({
-    super.key,
     required this.entries,
+    super.key,
   });
 
   @override

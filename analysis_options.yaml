@@ -18,7 +18,6 @@ linter:
     - avoid_dynamic_calls
     - avoid_print             # use debugPrint or a logger
     - avoid_redundant_argument_values
-    - avoid_returning_null_for_future
     - cancel_subscriptions
     - close_sinks
     - prefer_const_constructors

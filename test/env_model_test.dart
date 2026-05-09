@@ -8,7 +8,7 @@ void main() {
     final baseConfig = EnvConfig(
       env: Env.dev,
       baseUrl: 'https://dev.api.example.com',
-      values: {'KEY': 'value', 'BASE_URL': 'https://dev.api.example.com'},
+      values: const {'KEY': 'value', 'BASE_URL': 'https://dev.api.example.com'},
       loadedAt: now,
     );
 
@@ -61,7 +61,7 @@ void main() {
       final b = EnvConfig(
         env: Env.dev,
         baseUrl: 'https://dev.com',
-        values: {'A': '2'},
+        values: const {'A': '2'},
         loadedAt: now,
       );
       expect(a, isNot(equals(b)));

@@ -1,5 +1,4 @@
 import 'package:flutter/foundation.dart';
-import 'package:flutter/material.dart' show ValueNotifier;
 import 'package:flutter/services.dart' show AssetBundle;
 import '../models/audit_entry.dart';
 import '../models/env.dart';

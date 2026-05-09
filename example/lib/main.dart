@@ -39,7 +39,7 @@ class EnvifiedLuxuryApp extends StatefulWidget {
 }
 
 class _EnvifiedLuxuryAppState extends State<EnvifiedLuxuryApp> {
-  Key _appKey = UniqueKey();
+  final Key _appKey = UniqueKey();
 
   @override
   Widget build(BuildContext context) {
@@ -89,13 +89,13 @@ class LuxuryHome extends StatelessWidget {
       builder: (context, config, _) {
         return Scaffold(
           body: Container(
-            decoration: BoxDecoration(
+            decoration: const BoxDecoration(
               gradient: RadialGradient(
                 center: Alignment.topLeft,
                 radius: 1.5,
                 colors: [
-                  const Color(0xFF1E1E2E),
-                  const Color(0xFF0F0F1A),
+                  Color(0xFF1E1E2E),
+                  Color(0xFF0F0F1A),
                 ],
               ),
             ),

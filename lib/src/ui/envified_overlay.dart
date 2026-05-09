@@ -36,8 +36,8 @@ class EnvifiedOverlay extends StatefulWidget {
   final bool showFab;
 
   const EnvifiedOverlay({
-    super.key,
     required this.child,
+    super.key,
     this.enabled = true,
     this.gate,
     this.trigger = const EnvTrigger.tap(count: 7),

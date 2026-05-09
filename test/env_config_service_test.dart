@@ -19,10 +19,11 @@ class FakeFlutterSecureStorage extends Fake implements FlutterSecureStorage {
     AppleOptions? mOptions,
     WindowsOptions? wOptions,
   }) async {
-    if (value == null)
+    if (value == null) {
       _data.remove(key);
-    else
+    } else {
       _data[key] = value;
+    }
   }
 
   @override
@@ -38,7 +39,6 @@ class FakeFlutterSecureStorage extends Fake implements FlutterSecureStorage {
     return _data[key];
   }
 
-  @override
   Future<void> delete({
     required String key,
     AppleOptions? iOptions,
@@ -80,7 +80,7 @@ void main() {
 
   group('EnvConfigService.init()', () {
     test('loads default environment', () async {
-      await svc.init(defaultEnv: Env.dev, bundle: bundle);
+      await svc.init(bundle: bundle);
       expect(svc.current.value.env, Env.dev);
       expect(svc.current.value.baseUrl, 'https://dev.api.com');
     });
@@ -99,7 +99,7 @@ void main() {
 
   group('EnvConfigService.switchTo()', () {
     test('updates configuration and persists selection', () async {
-      await svc.init(defaultEnv: Env.dev, bundle: bundle);
+      await svc.init(bundle: bundle);
       await svc.switchTo(Env.prod);
 
       expect(svc.current.value.env, Env.prod);
@@ -107,7 +107,8 @@ void main() {
     });
 
     test('throws EnvifiedLockException when locked in Prod', () async {
-      await svc.init(defaultEnv: Env.prod, allowProdSwitch: false, bundle: bundle);
+      await svc.init(
+          defaultEnv: Env.prod, allowProdSwitch: false, bundle: bundle);
       expect(
           () => svc.switchTo(Env.dev), throwsA(isA<EnvifiedLockException>()));
     });
@@ -124,7 +125,8 @@ void main() {
     });
 
     test('throws EnvifiedLockException when locked in Prod', () async {
-      await svc.init(defaultEnv: Env.prod, allowProdSwitch: false, bundle: bundle);
+      await svc.init(
+          defaultEnv: Env.prod, allowProdSwitch: false, bundle: bundle);
       expect(() => svc.setBaseUrl('https://evil.com'),
           throwsA(isA<EnvifiedLockException>()));
     });
@@ -138,8 +140,7 @@ void main() {
     });
 
     test('getBool handles various truthy values', () async {
-      bundle.register(
-          'assets/env/.env', 'DEBUG=true\nENABLED=1\nFEATURE=yes');
+      bundle.register('assets/env/.env', 'DEBUG=true\nENABLED=1\nFEATURE=yes');
       await svc.init(bundle: bundle);
       expect(svc.getBool('DEBUG'), isTrue);
       expect(svc.getBool('ENABLED'), isTrue);
@@ -149,7 +150,7 @@ void main() {
 
   group('Audit Log', () {
     test('operations append to audit log notifier', () async {
-      await svc.init(defaultEnv: Env.dev, bundle: bundle);
+      await svc.init(bundle: bundle);
       await svc.switchTo(Env.prod);
 
       expect(svc.auditLog.value.length, 1);
@@ -164,14 +165,14 @@ void main() {
     });
 
     test('restartNeeded is true after environment switch', () async {
-      await svc.init(defaultEnv: Env.dev, bundle: bundle);
+      await svc.init(bundle: bundle);
       await svc.switchTo(Env.prod);
       expect(svc.restartNeeded.value, isTrue);
     });
 
     test('restartNeeded returns to false after switching back to initial',
         () async {
-      await svc.init(defaultEnv: Env.dev, bundle: bundle);
+      await svc.init(bundle: bundle);
       await svc.switchTo(Env.prod);
       expect(svc.restartNeeded.value, isTrue);
 
