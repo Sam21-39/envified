@@ -15,8 +15,7 @@ jobs:
 
       - uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.22.x'
-          channel: 'stable'
+          flutter-version: 'stable'
 
       - name: Get dependencies
         run: flutter pub get
@@ -29,6 +28,16 @@ jobs:
 
       - name: Run tests with coverage
         run: flutter test --coverage
+
+      - name: Check branch name
+        run: |
+          BRANCH=${{ github.head_ref || github.ref_name }}
+          if [[ ! $BRANCH =~ ^(feature|fix|docs|release|hotfix)\/ ]] && [[ $BRANCH != "develop" ]] && [[ $BRANCH != "main" ]]; then
+            echo "❌ Invalid branch name: $BRANCH"
+            echo "Use: feature/*, fix/*, hotfix/*, docs/*, or release/*"
+            exit 1
+          fi
+          echo "✅ Branch name valid: $BRANCH"
 
       - name: Check coverage threshold
         run: |

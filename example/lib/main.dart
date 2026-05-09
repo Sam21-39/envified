@@ -59,7 +59,10 @@ class _EnvifiedLuxuryAppState extends State<EnvifiedLuxuryApp> {
           elevation: 0,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(24),
-            side: BorderSide(color: Colors.white.withValues(alpha: 0.05)),
+            // ignore: duplicate_ignore, deprecated_member_use
+            side: BorderSide(
+                color: Colors.white // ignore: deprecated_member_use
+                    .withOpacity(0.05)),
           ),
         ),
       ),
@@ -122,10 +125,8 @@ class LuxuryHome extends StatelessWidget {
                             const SizedBox(height: 32),
                             _buildSectionHeader('Security Configuration'),
                             const SizedBox(height: 16),
-                            ...config.values.entries
-                                .map((e) => _buildSecretTile(e.key, e.value)),
-                            const SizedBox(
-                                height: 100), // Space for status badge
+                            ...config.values.entries.map((e) => _buildSecretTile(e.key, e.value)),
+                            const SizedBox(height: 100), // Space for status badge
                           ]),
                         ),
                       ),
@@ -169,13 +170,16 @@ class LuxuryHome extends StatelessWidget {
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
-            const Color(0xFF6200EE).withValues(alpha: 0.8),
-            const Color(0xFFBB86FC).withValues(alpha: 0.8),
+            const Color(0xFF6200EE) // ignore: deprecated_member_use
+                .withOpacity(0.8),
+            const Color(0xFFBB86FC) // ignore: deprecated_member_use
+                .withOpacity(0.8),
           ],
         ),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF6200EE).withValues(alpha: 0.3),
+            color: const Color(0xFF6200EE) // ignore: deprecated_member_use
+                .withOpacity(0.3),
             blurRadius: 32,
             offset: const Offset(0, 16),
           ),
@@ -187,7 +191,8 @@ class LuxuryHome extends StatelessWidget {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
             decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.2),
+              color: Colors.white // ignore: deprecated_member_use
+                  .withOpacity(0.2),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Text(
@@ -213,7 +218,8 @@ class LuxuryHome extends StatelessWidget {
             'Last loaded at ${config.loadedAt.hour}:${config.loadedAt.minute}',
             style: TextStyle(
               fontSize: 12,
-              color: Colors.white.withValues(alpha: 0.7),
+              color: Colors.white // ignore: deprecated_member_use
+                  .withOpacity(0.7),
             ),
           ),
         ],
@@ -227,22 +233,20 @@ class LuxuryHome extends StatelessWidget {
       style: TextStyle(
         fontSize: 11,
         fontWeight: FontWeight.bold,
-        color: Colors.white.withValues(alpha: 0.4),
+        color: Colors.white // ignore: deprecated_member_use
+            .withOpacity(0.4),
         letterSpacing: 1.5,
       ),
     );
   }
 
-  Widget _buildInfoTile(String title, String value, IconData icon,
-      {bool isOverridden = false}) {
+  Widget _buildInfoTile(String title, String value, IconData icon, {bool isOverridden = false}) {
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(20),
         child: Row(
           children: [
-            Icon(icon,
-                color: isOverridden ? Colors.orangeAccent : Colors.white60,
-                size: 20),
+            Icon(icon, color: isOverridden ? Colors.orangeAccent : Colors.white60, size: 20),
             const SizedBox(width: 16),
             Expanded(
               child: Column(
@@ -251,21 +255,18 @@ class LuxuryHome extends StatelessWidget {
                   Text(title,
                       style: TextStyle(
                           fontSize: 10,
-                          color: Colors.white.withValues(alpha: 0.4))),
+                          color: Colors.white // ignore: deprecated_member_use
+                              .withOpacity(0.4))),
                   const SizedBox(height: 4),
                   Text(
                     value,
                     style: const TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                        fontFamily: 'monospace'),
+                        fontSize: 14, fontWeight: FontWeight.w600, fontFamily: 'monospace'),
                   ),
                 ],
               ),
             ),
-            if (isOverridden)
-              const Icon(Icons.bolt_rounded,
-                  color: Colors.orangeAccent, size: 16),
+            if (isOverridden) const Icon(Icons.bolt_rounded, color: Colors.orangeAccent, size: 16),
           ],
         ),
       ),
@@ -291,14 +292,13 @@ class LuxuryHome extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(name,
-                    style: const TextStyle(
-                        fontSize: 12, fontWeight: FontWeight.bold)),
+                Text(name, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
                 Text(
                   isSensitive ? '••••••••••••••••' : value,
                   style: TextStyle(
                       fontSize: 12,
-                      color: Colors.white.withValues(alpha: 0.5),
+                      color: Colors.white // ignore: deprecated_member_use
+                          .withOpacity(0.5),
                       fontFamily: 'monospace'),
                 ),
               ],
@@ -306,7 +306,9 @@ class LuxuryHome extends StatelessWidget {
           ),
           if (isSensitive)
             Icon(Icons.lock_rounded,
-                size: 14, color: Colors.white.withValues(alpha: 0.2)),
+                size: 14,
+                color: Colors.white // ignore: deprecated_member_use
+                    .withOpacity(0.2)),
         ],
       ),
     );
