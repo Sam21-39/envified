@@ -68,7 +68,7 @@ class EnvConfigService {
   static EnvConfig get _defaultConfig => EnvConfig(
         env: Env.dev,
         baseUrl: '',
-        values: {},
+        values: const {},
         loadedAt: DateTime.now(),
       );
 
@@ -160,7 +160,7 @@ class EnvConfigService {
   /// Resets the configuration and storage to defaults.
   Future<void> reset() async {
     await _storage.clear();
-    await init(defaultEnv: Env.dev);
+    await init();
     await _appendAudit(AuditAction.reset);
   }
 

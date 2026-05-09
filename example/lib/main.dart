@@ -144,10 +144,10 @@ class LuxuryHome extends StatelessWidget {
   }
 
   Widget _buildAppBar(EnvConfig config) {
-    return SliverAppBar(
+    return const SliverAppBar(
       backgroundColor: Colors.transparent,
       floating: true,
-      title: const Text(
+      title: Text(
         'ENVIFIED LUXURY',
         style: TextStyle(
           fontSize: 14,

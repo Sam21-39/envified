@@ -4,7 +4,7 @@ import 'package:envified/envified.dart';
 void main() {
   group('AuditEntry serialization', () {
     test('roundtrip with env switch', () {
-      final DateTime ts = DateTime.utc(2026, 5, 7, 10, 30, 0);
+      final DateTime ts = DateTime.utc(2026, 5, 7, 10, 30);
       final original = AuditEntry(
         timestamp: ts,
         action: AuditAction.envSwitch,
@@ -22,7 +22,7 @@ void main() {
     });
 
     test('roundtrip with url override', () {
-      final DateTime ts = DateTime.utc(2026, 5, 7, 11, 0, 0);
+      final DateTime ts = DateTime.utc(2026, 5, 7, 11);
       final original = AuditEntry(
         timestamp: ts,
         action: AuditAction.urlOverride,

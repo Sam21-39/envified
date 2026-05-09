@@ -39,6 +39,7 @@ class FakeFlutterSecureStorage extends Fake implements FlutterSecureStorage {
     return _data[key];
   }
 
+  @override
   Future<void> delete({
     required String key,
     AppleOptions? iOptions,
@@ -181,7 +182,7 @@ void main() {
     });
 
     test('acknowledgeRestart clears the flag', () async {
-      await svc.init(defaultEnv: Env.dev, bundle: bundle);
+      await svc.init(bundle: bundle);
       await svc.switchTo(Env.prod);
       expect(svc.restartNeeded.value, isTrue);
 

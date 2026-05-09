@@ -39,13 +39,13 @@ void main() {
       final a = EnvConfig(
         env: Env.prod,
         baseUrl: 'https://api.com',
-        values: {'A': '1'},
+        values: const {'A': '1'},
         loadedAt: now,
       );
       final b = EnvConfig(
         env: Env.prod,
         baseUrl: 'https://api.com',
-        values: {'A': '1'},
+        values: const {'A': '1'},
         loadedAt: now,
       );
       expect(a, equals(b));
@@ -55,7 +55,7 @@ void main() {
       final a = EnvConfig(
         env: Env.dev,
         baseUrl: 'https://dev.com',
-        values: {'A': '1'},
+        values: const {'A': '1'},
         loadedAt: now,
       );
       final b = EnvConfig(

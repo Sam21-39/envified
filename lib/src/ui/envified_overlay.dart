@@ -40,7 +40,7 @@ class EnvifiedOverlay extends StatefulWidget {
     super.key,
     this.enabled = true,
     this.gate,
-    this.trigger = const EnvTrigger.tap(count: 7),
+    this.trigger = const EnvTrigger.tap(),
     this.showFab = true,
   });
 
@@ -91,9 +91,9 @@ class _OverlayContent extends StatefulWidget {
 
   const _OverlayContent({
     required this.appChild,
-    this.gate,
     required this.trigger,
     required this.showFab,
+    this.gate,
   });
 
   @override
@@ -205,9 +205,9 @@ class _OverlayContentState extends State<_OverlayContent> {
                       constraints: BoxConstraints(
                         maxHeight: MediaQuery.of(context).size.height * 0.7,
                       ),
-                      child: SingleChildScrollView(
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        child: const EnvDebugPanel(),
+                      child: const SingleChildScrollView(
+                        padding: EdgeInsets.symmetric(vertical: 16),
+                        child: EnvDebugPanel(),
                       ),
                     ),
                   ),
