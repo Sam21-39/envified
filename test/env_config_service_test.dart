@@ -159,6 +159,28 @@ void main() {
     });
   });
 
+  group('Integrity Verification', () {
+    test('throws EnvifiedTamperException on hash mismatch', () async {
+      // 1. Initial load (saves hashes)
+      bundle.register('assets/env/.env', 'BASE_URL=https://dev.api.com');
+      bundle.register('assets/env/.env.prod', 'BASE_URL=https://prod.api.com');
+      await svc.init(bundle: bundle, verifyIntegrity: true);
+
+      // 2. Switch to prod to save its hash
+      await svc.switchTo(Env.prod);
+
+      // 3. Switch back to dev
+      await svc.switchTo(Env.dev);
+
+      // 4. Tamper with prod file
+      bundle.register('assets/env/.env.prod', 'BASE_URL=https://hacked.com');
+
+      // 5. Attempt to switch to prod again -> should throw
+      expect(() => svc.switchTo(Env.prod),
+          throwsA(isA<EnvifiedTamperException>()));
+    });
+  });
+
   group('Restart Needed Logic', () {
     test('restartNeeded is false after init', () async {
       await svc.init(bundle: bundle);

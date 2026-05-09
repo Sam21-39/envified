@@ -1,97 +1,116 @@
-import 'package:flutter_test/flutter_test.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import 'package:envified/src/storage/env_storage.dart';
 import 'package:envified/src/models/audit_entry.dart';
-import 'package:envified/src/models/env.dart';
-import 'package:mocktail/mocktail.dart';
+import 'package:envified/src/storage/env_storage.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:flutter_test/flutter_test.dart';
 
-class MockFlutterSecureStorage extends Mock implements FlutterSecureStorage {}
+class FakeFlutterSecureStorage extends Fake implements FlutterSecureStorage {
+  final Map<String, String> _data = {};
+
+  @override
+  Future<void> write(
+      {required String key,
+      required String? value,
+      AppleOptions? iOptions,
+      AndroidOptions? aOptions,
+      LinuxOptions? lOptions,
+      WebOptions? webOptions,
+      AppleOptions? mOptions,
+      WindowsOptions? wOptions}) async {
+    if (value == null) {
+      _data.remove(key);
+    } else {
+      _data[key] = value;
+    }
+  }
+
+  @override
+  Future<String?> read(
+          {required String key,
+          AppleOptions? iOptions,
+          AndroidOptions? aOptions,
+          LinuxOptions? lOptions,
+          WebOptions? webOptions,
+          AppleOptions? mOptions,
+          WindowsOptions? wOptions}) async =>
+      _data[key];
+
+  @override
+  Future<void> delete(
+      {required String key,
+      AppleOptions? iOptions,
+      AndroidOptions? aOptions,
+      LinuxOptions? lOptions,
+      WebOptions? webOptions,
+      AppleOptions? mOptions,
+      WindowsOptions? wOptions}) async {
+    _data.remove(key);
+  }
+}
 
 void main() {
-  group('EnvStorage', () {
-    late MockFlutterSecureStorage mockSecureStorage;
-    late EnvStorage storage;
+  late FakeFlutterSecureStorage store;
+  late EnvStorage storage;
 
-    setUp(() {
-      mockSecureStorage = MockFlutterSecureStorage();
-      storage = EnvStorage(store: mockSecureStorage);
-      registerFallbackValue(AuditAction.envSwitch);
+  setUp(() {
+    store = FakeFlutterSecureStorage();
+    storage = EnvStorage(store: store);
+  });
+
+  group('EnvStorage.saveHash/loadHash', () {
+    test('persists and retrieves hashes', () async {
+      await storage.saveHash('dev', 'abc');
+      expect(await storage.loadHash('dev'), 'abc');
+    });
+  });
+
+  group('EnvStorage.appendAuditEntry', () {
+    test('caps at 50 entries', () async {
+      for (var i = 0; i < 60; i++) {
+        await storage.appendAuditEntry(AuditEntry(
+          timestamp: DateTime.now(),
+          action: AuditAction.reset,
+        ));
+      }
+      final log = await storage.loadAuditLog();
+      expect(log.length, 50);
     });
 
-    test('saveActiveEnv writes name to secure storage', () async {
-      when(() => mockSecureStorage.write(
-            key: any(named: 'key'),
-            value: any(named: 'value'),
-          )).thenAnswer((_) async {});
-
-      await storage.saveActiveEnv('staging');
-
-      verify(() => mockSecureStorage.write(
-            key: 'envified.active_env',
-            value: 'staging',
-          )).called(1);
+    test('returns empty on corruption', () async {
+      await store.write(key: 'envified.audit_log', value: 'invalid json');
+      final log = await storage.loadAuditLog();
+      expect(log, isEmpty);
     });
+  });
 
-    test('loadActiveEnv restores name', () async {
-      when(() => mockSecureStorage.read(key: 'envified.active_env'))
-          .thenAnswer((_) async => 'prod');
-
-      final result = await storage.loadActiveEnv();
-      expect(result, 'prod');
-    });
-
-    test('saveUrlToHistory adds URL and maintains history limit', () async {
-      when(() => mockSecureStorage.read(key: 'envified.url_history'))
-          .thenAnswer((_) async => '["url1", "url2"]');
-      when(() => mockSecureStorage.write(
-            key: 'envified.url_history',
-            value: any(named: 'value'),
-          )).thenAnswer((_) async {});
-
+  group('EnvStorage.saveUrlToHistory', () {
+    test('moves to top and caps at 5', () async {
+      await storage.saveUrlToHistory('url1');
+      await storage.saveUrlToHistory('url2');
       await storage.saveUrlToHistory('url3');
+      await storage.saveUrlToHistory('url4');
+      await storage.saveUrlToHistory('url5');
+      await storage.saveUrlToHistory('url6');
 
-      verify(() => mockSecureStorage.write(
-            key: 'envified.url_history',
-            value: any(named: 'value', that: contains('url3')),
-          )).called(1);
+      final history = await storage.loadUrlHistory();
+      expect(history.first, 'url6');
+      expect(history.length, 5);
+      expect(history, isNot(contains('url1')));
     });
 
-    test('appendAuditEntry adds entry and respects ring buffer limit',
-        () async {
-      when(() => mockSecureStorage.read(key: 'envified.audit_log'))
-          .thenAnswer((_) async => '[]');
-      when(() => mockSecureStorage.write(
-            key: 'envified.audit_log',
-            value: any(named: 'value'),
-          )).thenAnswer((_) async {});
-
-      final entry = AuditEntry(
-        timestamp: DateTime.now(),
-        action: AuditAction.envSwitch,
-        fromEnv: Env.dev,
-        toEnv: Env.prod,
-      );
-
-      await storage.appendAuditEntry(entry);
-
-      verify(() => mockSecureStorage.write(
-            key: 'envified.audit_log',
-            value: any(named: 'value', that: contains('dev')),
-          )).called(1);
+    test('returns empty on corruption', () async {
+      await store.write(key: 'envified.url_history', value: 'not a list');
+      final history = await storage.loadUrlHistory();
+      expect(history, isEmpty);
     });
+  });
 
-    test('clear deletes all keys', () async {
-      when(() => mockSecureStorage.delete(key: any(named: 'key')))
-          .thenAnswer((_) async {});
-
+  group('EnvStorage.clear', () {
+    test('removes all keys', () async {
+      await storage.saveActiveEnv('dev');
+      await storage.saveUrlToHistory('url');
       await storage.clear();
-
-      verify(() => mockSecureStorage.delete(key: 'envified.active_env'))
-          .called(1);
-      verify(() => mockSecureStorage.delete(key: 'envified.audit_log'))
-          .called(1);
-      verify(() => mockSecureStorage.delete(key: 'envified.url_history'))
-          .called(1);
+      expect(await storage.loadActiveEnv(), isNull);
+      expect(await storage.loadUrlHistory(), isEmpty);
     });
   });
 }

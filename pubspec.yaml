@@ -13,10 +13,6 @@ environment:
 platforms:
   android:
   ios:
-  web:
-  macos:
-  linux:
-  windows:
 
 dependencies:
   flutter:

@@ -1,5 +1,5 @@
 import 'package:flutter/foundation.dart';
-import 'package:flutter/services.dart' show AssetBundle;
+import 'package:flutter/services.dart' show AssetBundle, rootBundle;
 import '../models/audit_entry.dart';
 import '../models/env.dart';
 import '../models/env_config.dart';
@@ -56,6 +56,7 @@ class EnvConfigService {
 
   EnvConfig? _initialConfig;
   bool _allowProdSwitch = true;
+  bool _verifyIntegrity = false;
 
   /// Whether switching away from production is allowed.
   bool get allowProdSwitch => _allowProdSwitch;
@@ -107,6 +108,7 @@ class EnvConfigService {
   }) async {
     _bundle = bundle;
     _allowProdSwitch = allowProdSwitch;
+    _verifyIntegrity = verifyIntegrity;
     if (sensitiveKeys != null) {
       _sensitiveKeys.addAll(sensitiveKeys.map((k) => k.toUpperCase()));
     }
@@ -166,11 +168,29 @@ class EnvConfigService {
 
   Future<void> _loadEnv(Env env) async {
     final path = env.name == 'dev' ? '.env' : '.env.${env.name}';
-    final values = await _parser.loadAsset(
-          'assets/env/$path',
-          bundle: _bundle,
-        ) ??
-        {};
+    final assetPath = 'assets/env/$path';
+
+    final activeBundle = _bundle ?? rootBundle;
+    String content;
+    try {
+      content = await activeBundle.loadString(assetPath);
+    } catch (_) {
+      content = '';
+    }
+
+    if (_verifyIntegrity && content.isNotEmpty) {
+      final currentHash = _parser.computeHash(content);
+      final savedHash = await _storage.loadHash(env.name);
+
+      if (savedHash == null) {
+        // Trust on first use
+        await _storage.saveHash(env.name, currentHash);
+      } else if (savedHash != currentHash) {
+        throw EnvifiedTamperException(assetPath);
+      }
+    }
+
+    final values = _parser.parseString(content);
 
     current.value = EnvConfig(
       env: env,
