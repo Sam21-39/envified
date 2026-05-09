@@ -19,5 +19,4 @@ jobs:
         run: dart pub publish --dry-run
       - name: Publish to pub.dev
         run: dart pub publish --force
-        env:
-          PUB_CREDENTIALS: ${{ secrets.PUB_CREDENTIALS }}
+        
