@@ -1,12 +1,11 @@
 import 'package:flutter/material.dart';
-import '../audit_entry.dart';
+import '../models/audit_entry.dart';
 
 /// A styled viewer for audit log entries.
 class AuditLogViewer extends StatelessWidget {
   /// The list of audit entries to display.
   final List<AuditEntry> entries;
 
-  /// Creates an [AuditLogViewer].
   const AuditLogViewer({super.key, required this.entries});
 
   @override
@@ -35,7 +34,6 @@ class AuditLogViewer extends StatelessWidget {
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // Timeline line and icon
               SizedBox(
                 width: 32,
                 child: Column(
@@ -64,8 +62,6 @@ class AuditLogViewer extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 8),
-
-              // Action details
               Expanded(
                 child: Padding(
                   padding: const EdgeInsets.only(bottom: 16),
@@ -123,27 +119,25 @@ class AuditLogViewer extends StatelessWidget {
     return '${local.hour.toString().padLeft(2, '0')}:${local.minute.toString().padLeft(2, '0')}:${local.second.toString().padLeft(2, '0')}';
   }
 
-  Color _actionColor(String action) => switch (action) {
-        'switch' => Colors.blue,
-        'setBaseUrl' => Colors.amber,
-        'clearOverride' => Colors.purple,
-        'reset' => Colors.red,
-        _ => Colors.grey,
+  Color _actionColor(AuditAction action) => switch (action) {
+        AuditAction.envSwitch => Colors.blue,
+        AuditAction.urlOverride => Colors.amber,
+        AuditAction.urlReset => Colors.purple,
+        AuditAction.reset => Colors.red,
       };
 
-  IconData _actionIcon(String action) => switch (action) {
-        'switch' => Icons.swap_horiz,
-        'setBaseUrl' => Icons.edit,
-        'clearOverride' => Icons.clear,
-        'reset' => Icons.restart_alt,
-        _ => Icons.info_outline,
+  IconData _actionIcon(AuditAction action) => switch (action) {
+        AuditAction.envSwitch => Icons.swap_horiz,
+        AuditAction.urlOverride => Icons.edit,
+        AuditAction.urlReset => Icons.clear,
+        AuditAction.reset => Icons.restart_alt,
       };
 
   String _actionLabel(AuditEntry entry) => switch (entry.action) {
-        'switch' => 'Env: ${entry.fromEnv} → ${entry.toEnv}',
-        'setBaseUrl' => 'URL Override Set',
-        'clearOverride' => 'Override Cleared',
-        'reset' => 'Configuration Reset',
-        _ => entry.action,
+        AuditAction.envSwitch =>
+          'Env: ${entry.fromEnv?.name ?? '?'} → ${entry.toEnv?.name ?? '?'}',
+        AuditAction.urlOverride => 'URL Override Set',
+        AuditAction.urlReset => 'Override Cleared',
+        AuditAction.reset => 'Configuration Reset',
       };
 }

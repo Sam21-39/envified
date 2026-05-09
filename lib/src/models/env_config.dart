@@ -16,6 +16,9 @@ class EnvConfig {
   /// The timestamp when this configuration was loaded.
   final DateTime loadedAt;
 
+  /// Returns true if the [baseUrl] differs from the one in [values].
+  bool get isBaseUrlOverridden => values['BASE_URL'] != baseUrl;
+
   const EnvConfig({
     required this.env,
     required this.baseUrl,

@@ -61,6 +61,21 @@ class EnvConfigService {
         loadedAt: DateTime.now(),
       );
 
+  /// List of keys whose values should be blurred in the UI.
+  final List<String> _sensitiveKeys = [
+    'API_KEY',
+    'TOKEN',
+    'SECRET',
+    'PASSWORD',
+    'AUTH',
+  ];
+
+  /// Returns true if the [key] is considered sensitive.
+  bool isSensitive(String key) {
+    final k = key.toUpperCase();
+    return _sensitiveKeys.any((s) => k.contains(s));
+  }
+
   /// Initializes the service.
   ///
   /// Call this once in [main] before [runApp].
@@ -68,11 +83,16 @@ class EnvConfigService {
   /// [defaultEnv] — The environment to load if none is persisted.
   /// [autoDiscover] — Whether to scan for .env files automatically.
   /// [verifyIntegrity] — Whether to verify SHA-256 hashes of .env files.
+  /// [sensitiveKeys] — Additional keys to blur in the UI.
   Future<void> init({
     Env defaultEnv = Env.dev,
     bool autoDiscover = true,
     bool verifyIntegrity = false,
+    List<String>? sensitiveKeys,
   }) async {
+    if (sensitiveKeys != null) {
+      _sensitiveKeys.addAll(sensitiveKeys.map((k) => k.toUpperCase()));
+    }
     final persistedEnvName = await _storage.loadActiveEnv();
     final envToLoad = persistedEnvName != null
         ? Env.dynamic(persistedEnvName)
@@ -102,6 +122,12 @@ class EnvConfigService {
     current.value = current.value.copyWith(baseUrl: url);
     await _appendAudit(AuditAction.urlOverride, url: url);
     _checkRestartNeeded();
+  }
+
+  /// Acknowledges that a restart has occurred, clearing the [restartNeeded] flag.
+  void acknowledgeRestart() {
+    _initialConfig = current.value;
+    restartNeeded.value = false;
   }
 
   Future<void> _loadEnv(Env env) async {

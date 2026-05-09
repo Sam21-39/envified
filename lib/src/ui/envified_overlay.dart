@@ -1,94 +1,44 @@
 import 'package:flutter/material.dart';
-
-import '../env_config_service.dart';
-import '../env_gate.dart';
+import '../gate/env_gate.dart';
+import '../service/env_config_service.dart';
+import '../triggers/env_trigger.dart';
 import 'env_debug_panel.dart';
-import 'env_trigger.dart';
 
-/// A transparent wrapper widget that optionally injects a floating debug button
-/// into the app's [Overlay], allowing [EnvDebugPanel] to be opened at any time.
+/// A transparent wrapper widget that injects the environment debug panel
+/// into the app's [Overlay].
 ///
-/// The recommended placement is inside the `builder` of your [MaterialApp] so
-/// the overlay persists across all routes:
+/// The recommended placement is inside the `builder` of your [MaterialApp]:
 ///
 /// ```dart
 /// MaterialApp(
 ///   builder: (context, child) => EnvifiedOverlay(
-///     service: EnvConfigService.instance,
 ///     enabled: kDebugMode,
 ///     gate: EnvGate(pin: '1234'),
 ///     trigger: const EnvTrigger.tap(count: 7),
 ///     child: child ?? const SizedBox.shrink(),
 ///   ),
-///   home: const MyApp(),
 /// )
 /// ```
-///
-/// ## Gate (access control)
-///
-/// When [gate] is non-null, the user must authenticate before the panel opens.
-/// Supported methods:
-/// - PIN dialog: `EnvGate(pin: '1234')`
-/// - Biometric: `EnvGate(biometric: true)`
-/// - Either: `EnvGate(pin: '1234', biometric: true)`
-///
-/// If authentication fails, a `'Authentication failed'` SnackBar is shown.
-///
-/// ## Trigger (gesture)
-///
-/// [trigger] controls how the panel is opened. Defaults to 7 rapid taps.
-/// Other options: `EnvTrigger.shake()`, `EnvTrigger.edgeSwipe()`.
-///
-/// ## Auto-lock
-///
-/// The panel automatically closes (and re-requires authentication) whenever
-/// the app is hidden or paused ([AppLifecycleState.hidden] /
-/// [AppLifecycleState.paused]).
-///
-/// When [enabled] is `false` the widget is a transparent pass-through with
-/// no runtime overhead.
-///
-/// @see EnvDebugPanel
-/// @see EnvConfigService
-/// @see EnvGate
-/// @see EnvTrigger
 class EnvifiedOverlay extends StatefulWidget {
-  /// The [EnvConfigService] instance passed through to [EnvDebugPanel].
-  final EnvConfigService service;
-
   /// The widget tree to render beneath the overlay.
   final Widget child;
 
-  /// When `false`, this widget is a transparent pass-through with no runtime
-  /// cost. Pass `kDebugMode` here to automatically disable in production builds.
+  /// When `false`, this widget is a transparent pass-through.
   final bool enabled;
 
-  /// Optional callback forwarded to [EnvDebugPanel.onRestart].
-  final VoidCallback? onRestart;
-
   /// Optional access gate that must be passed before the panel is revealed.
-  ///
-  /// See [EnvGate] for available authentication strategies.
   final EnvGate? gate;
 
   /// The gesture that opens the debug panel.
-  ///
-  /// Defaults to 7 rapid taps anywhere on the child widget tree.
   final EnvTrigger trigger;
 
-  /// Whether to show the floating 🌿 button in the bottom-right corner.
-  ///
-  /// Defaults to `true`. Set to `false` to use the [trigger] as the exclusive
-  /// way to open the panel (stealth mode).
+  /// Whether to show the floating 🌿 button.
   final bool showFab;
 
-  /// Creates an [EnvifiedOverlay].
   const EnvifiedOverlay({
     super.key,
-    required this.service,
     required this.child,
     this.enabled = true,
-    this.onRestart,
     this.gate,
     this.trigger = const EnvTrigger.tap(count: 7),
     this.showFab = true,
@@ -106,9 +56,7 @@ class _EnvifiedOverlayState extends State<EnvifiedOverlay> {
     super.initState();
     _entry = OverlayEntry(
       builder: (context) => _OverlayContent(
-        service: widget.service,
         appChild: widget.child,
-        onRestart: widget.onRestart,
         gate: widget.gate,
         trigger: widget.trigger,
         showFab: widget.showFab,
@@ -119,7 +67,6 @@ class _EnvifiedOverlayState extends State<EnvifiedOverlay> {
   @override
   void didUpdateWidget(EnvifiedOverlay oldWidget) {
     super.didUpdateWidget(oldWidget);
-    // When the MaterialApp rebuilds and provides a new child, re-render.
     _entry.markNeedsBuild();
   }
 
@@ -127,8 +74,6 @@ class _EnvifiedOverlayState extends State<EnvifiedOverlay> {
   Widget build(BuildContext context) {
     if (!widget.enabled) return widget.child;
 
-    // A dedicated Overlay is critical when used in MaterialApp.builder,
-    // because the builder context is above the Navigator's Overlay.
     return Directionality(
       textDirection: TextDirection.ltr,
       child: Overlay(
@@ -139,17 +84,13 @@ class _EnvifiedOverlayState extends State<EnvifiedOverlay> {
 }
 
 class _OverlayContent extends StatefulWidget {
-  final EnvConfigService service;
   final Widget appChild;
-  final VoidCallback? onRestart;
   final EnvGate? gate;
   final EnvTrigger trigger;
   final bool showFab;
 
   const _OverlayContent({
-    required this.service,
     required this.appChild,
-    this.onRestart,
     this.gate,
     required this.trigger,
     required this.showFab,
@@ -162,28 +103,12 @@ class _OverlayContent extends StatefulWidget {
 class _OverlayContentState extends State<_OverlayContent> {
   bool _isOpen = false;
   bool _isAuthenticated = false;
-  late final AppLifecycleListener _lifecycleListener;
-
-  @override
-  void initState() {
-    super.initState();
-    _lifecycleListener = AppLifecycleListener(
-      onHide: _closePanel,
-      onPause: _closePanel,
-    );
-  }
-
-  @override
-  void dispose() {
-    _lifecycleListener.dispose();
-    super.dispose();
-  }
 
   void _closePanel() {
     if (mounted) {
       setState(() {
         _isOpen = false;
-        _isAuthenticated = false; // Re-authenticate on next open.
+        _isAuthenticated = false;
       });
     }
   }
@@ -194,24 +119,51 @@ class _OverlayContentState extends State<_OverlayContent> {
       return;
     }
 
-    final EnvGate? gate = widget.gate;
+    final gate = widget.gate;
     if (gate != null && !_isAuthenticated) {
-      if (!mounted) return;
-      final bool passed = await gate.authenticate(context);
-      if (!passed) {
-        if (!mounted) return;
-        ScaffoldMessenger.maybeOf(context)?.showSnackBar(
-          const SnackBar(
-            content: Text('Authentication failed'),
-            duration: Duration(seconds: 2),
-          ),
-        );
-        return;
-      }
+      final bool passed = await _showPinDialog(context, gate);
+      if (!passed) return;
       _isAuthenticated = true;
     }
 
     if (mounted) setState(() => _isOpen = true);
+  }
+
+  Future<bool> _showPinDialog(BuildContext context, EnvGate gate) async {
+    final controller = TextEditingController();
+    final result = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        title: const Text('Enter PIN'),
+        content: TextField(
+          controller: controller,
+          obscureText: true,
+          autofocus: true,
+          keyboardType: TextInputType.number,
+          decoration: const InputDecoration(hintText: 'Enter 4-digit PIN'),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              if (gate.verify(controller.text)) {
+                Navigator.pop(context, true);
+              } else {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Invalid PIN')),
+                );
+              }
+            },
+            child: const Text('Verify'),
+          ),
+        ],
+      ),
+    );
+    return result ?? false;
   }
 
   @override
@@ -233,7 +185,7 @@ class _OverlayContentState extends State<_OverlayContent> {
             Positioned(
               left: 16,
               right: 16,
-              bottom: 80, // Above the FAB
+              bottom: 80,
               child: SafeArea(
                 child: Material(
                   elevation: 8,
@@ -243,16 +195,11 @@ class _OverlayContentState extends State<_OverlayContent> {
                     child: Container(
                       color: Theme.of(context).canvasColor,
                       constraints: BoxConstraints(
-                        maxHeight: MediaQuery.of(context).size.height -
-                            MediaQuery.of(context).padding.top -
-                            120, // 80 (bottom) + 40 (top margin)
+                        maxHeight: MediaQuery.of(context).size.height * 0.7,
                       ),
                       child: SingleChildScrollView(
-                        padding: const EdgeInsets.fromLTRB(4, 16, 4, 24),
-                        child: EnvDebugPanel(
-                          service: widget.service,
-                          onRestart: widget.onRestart,
-                        ),
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        child: const EnvDebugPanel(),
                       ),
                     ),
                   ),
@@ -264,7 +211,6 @@ class _OverlayContentState extends State<_OverlayContent> {
               bottom: 24,
               right: 16,
               child: _EnvFab(
-                service: widget.service,
                 isOpen: _isOpen,
                 onTap: _requestOpen,
               ),
@@ -276,36 +222,29 @@ class _OverlayContentState extends State<_OverlayContent> {
 }
 
 class _EnvFab extends StatelessWidget {
-  final EnvConfigService service;
   final bool isOpen;
   final VoidCallback onTap;
 
   const _EnvFab({
-    required this.service,
     required this.isOpen,
     required this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    return ValueListenableBuilder<dynamic>(
-      valueListenable: service.current,
-      builder: (context, config, _) {
-        final bool locked = service.isProdLocked;
-
+    return ValueListenableBuilder(
+      valueListenable: EnvConfigService.instance.restartNeeded,
+      builder: (context, restartNeeded, _) {
         return FloatingActionButton(
           heroTag: 'envified_fab',
           mini: true,
           backgroundColor:
-              locked ? Colors.red.shade700 : Colors.blueGrey.shade800,
+              restartNeeded ? Colors.orange.shade700 : Colors.blueGrey.shade800,
           foregroundColor: Colors.white,
-          tooltip: isOpen ? 'Close Panel' : 'envified — Environment Panel',
           onPressed: onTap,
           child: isOpen
               ? const Icon(Icons.close, size: 18)
-              : locked
-                  ? const Icon(Icons.lock, size: 18)
-                  : const Text('🌿', style: TextStyle(fontSize: 18)),
+              : const Text('🌿', style: TextStyle(fontSize: 18)),
         );
       },
     );
