@@ -19,12 +19,22 @@ enum AuditAction {
 /// A single record in the encrypted audit log.
 @immutable
 class AuditEntry {
+  /// The time at which the action occurred.
   final DateTime timestamp;
+
+  /// The type of action performed.
   final AuditAction action;
+
+  /// The environment name before the change (if applicable).
   final Env? fromEnv;
+
+  /// The environment name after the change (if applicable).
   final Env? toEnv;
+
+  /// The manual URL override applied (if applicable).
   final String? url;
 
+  /// Creates a new audit entry.
   const AuditEntry({
     required this.timestamp,
     required this.action,

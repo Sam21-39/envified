@@ -389,4 +389,14 @@ And if you're adding a feature, add a test for it. Future-you will be grateful. 
 
 MIT © [Appamania](https://appamania.in)
 
+---
+
+## ☕ Support the Project
+
+If **envified** saves your rebuild time and improves your workflow, consider supporting the project:
+
+👉 **[Pay with Chai](https://paywithchai.in/appamania)**
+
+---
+
 *Built with the belief that developer experience is a feature, not a luxury.*
