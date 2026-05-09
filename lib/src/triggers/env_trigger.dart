@@ -31,6 +31,12 @@ sealed class EnvTrigger {
     double threshold,
   }) = ShakeTrigger;
 
+  /// Trigger by long-pressing the status badge or the overlay area.
+  const factory EnvTrigger.longPress({Duration duration}) = LongPressTrigger;
+
+  /// Trigger by double-tapping.
+  const factory EnvTrigger.doubleTap() = DoubleTapTrigger;
+
   /// Wraps [child] in a gesture-detecting widget.
   Widget build({
     required Widget child,
@@ -106,6 +112,44 @@ class ShakeTrigger extends EnvTrigger {
       threshold: threshold,
       onOpen: onOpen,
       isActive: isActive,
+      child: child,
+    );
+  }
+}
+
+/// Trigger by long-pressing.
+class LongPressTrigger extends EnvTrigger {
+  final Duration duration;
+
+  const LongPressTrigger({this.duration = const Duration(milliseconds: 1500)});
+
+  @override
+  Widget build({
+    required Widget child,
+    required VoidCallback onOpen,
+    bool isActive = true,
+  }) {
+    return GestureDetector(
+      behavior: HitTestBehavior.translucent,
+      onLongPress: isActive ? onOpen : null,
+      child: child,
+    );
+  }
+}
+
+/// Trigger by double-tapping.
+class DoubleTapTrigger extends EnvTrigger {
+  const DoubleTapTrigger();
+
+  @override
+  Widget build({
+    required Widget child,
+    required VoidCallback onOpen,
+    bool isActive = true,
+  }) {
+    return GestureDetector(
+      behavior: HitTestBehavior.translucent,
+      onDoubleTap: isActive ? onOpen : null,
       child: child,
     );
   }
