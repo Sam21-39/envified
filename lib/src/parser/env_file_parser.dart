@@ -43,10 +43,22 @@ class EnvFileParser {
   }
 
   String _stripInlineComment(String value) {
-    // Only strip # if it has a preceding space (standard .env format)
-    // and is not inside quotes.
-    final inQuotes = value.startsWith('"') || value.startsWith("'");
-    if (inQuotes) return value;
+    if (value.startsWith('"') || value.startsWith("'")) {
+      final quote = value[0];
+      var searchIndex = 1;
+      while (searchIndex < value.length) {
+        final nextQuote = value.indexOf(quote, searchIndex);
+        if (nextQuote == -1) break; // Unclosed quote, fall back
+
+        // Check if escaped
+        if (value[nextQuote - 1] != r'\') {
+          // Found closing quote, search for # AFTER it
+          final hashIndex = value.indexOf(' #', nextQuote + 1);
+          return hashIndex >= 0 ? value.substring(0, hashIndex).trim() : value;
+        }
+        searchIndex = nextQuote + 1;
+      }
+    }
 
     final hashIndex = value.indexOf(' #');
     return hashIndex >= 0 ? value.substring(0, hashIndex).trim() : value;

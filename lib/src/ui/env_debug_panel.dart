@@ -24,10 +24,22 @@ class _EnvDebugPanelState extends State<EnvDebugPanel> {
   void initState() {
     super.initState();
     _urlController.text = EnvConfigService.instance.current.value.baseUrl;
+    EnvConfigService.instance.current.addListener(_onEnvChanged);
+  }
+
+  void _onEnvChanged() {
+    if (!mounted) return;
+    final newUrl = EnvConfigService.instance.current.value.baseUrl;
+    if (_urlController.text != newUrl) {
+      setState(() {
+        _urlController.text = newUrl;
+      });
+    }
   }
 
   @override
   void dispose() {
+    EnvConfigService.instance.current.removeListener(_onEnvChanged);
     _urlController.dispose();
     super.dispose();
   }

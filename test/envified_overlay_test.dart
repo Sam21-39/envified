@@ -2,40 +2,8 @@ import 'package:envified/envified.dart';
 import 'package:envified/src/parser/env_file_parser.dart';
 import 'package:envified/src/storage/env_storage.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'test_helper.dart';
-
-class FakeFlutterSecureStorage extends Fake implements FlutterSecureStorage {
-  final Map<String, String> _data = {};
-  @override
-  Future<void> write(
-      {required String key,
-      required String? value,
-      AppleOptions? iOptions,
-      AndroidOptions? aOptions,
-      LinuxOptions? lOptions,
-      WebOptions? webOptions,
-      AppleOptions? mOptions,
-      WindowsOptions? wOptions}) async {
-    if (value == null) {
-      _data.remove(key);
-    } else {
-      _data[key] = value;
-    }
-  }
-
-  @override
-  Future<String?> read(
-          {required String key,
-          AppleOptions? iOptions,
-          AndroidOptions? aOptions,
-          LinuxOptions? lOptions,
-          WebOptions? webOptions,
-          AppleOptions? mOptions,
-          WindowsOptions? wOptions}) async =>
-      _data[key];
-}
 
 void main() {
   group('EnvifiedOverlay', () {
@@ -51,78 +19,98 @@ void main() {
       );
       bundle = FakeAssetBundle();
       bundle.register('assets/env/.env', 'BASE_URL=https://dev.api.com');
+      bundle.register('assets/env/.env.prod', 'BASE_URL=https://api.com');
     });
 
-    testWidgets('renders child content', (tester) async {
+    testWidgets('shows status badge by default', (tester) async {
       await EnvConfigService.instance.init(bundle: bundle);
 
       await tester.pumpWidget(
         const MaterialApp(
           home: EnvifiedOverlay(
-            child: Text('App Content'),
+            child: Scaffold(body: Text('App Content')),
           ),
         ),
       );
 
-      expect(find.text('App Content'), findsOneWidget);
+      expect(find.byType(EnvStatusBadge), findsOneWidget);
+      expect(find.text('DEV'), findsOneWidget);
     });
 
-    testWidgets('shows fab and opens panel on tap', (tester) async {
+    testWidgets('opens panel on trigger', (tester) async {
       await EnvConfigService.instance.init(bundle: bundle);
 
       await tester.pumpWidget(
         const MaterialApp(
           home: EnvifiedOverlay(
-            child: Text('App Content'),
+            trigger: EnvTrigger.doubleTap(),
+            child: Scaffold(body: Text('App Content')),
           ),
         ),
       );
 
-      expect(find.text('🌿'), findsOneWidget);
+      // Verify panel is hidden
+      expect(find.byType(EnvDebugPanel), findsNothing);
 
-      await tester.tap(find.text('🌿'));
+      // Double tap to open
+      final overlay = find.byType(EnvifiedOverlay);
+      await tester.tap(overlay);
+      await tester.pump(const Duration(milliseconds: 50));
+      await tester.tap(overlay);
       await tester.pumpAndSettle();
 
-      expect(find.text('ACTIVE ENVIRONMENT'), findsOneWidget);
+      expect(find.byType(EnvDebugPanel), findsOneWidget);
     });
 
-    testWidgets('requires pin if gate is provided', (tester) async {
+    testWidgets('requires PIN when gate is provided', (tester) async {
       await EnvConfigService.instance.init(bundle: bundle);
 
       await tester.pumpWidget(
         MaterialApp(
           home: EnvifiedOverlay(
+            trigger:
+                const EnvTrigger.tap(count: 1), // Single tap for easy testing
             gate: EnvGate(pin: '1234'),
-            child: const Text('App Content'),
+            child: const Scaffold(body: Text('App Content')),
           ),
         ),
       );
 
-      await tester.tap(find.text('🌿'));
+      // Open panel
+      await tester.tap(find.text('DEV'));
       await tester.pumpAndSettle();
 
+      // Should show PIN input
       expect(find.text('Enter PIN'), findsOneWidget);
 
+      // Enter wrong PIN
+      await tester.enterText(find.byType(TextField), '0000');
+      await tester.tap(find.text('Verify'));
+      await tester.pumpAndSettle();
+      expect(find.text('Invalid PIN'), findsOneWidget);
+
+      // Enter correct PIN
       await tester.enterText(find.byType(TextField), '1234');
       await tester.tap(find.text('Verify'));
       await tester.pumpAndSettle();
 
-      expect(find.text('ACTIVE ENVIRONMENT'), findsOneWidget);
+      // Should now show debug panel
+      expect(find.byType(EnvDebugPanel), findsOneWidget);
     });
 
-    testWidgets('does nothing if disabled', (tester) async {
+    testWidgets('respects enabled flag', (tester) async {
       await EnvConfigService.instance.init(bundle: bundle);
 
       await tester.pumpWidget(
         const MaterialApp(
           home: EnvifiedOverlay(
             enabled: false,
-            child: Text('App Content'),
+            child: Scaffold(body: Text('App Content')),
           ),
         ),
       );
 
-      expect(find.text('🌿'), findsNothing);
+      expect(find.byType(EnvStatusBadge), findsNothing);
     });
   });
 }

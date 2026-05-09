@@ -88,7 +88,7 @@ No build_runner. No code gen. No magic incantations. Just a package that install
 
 Drop these into `assets/env/`:
 
-```
+```text
 assets/
 └── env/
     ├── .env.dev
@@ -165,7 +165,7 @@ MaterialApp(
 
     // Shake your device to open the panel.
     // Or swap for EnvTrigger.longPress() if you prefer.
-    trigger: const EnvTrigger.shake(),
+    trigger: EnvTrigger.shake(detector: MyShakeDetector()),
 
     child: child!,
   ),
@@ -306,8 +306,8 @@ No network calls. No file system. No flakiness. Just fast, deterministic tests t
 The overlay ships with multiple ways to open the panel. Pick your style:
 
 ```dart
-// Shake gesture — the classic
-trigger: const EnvTrigger.shake()
+// Shake gesture — the classic (requires a detector)
+trigger: EnvTrigger.shake(detector: MyShakeDetector())
 
 // Long press on the status badge or overlay area
 trigger: const EnvTrigger.longPress()
@@ -350,7 +350,7 @@ You don't need to define an enum anymore. If you want to reference a specific en
 
 ## 📐 Architecture Overview
 
-```
+```text
 EnvConfigService (Singleton)
 ├── current: ValueNotifier<EnvConfig>   ← reactive source of truth
 ├── init()                               ← loads default env from storage or param

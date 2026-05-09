@@ -1,8 +1,5 @@
+import 'package:envified/envified.dart';
 import 'package:flutter/material.dart';
-import '../gate/env_gate.dart';
-import '../service/env_config_service.dart';
-import '../triggers/env_trigger.dart';
-import 'env_debug_panel.dart';
 
 /// A transparent wrapper widget that injects the environment debug panel
 /// into the app's [Overlay].
@@ -215,6 +212,7 @@ class _OverlayContentState extends State<_OverlayContent> {
                 ),
               ),
             ),
+          const EnvStatusBadge(),
           if (widget.showFab)
             Positioned(
               bottom: 24,

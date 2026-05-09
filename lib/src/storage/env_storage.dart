@@ -114,10 +114,11 @@ class EnvStorage implements EnvStorageInterface {
 
   @override
   Future<void> clear() async {
-    await Future.wait([
-      _store.delete(key: _keyActiveEnv),
-      _store.delete(key: _keyAuditLog),
-      _store.delete(key: _keyUrlHistory),
-    ]);
+    // We can't easily list all keys in FlutterSecureStorage to delete by prefix,
+    // so we delete the primary keys and the known environment hashes.
+    final keys = await _store.readAll();
+    final envifiedKeys = keys.keys.where((k) => k.startsWith('envified.'));
+
+    await Future.wait(envifiedKeys.map((k) => _store.delete(key: k)));
   }
 }

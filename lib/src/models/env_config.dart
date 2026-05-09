@@ -1,3 +1,4 @@
+import 'dart:collection';
 import 'package:flutter/foundation.dart';
 import 'env.dart';
 
@@ -19,12 +20,14 @@ class EnvConfig {
   /// Returns true if the [baseUrl] differs from the one in [values].
   bool get isBaseUrlOverridden => values['BASE_URL'] != baseUrl;
 
-  const EnvConfig({
+  EnvConfig({
     required this.env,
     required this.baseUrl,
-    required this.values,
+    required Map<String, String> values,
     required this.loadedAt,
-  });
+  }) : values = values is UnmodifiableMapView<String, String>
+            ? values
+            : UnmodifiableMapView(values);
 
   /// Creates a copy of this [EnvConfig] with updated fields.
   EnvConfig copyWith({
@@ -49,7 +52,10 @@ class EnvConfig {
           mapEquals(values, other.values);
 
   @override
-  int get hashCode => env.hashCode ^ baseUrl.hashCode ^ values.hashCode;
+  int get hashCode =>
+      env.hashCode ^
+      baseUrl.hashCode ^
+      Object.hashAll(values.entries.map((e) => Object.hash(e.key, e.value)));
 
   @override
   String toString() => 'EnvConfig(env: ${env.name}, baseUrl: $baseUrl)';

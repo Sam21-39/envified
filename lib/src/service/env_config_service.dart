@@ -57,6 +57,7 @@ class EnvConfigService {
   EnvConfig? _initialConfig;
   bool _allowProdSwitch = true;
   bool _verifyIntegrity = false;
+  bool _autoDiscover = true;
 
   /// Whether switching away from production is allowed.
   bool get allowProdSwitch => _allowProdSwitch;
@@ -109,6 +110,7 @@ class EnvConfigService {
     _bundle = bundle;
     _allowProdSwitch = allowProdSwitch;
     _verifyIntegrity = verifyIntegrity;
+    _autoDiscover = autoDiscover;
     if (sensitiveKeys != null) {
       _sensitiveKeys.addAll(sensitiveKeys.map((k) => k.toUpperCase()));
     }
@@ -172,10 +174,19 @@ class EnvConfigService {
 
     final activeBundle = _bundle ?? rootBundle;
     String content;
-    try {
-      content = await activeBundle.loadString(assetPath);
-    } catch (_) {
+    if (!_autoDiscover &&
+        env.name != 'dev' &&
+        env.name != 'prod' &&
+        env.name != 'staging') {
+      // If auto-discovery is off, we only allow loading the standard 3 environments.
+      // This is a minimal implementation of "controlling discovery".
       content = '';
+    } else {
+      try {
+        content = await activeBundle.loadString(assetPath);
+      } catch (_) {
+        content = '';
+      }
     }
 
     if (_verifyIntegrity && content.isNotEmpty) {
@@ -247,7 +258,10 @@ class EnvConfigService {
       double.tryParse(get(key) ?? '') ?? fallback;
 
   /// Retrieves a [Uri] value for [key].
-  Uri? getUri(String key) => Uri.tryParse(get(key) ?? '');
+  Uri? getUri(String key) {
+    final value = get(key);
+    return value != null ? Uri.tryParse(value) : null;
+  }
 
   /// Retrieves a list of strings for [key], split by [separator].
   List<String> getList(String key, {String separator = ','}) => (get(key) ?? '')

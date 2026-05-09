@@ -32,7 +32,7 @@ sealed class EnvTrigger {
   }) = ShakeTrigger;
 
   /// Trigger by long-pressing the status badge or the overlay area.
-  const factory EnvTrigger.longPress({Duration duration}) = LongPressTrigger;
+  const factory EnvTrigger.longPress() = LongPressTrigger;
 
   /// Trigger by double-tapping.
   const factory EnvTrigger.doubleTap() = DoubleTapTrigger;
@@ -119,9 +119,7 @@ class ShakeTrigger extends EnvTrigger {
 
 /// Trigger by long-pressing.
 class LongPressTrigger extends EnvTrigger {
-  final Duration duration;
-
-  const LongPressTrigger({this.duration = const Duration(milliseconds: 1500)});
+  const LongPressTrigger();
 
   @override
   Widget build({
@@ -292,12 +290,17 @@ class _ShakeTriggerWidgetState extends State<_ShakeTriggerWidget> {
   @override
   void didUpdateWidget(_ShakeTriggerWidget oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (widget.isActive != oldWidget.isActive) {
-      if (widget.isActive) {
-        widget.detector.start(widget.threshold, widget.onOpen);
-      } else {
-        widget.detector.stop();
-      }
+    final becameActive = widget.isActive && !oldWidget.isActive;
+    final configChanged = widget.isActive &&
+        (widget.detector != oldWidget.detector ||
+            widget.threshold != oldWidget.threshold ||
+            widget.onOpen != oldWidget.onOpen);
+
+    if (becameActive || configChanged) {
+      oldWidget.detector.stop();
+      widget.detector.start(widget.threshold, widget.onOpen);
+    } else if (!widget.isActive && oldWidget.isActive) {
+      widget.detector.stop();
     }
   }
 

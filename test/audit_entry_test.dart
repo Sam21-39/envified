@@ -56,7 +56,9 @@ void main() {
       final c = AuditEntry(timestamp: ts, action: AuditAction.urlReset);
 
       expect(a, equals(b));
+      expect(a.hashCode, equals(b.hashCode));
       expect(a, isNot(equals(c)));
+      expect(a.hashCode, isNot(equals(c.hashCode)));
     });
   });
 }

@@ -30,9 +30,10 @@ jobs:
         run: flutter test --coverage
 
       - name: Check branch name
+        env:
+          BRANCH: ${{ github.head_ref || github.ref_name }}
         run: |
-          BRANCH=${{ github.head_ref || github.ref_name }}
-          if [[ ! $BRANCH =~ ^(feature|fix|docs|release|hotfix)\/ ]] && [[ $BRANCH != "develop" ]] && [[ $BRANCH != "main" ]]; then
+          if [[ ! "$BRANCH" =~ ^(feature|fix|docs|release|hotfix)\/ ]] && [[ "$BRANCH" != "develop" ]] && [[ "$BRANCH" != "main" ]]; then
             echo "❌ Invalid branch name: $BRANCH"
             echo "Use: feature/*, fix/*, hotfix/*, docs/*, or release/*"
             exit 1
