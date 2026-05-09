@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Breaking Changes
 - **Migration from Enum to Class**: `Env` is now an immutable class. Replaces `Env.dev` enum with `Env.dev` class instance.
 - **Removed sensors_plus**: Shake detector now requires a user-provided implementation of `EnvShakeDetector` to avoid mandatory accelerometer linking.
+- **Platform Restriction**: Removed support for Web, macOS, Windows, and Linux to focus on native mobile (Android/iOS) stability.
 - **Strict Public API**: Reduced public exports to improve maintenance and stability.
 - **Singleton Service**: `EnvConfigService` is now a singleton accessed via `.instance`.
 
