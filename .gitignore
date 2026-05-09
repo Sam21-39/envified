@@ -22,10 +22,21 @@ coverage/
 # FVM Version Cache
 .fvm/
 
+# Env files (Samples are kept, but secrets are ignored)
+assets/env/*.local
+assets/env/*.secret
+assets/env/*.env.local
+
 # Platform runners in example (generate fresh with flutter create)
 example/android/
 example/ios/
 example/linux/
 example/macos/
 example/windows/
+example/windows/
 example/web/
+
+# Temp files
+*.log
+*.tmp
+.temp/
