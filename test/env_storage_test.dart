@@ -1,80 +1,72 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import 'package:envified/src/env_model.dart';
-import 'package:envified/src/env_storage.dart';
-import 'package:mocktail/mocktail.dart';
-
-class MockFlutterSecureStorage extends Mock implements FlutterSecureStorage {}
+import 'package:envified/envified.dart';
+import 'package:envified/src/storage/env_storage.dart';
+import 'test_helper.dart';
 
 void main() {
-  group('EnvStorage', () {
-    late MockFlutterSecureStorage mockSecureStorage;
-    late EnvStorage storage;
+  late FakeFlutterSecureStorage store;
+  late EnvStorage storage;
 
-    const testConfig = EnvConfig(
-      env: Env.staging,
-      baseUrl: 'https://staging.api.com',
-      values: {'TIMEOUT': '5000'},
-      isBaseUrlOverridden: true,
-    );
+  setUp(() {
+    store = FakeFlutterSecureStorage();
+    storage = EnvStorage(store: store);
+  });
 
-    setUp(() {
-      mockSecureStorage = MockFlutterSecureStorage();
-      storage = EnvStorage(storage: mockSecureStorage);
+  group('EnvStorage.saveHash/loadHash', () {
+    test('persists and retrieves hashes', () async {
+      await storage.saveHash('dev', 'abc');
+      expect(await storage.loadHash('dev'), 'abc');
+    });
+  });
+
+  group('EnvStorage.appendAuditEntry', () {
+    test('caps at 50 entries', () async {
+      for (var i = 0; i < 60; i++) {
+        await storage.appendAuditEntry(AuditEntry(
+          timestamp: DateTime.now(),
+          action: AuditAction.reset,
+        ));
+      }
+      final log = await storage.loadAuditLog();
+      expect(log.length, 50);
     });
 
-    test('saveConfig writes JSON to secure storage', () async {
-      when(() => mockSecureStorage.write(
-            key: any(named: 'key'),
-            value: any(named: 'value'),
-          )).thenAnswer((_) async {});
+    test('returns empty on corruption', () async {
+      await store.write(key: 'envified.audit_log', value: 'invalid json');
+      final log = await storage.loadAuditLog();
+      expect(log, isEmpty);
+    });
+  });
 
-      await storage.saveConfig(testConfig);
+  group('EnvStorage.saveUrlToHistory', () {
+    test('moves to top and caps at 5', () async {
+      await storage.saveUrlToHistory('url1');
+      await storage.saveUrlToHistory('url2');
+      await storage.saveUrlToHistory('url3');
+      await storage.saveUrlToHistory('url4');
+      await storage.saveUrlToHistory('url5');
+      await storage.saveUrlToHistory('url6');
 
-      verify(() => mockSecureStorage.write(
-            key: 'envified_config',
-            value: any(named: 'value', that: contains('staging')),
-          )).called(1);
+      final history = await storage.loadUrlHistory();
+      expect(history.first, 'url6');
+      expect(history.length, 5);
+      expect(history, isNot(contains('url1')));
     });
 
-    test('loadConfig restores EnvConfig from valid JSON', () async {
-      const json =
-          '{"env":"staging","baseUrl":"https://staging.api.com","values":{"TIMEOUT":"5000"},"isBaseUrlOverridden":true}';
-
-      when(() => mockSecureStorage.read(key: 'envified_config'))
-          .thenAnswer((_) async => json);
-
-      final result = await storage.loadConfig();
-
-      expect(result, isNotNull);
-      expect(result!.env, Env.staging);
-      expect(result.baseUrl, 'https://staging.api.com');
-      expect(result.isBaseUrlOverridden, isTrue);
+    test('returns empty on corruption', () async {
+      await store.write(key: 'envified.url_history', value: 'not a list');
+      final history = await storage.loadUrlHistory();
+      expect(history, isEmpty);
     });
+  });
 
-    test('loadConfig returns null for empty/missing storage', () async {
-      when(() => mockSecureStorage.read(key: any(named: 'key')))
-          .thenAnswer((_) async => null);
-
-      expect(await storage.loadConfig(), isNull);
-    });
-
-    test(
-        'loadConfig returns null and handles errors gracefully on malformed JSON',
-        () async {
-      when(() => mockSecureStorage.read(key: any(named: 'key')))
-          .thenAnswer((_) async => '{invalid_json}');
-
-      expect(await storage.loadConfig(), isNull);
-    });
-
-    test('clear deletes the config key', () async {
-      when(() => mockSecureStorage.delete(key: any(named: 'key')))
-          .thenAnswer((_) async {});
-
+  group('EnvStorage.clear', () {
+    test('removes all keys', () async {
+      await storage.saveActiveEnv('dev');
+      await storage.saveUrlToHistory('url');
       await storage.clear();
-
-      verify(() => mockSecureStorage.delete(key: 'envified_config')).called(1);
+      expect(await storage.loadActiveEnv(), isNull);
+      expect(await storage.loadUrlHistory(), isEmpty);
     });
   });
 }

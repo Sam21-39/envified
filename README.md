@@ -3,319 +3,129 @@
 [![pub package](https://img.shields.io/pub/v/envified.svg)](https://pub.dev/packages/envified)
 [![pub points](https://img.shields.io/pub/points/envified?color=blue)](https://pub.dev/packages/envified/score)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Dart CI](https://github.com/Sam21-39/envified/actions/workflows/dart.yml/badge.svg)](https://github.com/Sam21-39/envified/actions/workflows/dart.yml)
-[![Buy me a Chai](https://img.shields.io/badge/☕%20Support%20-paywithchai-FF5722?style=flat)](https://paywithchai.in/appamania)
+[![Dart CI](https://github.com/Sam21-39/envified/actions/workflows/ci.yml/badge.svg)](https://github.com/Sam21-39/envified/actions/workflows/ci.yml)
 
 > **Stop rebuilding. Start switching.** ⚡  
-> Runtime environment magic for Flutter apps. No hot reload needed.
+> Runtime environment magic for Flutter apps. Reactive, secure, and — dare we say — a little premium.
 
 ---
 
-## The Problem
+You know the drill. You push to prod. Five minutes later, Slack is on fire because someone forgot to swap the API key and is now hammering the dev server with real user data. Your PM is typing. The dots won't stop.
 
-You're a Flutter developer. Every time you need to test a different API endpoint—local dev server, staging, production—you rebuild the app. With `--dart-define` flags. Or `.env` files baked into the binary. Or multiple entry points. It's tedious. It's error-prone. It breaks flow.
-
-**What if you could swap environments in 0.2 seconds? No rebuild. No compilation. Just tap, tap, done.**
-
-That's `envified`.
+**envified exists so that never happens again.**
 
 ---
 
-## What is envified?
+## 🚀 What's New in v3.0.0
 
-`envified` is a **production-grade environment manager** for Flutter that lives entirely at runtime.
+The big one. We rewrote the guts, polished the chrome, and made the whole thing feel like it *wants* to be in your project.
 
-- 🚀 **Swap dev ↔ prod in 200ms** — no rebuild, no hot reload
-- 🔄 **Smart Restart Detection** — know when dependencies need re-initialization
-- 🔒 **Prod lock by default** — prevent accidental data disasters  
-- 🔐 **Sensitive Data Protection** — automatic blurring of API keys and tokens
-- 🧪 **Override any URL** — test against local tunnels, PR branches, anywhere
-- 🛡️ **Premium PIN gate** — secure the debug panel with modern UI
-- 📋 **Full audit trail** — visual timeline of every switch and URL change
-- ⚙️ **Zero production overhead** — stripped out entirely in release builds
-- 🎨 **Enterprise UX** — premium card-based design with dark mode support
-
-It's not just a config switcher. It's **enterprise-grade security** meets **developer quality of life**.
-
-> [!NOTE]  
-> **Security Note:** While `envified` encrypts the active configuration state and overrides on the device (via Keychain/Keystore), the base `.env` files stored in your Flutter assets remain plaintext. Never store high-stakes production secrets directly in `.env` files; they should be fetched at runtime from a secure vault or used for non-sensitive configuration only.
-
----
-
-## 📸 See It In Action
-
-<p align="center">
-  <img src="https://raw.githubusercontent.com/Sam21-39/envified/main/example/assets/gifs/envified-demo.gif" width="280" alt="Live demo: tap to switch" />
-</p>
-
----
-
-## Smart Restart Detection (v2.2.1+)
-
-When you switch environments or override the API URL, `envified` knows that 
-dependency re-initialization is needed. The debug panel shows a prominent banner:
-
-```
-⚠️ Restart app to apply changes
-Dependencies must re-initialize with the new environment.
-[Restart now]
-```
-
-### Why Restart is Needed
-
-These packages cache at initialization time:
-- **HTTP clients** (Dio, http) — re-establish connections
-- **Firebase** — re-initializes with new config
-- **State management** — may cache environment-specific state
-- **API services** — may have bound to old URLs
-
-Switching environments mid-app doesn't re-initialize these. You must restart.
-
-### Detecting Changes
-
-The service tracks:
-- Environment switches: `switchTo(Env.prod)` → flag set
-- URL overrides: `setBaseUrl('https://custom.com')` → flag set
-- Returns to initial: `reset()` → flag cleared if back to initial state
-
-### Using the Restart Flag
-
-Listen to restart state:
-
-```dart
-EnvConfigService.instance.restartNeeded.addListener(() {
-  final needsRestart = EnvConfigService.instance.restartNeeded.value;
-  if (needsRestart) {
-    // Show a notification or banner
-    debugPrint('Restart needed!');
-  }
-});
-```
-
-### Implementing the Restart
-
-When user taps "Restart now", you need to restart the entire app:
-
-**Option 1: Using flutter_phoenix**
-```dart
-import 'package:flutter_phoenix/flutter_phoenix.dart';
-
-Phoenix.rebirth(context);
-```
-
-**Option 2: Using GetX**
-```dart
-Get.offAll(() => const MyApp());
-```
-
-**Option 3: Manual (no package required)**
-```dart
-SystemNavigator.pop();  // Close app, OS will restart it
-```
-
----
-
-## Sensitive Data Protection (v2.2.1+)
-
-API keys, tokens, and secrets in your `.env` files are automatically 
-detected and blurred by default in the debug panel.
-
-### Automatically Detected Keys
-
-These keys are considered sensitive and blurred:
-- `API_KEY`, `SECRET_KEY`, `TOKEN`
-- `PASSWORD`, `PRIVATE_KEY`, `AUTH_TOKEN`
-- `JWT`, `OAUTH_SECRET`, `CLIENT_SECRET`
-- Any key containing these words (case-insensitive)
-
-### Blurred Display
-
-Sensitive values show: "🔓 Tap to reveal"
-
-When tapped:
-- Value is revealed
-- A copy button appears
-- User can copy to clipboard
-- Hiding again by tapping the revealed value
-
-### Why This Matters
-
-Prevents:
-- Accidental exposure in screenshots
-- Secrets visible when screen is shared
-- Keys captured in video recordings
-- Shoulder-surfing attacks
-
-### Example
-
-```env
-# .env.dev
-API_KEY=sk_test_1234567890
-DATABASE_URL=postgresql://user:pass@localhost
-AUTH_TOKEN=bearer_token_xyz
-TIMEOUT=30
-```
-
-In the debug panel:
-```
-API_KEY        🔓 Tap to reveal [copy]
-DATABASE_URL   postgresql://user:pass@localhost [copy]
-AUTH_TOKEN     🔓 Tap to reveal [copy]
-TIMEOUT        30 [copy]
-```
-
-After tapping API_KEY:
-```
-API_KEY        sk_test_1234567890 [copy]
-```
-
-### Custom Sensitive Keys
-
-To add custom sensitive keys:
-
-```dart
-// In env_model.dart
-static const List<String> _sensitiveKeys = [
-  'API_KEY',
-  'SECRET_KEY',
-  'TOKEN',
-  'PASSWORD',
-  'PRIVATE_KEY',
-  'AUTH_TOKEN',
-  'JWT',
-  'OAUTH_SECRET',
-  'YOUR_CUSTOM_KEY',  // ← Add here
-];
-```
-
----
-
-## Zero-Config Environment Discovery (v2.1.0+)
-
-If you follow the naming convention `.env.dev`, `.env.staging`, `.env.prod`, 
-envified automatically discovers them without manual mapping.
-
-### Setup
-
-Create your environment files:
-```bash
-assets/env/
-├── .env              # Shared defaults (optional)
-├── .env.dev          # Dev environment
-├── .env.staging      # Staging environment
-└── .env.prod         # Production environment
-```
-
-Each file must have a `BASE_URL` line:
-
-```env
-# .env.dev
-BASE_URL=https://dev.api.yourapp.com
-DEBUG=true
-TIMEOUT=30
-
-# .env.prod
-BASE_URL=https://api.yourapp.com
-DEBUG=false
-TIMEOUT=5
-```
-
-### Zero-Config Initialization
-
-```dart
-void main() async {
-  WidgetsFlutterBinding.ensureInitialized();
-
-  // Automatic discovery — no manual urls mapping!
-  await EnvConfigService.instance.init(
-    defaultEnv: Env.dev,
-    autoDiscover: true,  // ← enabled by default
-  );
-
-  runApp(const MyApp());
-}
-```
-
-The service automatically:
-- ✅ Finds `.env.dev`, `.env.staging`, `.env.prod`
-- ✅ Extracts BASE_URL from each
-- ✅ Creates environment buttons in the debug panel
-- ✅ Enables switching between all discovered environments
-
-### Discovered Files
-
-The service looks for assets matching pattern: `.env.*`
-
-If you have:
-- `.env.dev` → creates `Env.dev` button
-- `.env.staging` → creates `Env.staging` button
-- `.env.prod` → creates `Env.prod` button
-- `.env.qa` → creates custom `Env.qa` button
-- `.env.custom_server` → creates custom button
-
-### Fallback Values
-
-If a `.env.*` file is missing BASE_URL:
-
-```dart
-// In init()
-const defaultUrl = 'https://api.example.com';
-
-// The service will use this if BASE_URL not found
-final url = _extractBaseUrl(content) ?? defaultUrl;
-```
+| Change | The Vibe |
+|--------|----------|
+| ⚛️ **Reactive Architecture** | Built on `ValueNotifier`. Your UI reacts to env changes like it's watching a stock ticker — instantly, no rebuilds needed. |
+| 🏗️ **Singleton Pattern** | `EnvConfigService.instance` — one line, any file, anywhere in your codebase. No context, no ceremony. |
+| 🔒 **Production Lock** | `isProdLocked` mode. Your staging-happy teammates literally cannot switch away from Prod. You're welcome. |
+| 🛡️ **Improved DI** | First-class `AssetBundle` injection. Mock it, fake it, test it — total control. |
+| 🎨 **Luxury UI** | The debug panel got a glow-up: smooth animations, better layout, audit trail that doesn't look like a server log from 2009. |
+| 🧪 **Robust Testing** | Deep coverage for all the edge cases you thought only happened to you. They happen to everyone. |
 
 ---
 
 ## 📦 Features
 
-| Feature | What It Does | Why You Care |
-|---------|-------------|--------------|
-| **Smart Restart** | Detects when env changes require restart | Prevents connection/state caching bugs |
-| **Data Protection** | Blurs sensitive keys (API_KEY, etc.) | Security in screenshots & screen shares |
-| **Auto-Discovery** | Scans assets for `.env.*` files | Zero config; just add a file and it works |
-| **Alias Support** | Handles `dev`, `stag`, `production`, etc. | Follows industry standard naming conventions |
-| **Tamper Detection** | SHA-256 hashes `.env*` files | Catch rogue config changes on rooted devices |
-| **Access Gate** | Modern PIN dialog before opening panel | QA devices don't leak sensitive switches |
-| **URL Validation** | Live feedback on custom API URLs | Prevent typos and invalid endpoint formats |
-| **Audit Log** | Vertical timeline of every switch | "Who changed prod at 3pm?" |
-| **Status Badge** | Persistent `[DEV]` indicator in your app | Never forget what env you're testing |
-| **Gesture Triggers** | Tap N times, shake, or swipe edge to open | Access the panel your way |
+Because a bullet list isn't enough — here's what each feature actually *does* for you, and why you should care:
+
+### ⚛️ Reactive State — The One That Changes Everything
+
+`ValueListenable<EnvConfig>` is at the core. No global setState calls, no InheritedWidget gymnastics. The moment you switch an environment, the whole app knows. It just works.
+
+### 🔒 Production Lock — Your Last Line of Defence
+
+When `allowProdSwitch: false`, that's it. The UI greys out. The API throws. No one is accidentally pointing five thousand real users at `dev.api.yourapp.com` at 2 AM ever again.
+
+### 🕶️ Sensitive Data Auto-Blurring — For the Screen-Share Sweats
+
+Ever shared your screen in a standup and suddenly your `JWT_TOKEN` is in 4K on everyone's monitor? Mark a key as sensitive and envified blurs it in the panel. Even if someone screenshots it. Yes, really.
+
+### 🔍 Auto-Discovery — Just Drop the File
+
+Point it at `assets/env/` and walk away. No yaml mapping per environment, no manual registration loop. It finds `.env.dev`, `.env.staging`, `.env.prod` by itself. Pure magic, entirely explainable.
+
+### 📜 Audit Log — Accountability, but Make It Pretty
+
+A full visual timeline of every environment switch, with timestamps. When your QA lead asks "wait, was this tested on staging or prod?", you pull up the log and *know*. No guesswork.
+
+### 🟢 Status Badge — The Little Dot That Saves Big Meetings
+
+A floating indicator that shows the active environment at all times. Green for dev, red for prod, whatever you configure. You'll wonder how you ever lived without it after the first week.
+
+### 📳 Shake to Open — Because Tapping Hidden Buttons is for Amateurs
+
+Give your phone a shake. Panel opens. Switch environments. Shake again to close. It's genuinely satisfying and your QA team will use it without being told how.
 
 ---
 
-## Quick Start (3 Steps)
+## 🛠️ Setup in Four Steps (Yes, Really Just Four)
 
-### 1️⃣ Install
+### 1. Install
 
 ```yaml
 dependencies:
-  envified: ^2.2.1
+  envified: ^3.0.0
 ```
 
-### 2️⃣ Add `.env` Files
+Then run:
 
-Create in `assets/env/`:
+```bash
+flutter pub get
+```
+
+No build_runner. No code gen. No magic incantations. Just a package that installs like a normal package. Revolutionary, we know.
+
+---
+
+### 2. Create Your Environment Files
+
+Drop these into `assets/env/`:
+
+```text
+assets/
+└── env/
+    ├── .env.dev
+    ├── .env.staging   ← optional, but you probably want it
+    └── .env.prod
+```
+
+Each file is a plain `.env` file. Nothing exotic:
 
 ```env
 # .env.dev
 BASE_URL=https://dev.api.myapp.com
-API_KEY=sk_test_51Mz...
+API_KEY=sk_test_123
+FEATURE_FLAG_NEW_CHECKOUT=true
+
+# .env.staging
+BASE_URL=https://staging.api.myapp.com
+API_KEY=sk_test_staging_456
+FEATURE_FLAG_NEW_CHECKOUT=true
 
 # .env.prod
 BASE_URL=https://api.myapp.com
-API_KEY=sk_live_92A...
+API_KEY=sk_live_abc
+FEATURE_FLAG_NEW_CHECKOUT=false  # not yet, coward
 ```
 
-Register in `pubspec.yaml`:
+Register the folder in `pubspec.yaml`:
 
 ```yaml
 flutter:
   assets:
-    - assets/env/
+    - assets/env/  # that's it. envified scans the rest.
 ```
 
-### 3️⃣ Initialize
+---
+
+### 3. Initialize in `main()`
 
 ```dart
 void main() async {
@@ -323,154 +133,274 @@ void main() async {
 
   await EnvConfigService.instance.init(
     defaultEnv: Env.dev,
-    onAfterSwitch: (config) {
-      // Listen for restart needed
-      EnvConfigService.instance.restartNeeded.addListener(() {
-        debugPrint('Dependencies must re-initialize');
-      });
-    },
+
+    // Lock the service down in release builds — no switching,
+    // no panel, no funny business.
+    allowProdSwitch: kDebugMode,
+
+    // These values get auto-blurred in the debug panel.
+    // Your standup screenshots will remain safe.
+    sensitiveKeys: ['API_KEY', 'JWT_TOKEN', 'STRIPE_SECRET'],
+
+    // (Optional) Define which environments are locked in release mode.
+    // Defaults to [Env.prod].
+    productionEnvs: [Env.prod, Env.dynamic('canary')],
   );
 
   runApp(const MyApp());
 }
 ```
 
-Wrap your app with the overlay:
+---
+
+### 4. Wrap Your App with the Overlay
+
+The overlay is what brings the debug panel, status badge, and shake gesture to life. It lives just inside `MaterialApp.builder`:
 
 ```dart
 MaterialApp(
   builder: (context, child) => EnvifiedOverlay(
-    service: EnvConfigService.instance,
+    // Disable entirely in release — ships zero overhead to prod
     enabled: kDebugMode,
-    gate: EnvGate(pin: '1234'),
-    onRestart: () {
-      // Trigger a hard restart (e.g. using phoenix or SystemNavigator)
-      SystemNavigator.pop();
-    },
+
+    // Require a PIN before allowing any environment switch.
+    // Keeps curious fingers out of dangerous territory.
+    gate: EnvGate(pin: '8888'),
+
+    // Shake your device to open the panel.
+    // Or swap for EnvTrigger.longPress() if you prefer.
+    trigger: EnvTrigger.shake(detector: MyShakeDetector()),
+
     child: child!,
   ),
   home: const MyHomePage(),
+),
+```
+
+That's it. Your app now has a runtime environment switcher. Go touch some grass — you've earned it.
+
+---
+
+## ⚛️ Reactive Usage — The Good Stuff
+
+Since v3.0.0, `EnvConfigService.instance.current` is a `ValueListenable<EnvConfig>`. That means you can wire it directly into `ValueListenableBuilder` and get real-time UI updates with zero manual `setState` calls:
+
+```dart
+ValueListenableBuilder<EnvConfig>(
+  valueListenable: EnvConfigService.instance.current,
+  builder: (context, config, _) {
+    return Column(
+      children: [
+        Text('🌐 Base URL: ${config.baseUrl}'),
+        Text('🔑 API Key: ${config.get('API_KEY')}'),
+        Text('🚦 Env: ${config.name.toUpperCase()}'),
+      ],
+    );
+  },
 )
 ```
 
----
+Switch environments in the panel → the builder fires → the UI updates. No hot reload. No restart. No ceremony.
 
-## Best Practices for .env Files
-
-### File Organization
-
-```
-assets/env/
-├── .env                 # Shared across all environments
-├── .env.dev             # Development environment
-├── .env.staging         # Staging/testing environment
-└── .env.prod            # Production environment
-```
-
-### .env (Shared Defaults)
-
-```env
-# Shared config used by all environments
-# Use for values that don't change per-environment
-
-APP_NAME=MyApp
-APP_VERSION=1.0.0
-ANALYTICS_ENABLED=true
-CRASH_REPORTING_ENABLED=true
-LOG_LEVEL=info
-```
-
-### Accessing Values
+You can also listen imperatively if `ValueListenableBuilder` isn't your style:
 
 ```dart
-final svc = EnvConfigService.instance;
-
-// String (use .get)
-final apiUrl = svc.get('API_URL');
-
-// Boolean (use .getBool)
-final debugMode = svc.getBool('DEBUG', fallback: false);
-
-// Integer (use .getInt)
-final timeout = svc.getInt('API_TIMEOUT', fallback: 30);
+EnvConfigService.instance.current.addListener(() {
+  final newConfig = EnvConfigService.instance.current.value;
+  print('Switched to: ${newConfig.name}');
+  analytics.track('env_switch', {'env': newConfig.name});
+});
 ```
 
 ---
 
-## Troubleshooting
+## 🔒 Production Locking — The Guardian Angel
 
-### Q: "No .env.* files discovered"
+Two scenarios where production locking saves you:
 
-**Cause:** Asset files not registered in pubspec.yaml
+**Scenario A — Release builds**  
+Set `allowProdSwitch: false` and pass `enabled: false` to `EnvifiedOverlay`. The panel is gone. The service ignores switch attempts. Your prod build is clean and your users have no idea any of this exists.
 
-**Fix:**
-```yaml
-flutter:
-  assets:
-    - assets/env/
-```
-
-Run: `flutter clean && flutter pub get`
-
-### Q: Environment switches but API still hits old endpoint
-
-**Cause:** HTTP client cached the URL at startup
-
-**Fix:** Tap "Restart now" in the debug panel to re-initialize or listen to `restartNeeded`.
-
----
-
-## Integration with HTTP Clients
-
-### Dio
+**Scenario B — The brave "always prod" setup**  
+Maybe you want the panel available in staging but default to Prod and lock it there:
 
 ```dart
-import 'package:dio/dio.dart';
-import 'package:envified/envified.dart';
+await EnvConfigService.instance.init(
+  defaultEnv: Env.prod,
+  allowProdSwitch: false, // once you're in Prod, you stay in Prod
+);
+```
 
-final dio = Dio();
+Now, if anyone (your QA lead, your over-curious intern, your past self at 11 PM) tries to switch away, they get a loud `EnvifiedLockException` and a UI that has already greyed out the controls. The audit log records the attempt. The blame is documented.
 
-Future<void> setupDio() async {
-  await EnvConfigService.instance.init();
-  
-  // Set initial base URL
-  dio.options.baseUrl = EnvConfigService.instance.current.value.baseUrl;
-  
-  // Listen for environment changes
-  EnvConfigService.instance.current.addListener(() {
-    dio.options.baseUrl = EnvConfigService.instance.current.value.baseUrl;
-  });
+```dart
+// Catching the exception if you need to handle it gracefully:
+try {
+  await EnvConfigService.instance.switchTo(Env.dev);
+} on EnvifiedLockException catch (e) {
+  showDialog(
+    context: context,
+    builder: (_) => AlertDialog(
+      title: const Text('Nice try.'),
+      content: Text(e.message),
+    ),
+  );
 }
 ```
 
 ---
 
-## API Stability & Versioning
+## 🔍 Reading Values
 
-### Semantic Versioning
+Once initialized, getting a value is a single line:
 
-This package follows [Semantic Versioning](https://semver.org/):
+```dart
+// Typed getters on EnvConfig:
+final baseUrl = EnvConfigService.instance.current.value.baseUrl;
 
-- **MAJOR** (1.0.0) — Breaking changes to public API
-- **MINOR** (0.1.0) — New features, backwards compatible
-- **PATCH** (0.0.1) — Bug fixes, backwards compatible
+// Generic key lookup (returns String?):
+final apiKey = EnvConfigService.instance.current.value.get('API_KEY');
+
+// With a fallback, because nulls are a lifestyle choice you don't have to make:
+final timeout = EnvConfigService.instance.current.value.get('TIMEOUT') ?? '30';
+```
+
+---
+
+## 🧪 Testing — First-Class, Not an Afterthought
+
+envified v3 was built test-first. The `overrideForTesting` hook lets you swap out every dependency before your first `expect`:
+
+```dart
+setUp(() {
+  EnvConfigService.overrideForTesting(
+    storage: MyFakeStorage(),        // in-memory, no disk I/O
+    parser: const EnvFileParser(),   // real parser, fake assets
+  );
+});
+
+test('switches env and notifies listeners', () async {
+  // Inject whatever env files you want via the bundle
+  await EnvConfigService.instance.init(
+    defaultEnv: Env.dev,
+    bundle: FakeAssetBundle({
+      'assets/env/.env': 'BASE_URL=https://test.internal\nAPI_KEY=sk_test_fake',
+    }),
+  );
+
+  var notified = false;
+  EnvConfigService.instance.current.addListener(() => notified = true);
+
+  await EnvConfigService.instance.switchTo(Env.staging);
+
+  expect(notified, isTrue);
+  expect(
+    EnvConfigService.instance.current.value.name,
+    equals('staging'),
+  );
+});
+```
+
+No network calls. No file system. No flakiness. Just fast, deterministic tests that tell you something real.
+
+---
+
+## 🎯 Trigger Options
+
+The overlay ships with multiple ways to open the panel. Pick your style:
+
+```dart
+// Shake gesture — the classic (requires a detector)
+trigger: EnvTrigger.shake(detector: MyShakeDetector())
+
+// Long press on the status badge or overlay area
+trigger: const EnvTrigger.longPress()
+
+// Double-tap anywhere on the overlay
+trigger: const EnvTrigger.doubleTap()
+
+// Edge swipe — for that native feeling
+trigger: const EnvTrigger.edgeSwipe()
+```
+
+---
+
+## 🔐 Gate Options
+
+Control *who* can actually switch:
+
+```dart
+// PIN gate — the default
+gate: EnvGate(pin: '8888')
+
+// No gate — trust everyone (dev-only, please)
+// Simply don't pass a gate to EnvifiedOverlay
+```
+
+---
+
+## 🧩 Dynamic Environments — No More Static Enums
+
+envified v3 automatically discovers your environments from the file extensions in `assets/env/`.
+
+- `.env` → **Prod**
+- `.env.staging` → **Staging**
+- `.env.dev` → **Dev**
+- `.env.canary` → **Canary** (discovered automatically!)
+
+You don't need to define an enum anymore. If you want to reference a specific environment in code, use the built-in constants: `Env.dev`, `Env.staging`, `Env.prod`. Or create your own dynamic environment: `final myEnv = Env.dynamic('canary');`.
+
+---
+
+## 📐 Architecture Overview
+
+```text
+EnvConfigService (Singleton)
+├── current: ValueNotifier<EnvConfig>   ← reactive source of truth
+├── init()                               ← loads default env from storage or param
+├── switchTo(env)                        ← validates lock, updates notifier, persists
+└── overrideForTesting()                 ← injects fakes for unit tests
+
+EnvifiedOverlay (Widget)
+├── EnvStatusBadge                       ← floating environment indicator
+├── EnvGate                              ← PIN guard
+├── EnvTrigger                           ← shake / tap / longPress / doubleTap / swipe
+└── EnvPanel                             ← the actual switcher UI + audit log
+
+EnvFileParser
+├── Scans AssetBundle for .env.* files
+├── Parses KEY=VALUE pairs
+└── Returns typed EnvConfig objects
+```
 
 ---
 
 ## 🤝 Contributing
 
-See [CONTRIBUTING.md](https://github.com/Sam21-39/envified/blob/main/CONTRIBUTING.md) for details. Found a bug? Open an [Issue](https://github.com/Sam21-39/envified/issues)!
+Found a bug? Have a wild idea for a new trigger? PRs are open, issues are welcome, and we read everything.
 
----
+Please run the tests before opening a PR:
 
-## Support the Project ☕
+```bash
+flutter test
+```
 
-If `envified` saves your rebuild time and improves your workflow, you can support the project here:
-
-👉 https://paywithchai.in/appamania
+And if you're adding a feature, add a test for it. Future-you will be grateful. Past-you is already nodding.
 
 ---
 
 ## 📄 License
 
 MIT © [Appamania](https://appamania.in)
+
+---
+
+## ☕ Support the Project
+
+If **envified** saves your rebuild time and improves your workflow, consider supporting the project:
+
+👉 **[Pay with Chai](https://paywithchai.in/appamania)**
+
+---
+
+*Built with the belief that developer experience is a feature, not a luxury.*

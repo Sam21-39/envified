@@ -1,7 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-
-import 'package:envified/src/env_file_parser.dart';
-import 'package:envified/src/env_model.dart';
+import 'package:envified/src/parser/env_file_parser.dart';
 import 'test_helper.dart';
 
 void main() {
@@ -13,55 +11,67 @@ void main() {
 
     setUp(() {
       bundle = FakeAssetBundle();
-      parser = EnvFileParser();
+      parser = const EnvFileParser();
     });
 
-    // ── parse() via asset bundle ─────────────────────────────────────────────
+    group('parseString', () {
+      test('parses simple KEY=VALUE', () {
+        final result = parser.parseString('KEY=VALUE\nFOO=bar');
+        expect(result['KEY'], 'VALUE');
+        expect(result['FOO'], 'bar');
+      });
 
-    test('returns empty map for missing asset file', () async {
-      final result = await parser.parse('.env.none', bundle: bundle);
-      expect(result, isEmpty);
+      test('ignores comments and empty lines', () {
+        final result = parser.parseString('''
+# This is a comment
+KEY=VALUE
+
+  # Another comment
+  OTHER=STUFF
+''');
+        expect(result.length, 2);
+        expect(result['KEY'], 'VALUE');
+        expect(result['OTHER'], 'STUFF');
+      });
+
+      test('handles quoted values', () {
+        final result = parser
+            .parseString('KEY="VALUE WITH SPACES"\nFOO=\'single quotes\'');
+        expect(result['KEY'], 'VALUE WITH SPACES');
+        expect(result['FOO'], 'single quotes');
+      });
+
+      test('trims whitespace around keys and values', () {
+        final result = parser.parseString('  KEY  =  VALUE  ');
+        expect(result['KEY'], 'VALUE');
+      });
     });
 
-    test('parses KEY=VALUE correctly', () async {
-      bundle.register('.env.test', 'KEY=VALUE\nFOO=bar\n');
-      final result = await parser.parse('.env.test', bundle: bundle);
-      expect(result['KEY'], 'VALUE');
-      expect(result['FOO'], 'bar');
+    group('loadAsset', () {
+      test('returns null for missing asset file', () async {
+        final result = await parser.loadAsset('.env.none', bundle: bundle);
+        expect(result, isNull);
+      });
+
+      test('loads and parses asset correctly', () async {
+        bundle.register('assets/env/.env.test', 'KEY=VALUE');
+        final result =
+            await parser.loadAsset('assets/env/.env.test', bundle: bundle);
+        expect(result?['KEY'], 'VALUE');
+      });
     });
 
-    test('ignores # comment lines', () async {
-      bundle.register(
-        '.env.test',
-        '# Comment\nKEY=VALUE\n',
-      );
-      final result = await parser.parse('.env.test', bundle: bundle);
-      expect(result.containsKey('#'), isFalse);
-      expect(result['KEY'], 'VALUE');
-    });
+    group('computeHash', () {
+      test('generates consistent SHA-256 hashes', () {
+        const content = 'KEY=VALUE';
+        final h1 = parser.computeHash(content);
+        final h2 = parser.computeHash(content);
+        final h3 = parser.computeHash('OTHER=VALUE');
 
-    // ── discovery ────────────────────────────────────────────────────────────
-
-    test('discoverAndExtractUrls finds multiple files', () async {
-      bundle.register('.env.dev', 'BASE_URL=https://dev.com');
-      bundle.register('.env.prod', 'BASE_URL=https://prod.com');
-      bundle.register('.env.future', 'BASE_URL=https://future.com');
-
-      final urls = await parser.discoverAndExtractUrls(bundle: bundle);
-      expect(urls.length, 3);
-      expect(urls[Env.dev], 'https://dev.com');
-      expect(urls[Env.prod], 'https://prod.com');
-      expect(urls[Env.fromFileName('.env.future')], 'https://future.com');
-    });
-
-    test('discoverAndExtractUrls handles .env as production', () async {
-      bundle.register('.env', 'BASE_URL=https://root.com');
-      final urls = await parser.discoverAndExtractUrls(bundle: bundle);
-
-      expect(urls.length, 1);
-      final env = urls.keys.first;
-      expect(env.isProduction, isTrue);
-      expect(urls[env], 'https://root.com');
+        expect(h1, equals(h2));
+        expect(h1, isNot(equals(h3)));
+        expect(h1.length, 64); // Hex length for SHA-256
+      });
     });
   });
 }

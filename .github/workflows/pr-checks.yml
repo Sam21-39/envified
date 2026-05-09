@@ -2,7 +2,9 @@ name: PR Checks
 
 on:
   pull_request:
-    branches: [main, dev]
+    branches: [main, develop, release/*]
+  push:
+    branches: [develop, release/*]
 
 jobs:
   validate:
@@ -15,21 +17,22 @@ jobs:
       
       - uses: subosito/flutter-action@v2
         with:
+          flutter-version: '3.41.9'
           channel: 'stable'
       
       - name: Check branch name
         run: |
-          BRANCH=${{ github.head_ref }}
-          if [[ ! $BRANCH =~ ^(feature|fix|docs|release)\/ ]] && [[ $BRANCH != "dev" ]]; then
+          BRANCH=${{ github.head_ref || github.ref_name }}
+          if [[ ! $BRANCH =~ ^(feature|fix|docs|release|hotfix)\/ ]] && [[ $BRANCH != "develop" ]] && [[ $BRANCH != "main" ]]; then
             echo "❌ Invalid branch name: $BRANCH"
-            echo "Use: feature/*, fix/*, docs/*, or release/*"
+            echo "Use: feature/*, fix/*, hotfix/*, docs/*, or release/*"
             exit 1
           fi
           echo "✅ Branch name valid: $BRANCH"
       
       - name: Check CHANGELOG updated
         run: |
-          if git diff origin/dev HEAD -- CHANGELOG.md | grep -q "^[+-]"; then
+          if git diff origin/develop HEAD -- CHANGELOG.md | grep -q "^[+-]"; then
             echo "✅ CHANGELOG updated"
           else
             echo "⚠️ CHANGELOG not updated (required for feature/fix branches)"
@@ -38,7 +41,7 @@ jobs:
       - name: Check pubspec.yaml version
         run: |
           # Warn if version not bumped
-          if ! git diff origin/dev HEAD -- pubspec.yaml | grep -q "version:"; then
+          if ! git diff origin/develop HEAD -- pubspec.yaml | grep -q "version:"; then
             echo "⚠️ Version not bumped in pubspec.yaml"
           fi
       
