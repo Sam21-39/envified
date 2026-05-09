@@ -1,4 +1,3 @@
-import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:envified/envified.dart';
@@ -42,14 +41,6 @@ class EnvifiedLuxuryApp extends StatefulWidget {
 class _EnvifiedLuxuryAppState extends State<EnvifiedLuxuryApp> {
   Key _appKey = UniqueKey();
 
-  void _handleRestart() {
-    // 2. Clear the "restart needed" flag once acknowledged.
-    EnvConfigService.instance.acknowledgeRestart();
-    setState(() {
-      _appKey = UniqueKey();
-    });
-  }
-
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
@@ -63,12 +54,12 @@ class _EnvifiedLuxuryAppState extends State<EnvifiedLuxuryApp> {
           brightness: Brightness.dark,
         ),
         scaffoldBackgroundColor: const Color(0xFF0F0F1A),
-        cardTheme: CardTheme(
+        cardTheme: CardThemeData(
           color: const Color(0xFF1E1E2E),
           elevation: 0,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(24),
-            side: BorderSide(color: Colors.white.withOpacity(0.05)),
+            side: BorderSide(color: Colors.white.withValues(alpha: 0.05)),
           ),
         ),
       ),
@@ -178,13 +169,13 @@ class LuxuryHome extends StatelessWidget {
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
-            const Color(0xFF6200EE).withOpacity(0.8),
-            const Color(0xFFBB86FC).withOpacity(0.8),
+            const Color(0xFF6200EE).withValues(alpha: 0.8),
+            const Color(0xFFBB86FC).withValues(alpha: 0.8),
           ],
         ),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF6200EE).withOpacity(0.3),
+            color: const Color(0xFF6200EE).withValues(alpha: 0.3),
             blurRadius: 32,
             offset: const Offset(0, 16),
           ),
@@ -196,7 +187,7 @@ class LuxuryHome extends StatelessWidget {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.2),
+              color: Colors.white.withValues(alpha: 0.2),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Text(
@@ -222,7 +213,7 @@ class LuxuryHome extends StatelessWidget {
             'Last loaded at ${config.loadedAt.hour}:${config.loadedAt.minute}',
             style: TextStyle(
               fontSize: 12,
-              color: Colors.white.withOpacity(0.7),
+              color: Colors.white.withValues(alpha: 0.7),
             ),
           ),
         ],
@@ -236,7 +227,7 @@ class LuxuryHome extends StatelessWidget {
       style: TextStyle(
         fontSize: 11,
         fontWeight: FontWeight.bold,
-        color: Colors.white.withOpacity(0.4),
+        color: Colors.white.withValues(alpha: 0.4),
         letterSpacing: 1.5,
       ),
     );
@@ -259,7 +250,8 @@ class LuxuryHome extends StatelessWidget {
                 children: [
                   Text(title,
                       style: TextStyle(
-                          fontSize: 10, color: Colors.white.withOpacity(0.4))),
+                          fontSize: 10,
+                          color: Colors.white.withValues(alpha: 0.4))),
                   const SizedBox(height: 4),
                   Text(
                     value,
@@ -306,7 +298,7 @@ class LuxuryHome extends StatelessWidget {
                   isSensitive ? '••••••••••••••••' : value,
                   style: TextStyle(
                       fontSize: 12,
-                      color: Colors.white.withOpacity(0.5),
+                      color: Colors.white.withValues(alpha: 0.5),
                       fontFamily: 'monospace'),
                 ),
               ],
@@ -314,7 +306,7 @@ class LuxuryHome extends StatelessWidget {
           ),
           if (isSensitive)
             Icon(Icons.lock_rounded,
-                size: 14, color: Colors.white.withOpacity(0.2)),
+                size: 14, color: Colors.white.withValues(alpha: 0.2)),
         ],
       ),
     );

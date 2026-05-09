@@ -6,7 +6,10 @@ class AuditLogViewer extends StatelessWidget {
   /// The list of audit entries to display.
   final List<AuditEntry> entries;
 
-  const AuditLogViewer({super.key, required this.entries});
+  const AuditLogViewer({
+    super.key,
+    required this.entries,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -43,7 +46,7 @@ class AuditLogViewer extends StatelessWidget {
                       height: 24,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        color: _actionColor(entry.action).withOpacity(0.15),
+                        color: _actionColor(entry.action).withValues(alpha: 0.15),
                       ),
                       child: Icon(
                         _actionIcon(entry.action),
@@ -55,7 +58,7 @@ class AuditLogViewer extends StatelessWidget {
                       Expanded(
                         child: Container(
                           width: 2,
-                          color: Colors.grey.withOpacity(0.2),
+                          color: Colors.grey.withValues(alpha: 0.2),
                         ),
                       ),
                   ],

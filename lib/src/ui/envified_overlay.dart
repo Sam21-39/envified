@@ -35,7 +35,7 @@ class EnvifiedOverlay extends StatefulWidget {
   /// Whether to show the floating 🌿 button.
   final bool showFab;
 
-  const EnvifiedOverlay({
+    const EnvifiedOverlay({
     super.key,
     required this.child,
     this.enabled = true,
@@ -193,7 +193,15 @@ class _OverlayContentState extends State<_OverlayContent> {
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(16),
                     child: Container(
-                      color: Theme.of(context).canvasColor,
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).canvasColor,
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.2),
+                            blurRadius: 4,
+                          ),
+                        ],
+                      ),
                       constraints: BoxConstraints(
                         maxHeight: MediaQuery.of(context).size.height * 0.7,
                       ),
