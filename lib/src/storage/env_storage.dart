@@ -96,9 +96,8 @@ class EnvStorage implements EnvStorageInterface {
   Future<void> saveUrlToHistory(String url) async {
     final history = await loadUrlHistory();
     // Move to top, remove duplicates, take top 5
-    final updated = [url, ...history.where((u) => u != url)]
-        .take(_urlHistoryMax)
-        .toList();
+    final updated =
+        [url, ...history.where((u) => u != url)].take(_urlHistoryMax).toList();
     await _store.write(key: _keyUrlHistory, value: jsonEncode(updated));
   }
 

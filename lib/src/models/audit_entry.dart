@@ -49,9 +49,8 @@ class AuditEntry {
         fromEnv: json['fromEnv'] != null
             ? Env.dynamic(json['fromEnv'] as String)
             : null,
-        toEnv: json['toEnv'] != null
-            ? Env.dynamic(json['toEnv'] as String)
-            : null,
+        toEnv:
+            json['toEnv'] != null ? Env.dynamic(json['toEnv'] as String) : null,
         url: json['url'] as String?,
       );
 

@@ -94,9 +94,8 @@ class EnvConfigService {
       _sensitiveKeys.addAll(sensitiveKeys.map((k) => k.toUpperCase()));
     }
     final persistedEnvName = await _storage.loadActiveEnv();
-    final envToLoad = persistedEnvName != null
-        ? Env.dynamic(persistedEnvName)
-        : defaultEnv;
+    final envToLoad =
+        persistedEnvName != null ? Env.dynamic(persistedEnvName) : defaultEnv;
 
     await _loadEnv(envToLoad);
     _initialConfig = current.value;
@@ -192,12 +191,11 @@ class EnvConfigService {
   Uri? getUri(String key) => Uri.tryParse(get(key) ?? '');
 
   /// Retrieves a list of strings for [key], split by [separator].
-  List<String> getList(String key, {String separator = ','}) =>
-      (get(key) ?? '')
-          .split(separator)
-          .map((s) => s.trim())
-          .where((s) => s.isNotEmpty)
-          .toList();
+  List<String> getList(String key, {String separator = ','}) => (get(key) ?? '')
+      .split(separator)
+      .map((s) => s.trim())
+      .where((s) => s.isNotEmpty)
+      .toList();
 
   /// Disposes all [ValueNotifier]s.
   void dispose() {

@@ -110,9 +110,11 @@ class _EnvDebugPanelState extends State<EnvDebugPanel> {
               const Divider(height: 32),
               ExpansionTile(
                 title: const Text('Activity History',
-                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+                    style:
+                        TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
                 initiallyExpanded: _auditExpanded,
-                onExpansionChanged: (val) => setState(() => _auditExpanded = val),
+                onExpansionChanged: (val) =>
+                    setState(() => _auditExpanded = val),
                 children: [
                   ValueListenableBuilder(
                     valueListenable: EnvConfigService.instance.auditLog,
