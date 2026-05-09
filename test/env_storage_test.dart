@@ -14,7 +14,7 @@ void main() {
 
     setUp(() {
       mockSecureStorage = MockFlutterSecureStorage();
-      storage = EnvStorage(storage: mockSecureStorage);
+      storage = EnvStorage(store: mockSecureStorage);
       registerFallbackValue(AuditAction.envSwitch);
     });
 
@@ -56,7 +56,8 @@ void main() {
           )).called(1);
     });
 
-    test('appendAuditEntry adds entry and respects ring buffer limit', () async {
+    test('appendAuditEntry adds entry and respects ring buffer limit',
+        () async {
       when(() => mockSecureStorage.read(key: 'envified.audit_log'))
           .thenAnswer((_) async => '[]');
       when(() => mockSecureStorage.write(
@@ -85,9 +86,12 @@ void main() {
 
       await storage.clear();
 
-      verify(() => mockSecureStorage.delete(key: 'envified.active_env')).called(1);
-      verify(() => mockSecureStorage.delete(key: 'envified.audit_log')).called(1);
-      verify(() => mockSecureStorage.delete(key: 'envified.url_history')).called(1);
+      verify(() => mockSecureStorage.delete(key: 'envified.active_env'))
+          .called(1);
+      verify(() => mockSecureStorage.delete(key: 'envified.audit_log'))
+          .called(1);
+      verify(() => mockSecureStorage.delete(key: 'envified.url_history'))
+          .called(1);
     });
   });
 }

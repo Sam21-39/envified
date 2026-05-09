@@ -32,7 +32,7 @@ class _EnvDebugPanelState extends State<EnvDebugPanel> {
 
   @override
   Widget build(BuildContext context) {
-    return ValueListenableBuilder(
+    return ValueListenableBuilder<EnvConfig>(
       valueListenable: EnvConfigService.instance.current,
       builder: (context, config, _) {
         return Padding(
@@ -116,7 +116,7 @@ class _EnvDebugPanelState extends State<EnvDebugPanel> {
                 onExpansionChanged: (val) =>
                     setState(() => _auditExpanded = val),
                 children: [
-                  ValueListenableBuilder(
+                  ValueListenableBuilder<List<AuditEntry>>(
                     valueListenable: EnvConfigService.instance.auditLog,
                     builder: (context, entries, _) {
                       return AuditLogViewer(entries: entries.reversed.toList());

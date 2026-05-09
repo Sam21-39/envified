@@ -1,4 +1,6 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart' show AssetBundle;
+import 'package:meta/meta.dart';
 import '../models/audit_entry.dart';
 import '../models/env.dart';
 import '../models/env_config.dart';
@@ -121,7 +123,8 @@ class EnvConfigService {
   /// Switches the active environment.
   Future<void> switchTo(Env env) async {
     if (isProdLocked) {
-      throw EnvifiedLockException('Cannot switch environment while locked in Production.');
+      throw EnvifiedLockException(
+          'Cannot switch environment while locked in Production.');
     }
     final from = current.value.env;
     if (from == env) return;
@@ -135,7 +138,8 @@ class EnvConfigService {
   /// Overrides the base URL for the current environment.
   Future<void> setBaseUrl(String url) async {
     if (isProdLocked) {
-      throw EnvifiedLockException('Cannot override URL while locked in Production.');
+      throw EnvifiedLockException(
+          'Cannot override URL while locked in Production.');
     }
     if (!_isValidUrl(url)) throw ArgumentError('Invalid URL: $url');
 

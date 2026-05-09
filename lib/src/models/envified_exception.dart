@@ -1,7 +1,8 @@
 /// Exception thrown when an action is blocked due to production lock.
 class EnvifiedLockException implements Exception {
   final String message;
-  EnvifiedLockException([this.message = 'Action blocked: Production is locked.']);
+  EnvifiedLockException(
+      [this.message = 'Action blocked: Production is locked.']);
 
   @override
   String toString() => 'EnvifiedLockException: $message';
@@ -13,7 +14,8 @@ class EnvifiedUrlNotAllowedException implements Exception {
   EnvifiedUrlNotAllowedException(this.url);
 
   @override
-  String toString() => 'EnvifiedUrlNotAllowedException: URL "$url" is not in the allowlist.';
+  String toString() =>
+      'EnvifiedUrlNotAllowedException: URL "$url" is not in the allowlist.';
 }
 
 /// Exception thrown when an environment file fails integrity verification.
@@ -22,5 +24,6 @@ class EnvifiedTamperException implements Exception {
   EnvifiedTamperException(this.path);
 
   @override
-  String toString() => 'EnvifiedTamperException: Integrity check failed for $path.';
+  String toString() =>
+      'EnvifiedTamperException: Integrity check failed for $path.';
 }

@@ -9,17 +9,42 @@ class FakeFlutterSecureStorage extends Fake implements FlutterSecureStorage {
   final Map<String, String> _data = {};
 
   @override
-  Future<void> write({required String key, required String? value, Map<String, dynamic>? iOptions, Map<String, dynamic>? aOptions, Map<String, dynamic>? lOptions, Map<String, dynamic>? webOptions, Map<String, dynamic>? mOptions, Map<String, dynamic>? wOptions}) async {
+  Future<void> write({
+    required String key,
+    required String? value,
+    AppleOptions? iOptions,
+    AndroidOptions? aOptions,
+    LinuxOptions? lOptions,
+    WebOptions? webOptions,
+    AppleOptions? mOptions,
+    WindowsOptions? wOptions,
+  }) async {
     if (value == null) _data.remove(key); else _data[key] = value;
   }
 
   @override
-  Future<String?> read({required String key, Map<String, dynamic>? iOptions, Map<String, dynamic>? aOptions, Map<String, dynamic>? lOptions, Map<String, dynamic>? webOptions, Map<String, dynamic>? mOptions, Map<String, dynamic>? wOptions}) async {
+  Future<String?> read({
+    required String key,
+    AppleOptions? iOptions,
+    AndroidOptions? aOptions,
+    LinuxOptions? lOptions,
+    WebOptions? webOptions,
+    AppleOptions? mOptions,
+    WindowsOptions? wOptions,
+  }) async {
     return _data[key];
   }
 
   @override
-  Future<void> delete({required String key, Map<String, dynamic>? iOptions, Map<String, dynamic>? aOptions, Map<String, dynamic>? lOptions, Map<String, dynamic>? webOptions, Map<String, dynamic>? mOptions, Map<String, dynamic>? wOptions}) async {
+  Future<void> delete({
+    required String key,
+    AppleOptions? iOptions,
+    AndroidOptions? aOptions,
+    LinuxOptions? lOptions,
+    WebOptions? webOptions,
+    AppleOptions? mOptions,
+    WindowsOptions? wOptions,
+  }) async {
     _data.remove(key);
   }
 }
@@ -35,7 +60,7 @@ void main() {
   setUp(() async {
     EnvConfigService.resetInstance();
     fakeStorage = FakeFlutterSecureStorage();
-    envStorage = EnvStorage(storage: fakeStorage);
+    envStorage = EnvStorage(store: fakeStorage);
     bundle = FakeAssetBundle();
 
     EnvConfigService.overrideForTesting(
@@ -44,8 +69,10 @@ void main() {
     );
     svc = EnvConfigService.instance;
 
-    bundle.register('assets/env/.env.dev', 'BASE_URL=https://dev.api.com\nKEY=DEV_VALUE');
-    bundle.register('assets/env/.env.prod', 'BASE_URL=https://api.com\nKEY=PROD_VALUE');
+    bundle.register(
+        'assets/env/.env.dev', 'BASE_URL=https://dev.api.com\nKEY=DEV_VALUE');
+    bundle.register(
+        'assets/env/.env.prod', 'BASE_URL=https://api.com\nKEY=PROD_VALUE');
   });
 
   group('EnvConfigService.init()', () {
@@ -71,14 +98,15 @@ void main() {
     test('updates configuration and persists selection', () async {
       await svc.init(defaultEnv: Env.dev);
       await svc.switchTo(Env.prod);
-      
+
       expect(svc.current.value.env, Env.prod);
       expect(await envStorage.loadActiveEnv(), 'prod');
     });
 
     test('throws EnvifiedLockException when locked in Prod', () async {
       await svc.init(defaultEnv: Env.prod, allowProdSwitch: false);
-      expect(() => svc.switchTo(Env.dev), throwsA(isA<EnvifiedLockException>()));
+      expect(
+          () => svc.switchTo(Env.dev), throwsA(isA<EnvifiedLockException>()));
     });
   });
 
@@ -86,7 +114,7 @@ void main() {
     test('overrides base URL and appends to history', () async {
       await svc.init();
       await svc.setBaseUrl('https://custom.com');
-      
+
       expect(svc.current.value.baseUrl, 'https://custom.com');
       expect(svc.current.value.isBaseUrlOverridden, isTrue);
       expect(await svc.loadUrlHistory(), contains('https://custom.com'));
@@ -94,7 +122,8 @@ void main() {
 
     test('throws EnvifiedLockException when locked in Prod', () async {
       await svc.init(defaultEnv: Env.prod, allowProdSwitch: false);
-      expect(() => svc.setBaseUrl('https://evil.com'), throwsA(isA<EnvifiedLockException>()));
+      expect(() => svc.setBaseUrl('https://evil.com'),
+          throwsA(isA<EnvifiedLockException>()));
     });
   });
 
@@ -106,7 +135,8 @@ void main() {
     });
 
     test('getBool handles various truthy values', () async {
-      bundle.register('assets/env/.env.dev', 'DEBUG=true\nENABLED=1\nFEATURE=yes');
+      bundle.register(
+          'assets/env/.env.dev', 'DEBUG=true\nENABLED=1\nFEATURE=yes');
       await svc.init();
       expect(svc.getBool('DEBUG'), isTrue);
       expect(svc.getBool('ENABLED'), isTrue);
@@ -118,7 +148,7 @@ void main() {
     test('operations append to audit log notifier', () async {
       await svc.init(defaultEnv: Env.dev);
       await svc.switchTo(Env.prod);
-      
+
       expect(svc.auditLog.value.length, 1);
       expect(svc.auditLog.value.first.action, AuditAction.envSwitch);
     });
@@ -136,11 +166,12 @@ void main() {
       expect(svc.restartNeeded.value, isTrue);
     });
 
-    test('restartNeeded returns to false after switching back to initial', () async {
+    test('restartNeeded returns to false after switching back to initial',
+        () async {
       await svc.init(defaultEnv: Env.dev);
       await svc.switchTo(Env.prod);
       expect(svc.restartNeeded.value, isTrue);
-      
+
       await svc.switchTo(Env.dev);
       expect(svc.restartNeeded.value, isFalse);
     });

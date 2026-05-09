@@ -35,7 +35,8 @@ KEY=VALUE
       });
 
       test('handles quoted values', () {
-        final result = parser.parseString('KEY="VALUE WITH SPACES"\nFOO=\'single quotes\'');
+        final result = parser
+            .parseString('KEY="VALUE WITH SPACES"\nFOO=\'single quotes\'');
         expect(result['KEY'], 'VALUE WITH SPACES');
         expect(result['FOO'], 'single quotes');
       });
@@ -54,7 +55,8 @@ KEY=VALUE
 
       test('loads and parses asset correctly', () async {
         bundle.register('assets/env/.env.test', 'KEY=VALUE');
-        final result = await parser.loadAsset('assets/env/.env.test', bundle: bundle);
+        final result =
+            await parser.loadAsset('assets/env/.env.test', bundle: bundle);
         expect(result?['KEY'], 'VALUE');
       });
     });

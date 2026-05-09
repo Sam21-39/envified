@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:crypto/crypto.dart';
 import 'package:flutter/services.dart' show AssetBundle, rootBundle;
 

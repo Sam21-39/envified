@@ -232,7 +232,7 @@ class _EnvFab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ValueListenableBuilder(
+    return ValueListenableBuilder<bool>(
       valueListenable: EnvConfigService.instance.restartNeeded,
       builder: (context, restartNeeded, _) {
         return FloatingActionButton(
