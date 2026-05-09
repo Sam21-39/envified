@@ -56,19 +56,40 @@ class _EnvDebugPanelState extends State<EnvDebugPanel> {
             children: [
               _buildSection(
                 title: 'Active Environment',
-                child: Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: [Env.dev, Env.staging, Env.prod].map((env) {
-                    final isActive = config.env == env;
-                    return ChoiceChip(
-                      label: Text(env.label),
-                      selected: isActive,
-                      onSelected: (selected) {
-                        if (selected) EnvConfigService.instance.switchTo(env);
-                      },
+                child: ValueListenableBuilder<List<Env>>(
+                  valueListenable:
+                      EnvConfigService.instance.availableEnvironments,
+                  builder: (context, envs, _) {
+                    return Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: envs.map((env) {
+                        final isActive = config.env == env;
+                        final isLocked = EnvConfigService.instance.isProdLocked;
+                        return ChoiceChip(
+                          label: Text(env.label),
+                          selected: isActive,
+                          onSelected: (selected) {
+                            if (!selected || isActive) return;
+                            if (isLocked) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text(
+                                    'Cannot switch while Production is locked.',
+                                    style: TextStyle(color: Colors.white),
+                                  ),
+                                  backgroundColor: Colors.redAccent,
+                                  duration: Duration(seconds: 2),
+                                ),
+                              );
+                              return;
+                            }
+                            EnvConfigService.instance.switchTo(env);
+                          },
+                        );
+                      }).toList(),
                     );
-                  }).toList(),
+                  },
                 ),
               ),
               const Divider(height: 32),
@@ -84,6 +105,18 @@ class _EnvDebugPanelState extends State<EnvDebugPanel> {
                         suffixIcon: IconButton(
                           icon: const Icon(Icons.check),
                           onPressed: () {
+                            if (EnvConfigService.instance.isProdLocked) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text(
+                                    'Cannot override URL while Production is locked.',
+                                    style: TextStyle(color: Colors.white),
+                                  ),
+                                  backgroundColor: Colors.redAccent,
+                                ),
+                              );
+                              return;
+                            }
                             EnvConfigService.instance
                                 .setBaseUrl(_urlController.text);
                           },
@@ -141,7 +174,10 @@ class _EnvDebugPanelState extends State<EnvDebugPanel> {
               const SizedBox(height: 24),
               if (EnvConfigService.instance.restartNeeded.value)
                 ElevatedButton.icon(
-                  onPressed: widget.onRestart,
+                  onPressed: () {
+                    EnvConfigService.instance.markAsApplied();
+                    widget.onRestart?.call();
+                  },
                   icon: const Icon(Icons.refresh),
                   label: const Text('Restart to Apply Changes'),
                   style: ElevatedButton.styleFrom(

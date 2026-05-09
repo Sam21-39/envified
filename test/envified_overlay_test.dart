@@ -85,13 +85,13 @@ void main() {
 
       // Enter wrong PIN
       await tester.enterText(find.byType(TextField), '0000');
-      await tester.tap(find.text('Verify'));
+      await tester.tap(find.text('VERIFY'));
       await tester.pumpAndSettle();
       expect(find.text('Invalid PIN'), findsOneWidget);
 
       // Enter correct PIN
       await tester.enterText(find.byType(TextField), '1234');
-      await tester.tap(find.text('Verify'));
+      await tester.tap(find.text('VERIFY'));
       await tester.pumpAndSettle();
 
       // Should now show debug panel

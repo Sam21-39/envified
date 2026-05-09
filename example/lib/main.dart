@@ -26,8 +26,12 @@ void main() async {
     defaultEnv: Env.dev,
     // Production lock: Only allow switching environments in debug mode.
     allowProdSwitch: kDebugMode,
+    // Auto-discover .env.* files from assets.
+    autoDiscover: true,
     // Sensitive keys will be blurred in the UI.
     sensitiveKeys: ['API_KEY', 'AUTH_TOKEN', 'JWT_SECRET'],
+    // Define which environments should be treated as production (security locked).
+    productionEnvs: [Env.prod, Env.dynamic("production")],
   );
 
   runApp(const EnvifiedLuxuryApp());
@@ -41,7 +45,13 @@ class EnvifiedLuxuryApp extends StatefulWidget {
 }
 
 class _EnvifiedLuxuryAppState extends State<EnvifiedLuxuryApp> {
-  final Key _appKey = UniqueKey();
+  Key _appKey = UniqueKey();
+
+  void _restart() {
+    setState(() {
+      _appKey = UniqueKey();
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -69,12 +79,14 @@ class _EnvifiedLuxuryAppState extends State<EnvifiedLuxuryApp> {
       // 3. Wrap with the EnvifiedOverlay.
       // We provide a PIN-protected gate and a Shake trigger.
       builder: (context, child) => EnvifiedOverlay(
-        enabled: kDebugMode,
+        enabled: true,
         gate: EnvGate(pin: '8888'),
         trigger: EnvTrigger.shake(
           detector: MyShakeDetector(),
           threshold: 15.0,
         ),
+        onRestart: _restart,
+        showFab: true,
         child: child!,
       ),
       home: const LuxuryHome(),

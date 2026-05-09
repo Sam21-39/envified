@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
-import 'package:flutter/services.dart' show AssetBundle, rootBundle;
+import 'package:flutter/services.dart'
+    show AssetBundle, rootBundle, AssetManifest;
 import '../models/audit_entry.dart';
 import '../models/env.dart';
 import '../models/env_config.dart';
@@ -54,16 +55,28 @@ class EnvConfigService {
   /// The list of recent audit entries.
   final ValueNotifier<List<AuditEntry>> auditLog = ValueNotifier([]);
 
+  /// The list of discovered environments.
+  final ValueNotifier<List<Env>> availableEnvironments = ValueNotifier([
+    Env.dev,
+    Env.staging,
+    Env.prod,
+  ]);
+
+  final Map<Env, String> _envPaths = {};
+
   EnvConfig? _initialConfig;
   bool _allowProdSwitch = true;
   bool _verifyIntegrity = false;
   bool _autoDiscover = true;
 
+  final Set<Env> _productionEnvs = {Env.prod};
+
   /// Whether switching away from production is allowed.
   bool get allowProdSwitch => _allowProdSwitch;
 
-  /// Returns true if the service is currently in production and [allowProdSwitch] is false.
-  bool get isProdLocked => current.value.env == Env.prod && !_allowProdSwitch;
+  /// Returns true if the service is currently in a production-like environment and [allowProdSwitch] is false.
+  bool get isProdLocked =>
+      _productionEnvs.contains(current.value.env) && !_allowProdSwitch;
 
   AssetBundle? _bundle;
 
@@ -104,6 +117,7 @@ class EnvConfigService {
     bool autoDiscover = true,
     bool verifyIntegrity = false,
     bool allowProdSwitch = true,
+    List<Env>? productionEnvs,
     List<String>? sensitiveKeys,
     AssetBundle? bundle,
   }) async {
@@ -111,8 +125,16 @@ class EnvConfigService {
     _allowProdSwitch = allowProdSwitch;
     _verifyIntegrity = verifyIntegrity;
     _autoDiscover = autoDiscover;
+
+    if (productionEnvs != null) {
+      _productionEnvs.addAll(productionEnvs);
+    }
     if (sensitiveKeys != null) {
       _sensitiveKeys.addAll(sensitiveKeys.map((k) => k.toUpperCase()));
+    }
+
+    if (_autoDiscover) {
+      await _discoverEnvironments();
     }
     final persistedEnvName = await _storage.loadActiveEnv();
     final envToLoad =
@@ -135,6 +157,12 @@ class EnvConfigService {
     await _loadEnv(env);
     await _storage.saveActiveEnv(env.name);
     await _appendAudit(AuditAction.envSwitch, from: from, to: env);
+    _checkRestartNeeded();
+  }
+
+  /// Marks the current configuration as the new baseline, clearing [restartNeeded].
+  void markAsApplied() {
+    _initialConfig = current.value;
     _checkRestartNeeded();
   }
 
@@ -169,8 +197,8 @@ class EnvConfigService {
   }
 
   Future<void> _loadEnv(Env env) async {
-    final path = env.name == 'dev' ? '.env' : '.env.${env.name}';
-    final assetPath = 'assets/env/$path';
+    final assetPath = _envPaths[env] ??
+        'assets/env/.env${env == Env.dev ? '' : '.${env.name}'}';
 
     final activeBundle = _bundle ?? rootBundle;
     String content;
@@ -235,6 +263,65 @@ class EnvConfigService {
     );
     await _storage.appendAuditEntry(entry);
     auditLog.value = await _storage.loadAuditLog();
+  }
+
+  Future<void> _discoverEnvironments() async {
+    try {
+      final bundle = _bundle ?? rootBundle;
+      final manifest = await AssetManifest.loadFromAssetBundle(bundle);
+      final allAssets = manifest.listAssets();
+
+      final envFiles = await _parser.discoverEnvFiles(allAssets);
+      if (kDebugMode) {
+        debugPrint(
+            'Envified: Found ${envFiles.length} env files in manifest: $envFiles');
+      }
+
+      final discoveredEnvs = <Env>{};
+
+      for (final path in envFiles) {
+        final fileName = path.split('/').last;
+        if (fileName == '.env') {
+          discoveredEnvs.add(Env.dev);
+          _envPaths[Env.dev] = path;
+          continue;
+        }
+
+        final parts = fileName.split('.');
+        if (parts.length >= 3) {
+          final suffix = parts.last;
+          Env? discovered;
+          if (suffix == 'prod') {
+            discovered = Env.prod;
+          } else if (suffix == 'staging') {
+            discovered = Env.staging;
+          } else if (suffix == 'dev') {
+            discovered = Env.dev;
+          } else {
+            discovered = Env.dynamic(suffix);
+          }
+
+          discoveredEnvs.add(discovered);
+          _envPaths[discovered] = path;
+        }
+      }
+
+      if (discoveredEnvs.isNotEmpty) {
+        // Keep default order but add discovered ones
+        final result = <Env>[];
+        if (discoveredEnvs.contains(Env.dev)) result.add(Env.dev);
+        if (discoveredEnvs.contains(Env.staging)) result.add(Env.staging);
+        if (discoveredEnvs.contains(Env.prod)) result.add(Env.prod);
+
+        for (final env in discoveredEnvs) {
+          if (!result.contains(env)) result.add(env);
+        }
+        availableEnvironments.value = result;
+      }
+    } catch (e) {
+      // Non-fatal, fallback to defaults
+      debugPrint('Envified: Auto-discovery failed: $e');
+    }
   }
 
   // Typed Getters

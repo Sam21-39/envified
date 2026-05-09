@@ -32,6 +32,9 @@ class EnvifiedOverlay extends StatefulWidget {
   /// Whether to show the floating 🌿 button.
   final bool showFab;
 
+  /// Callback to restart the application.
+  final VoidCallback? onRestart;
+
   const EnvifiedOverlay({
     required this.child,
     super.key,
@@ -39,6 +42,7 @@ class EnvifiedOverlay extends StatefulWidget {
     this.gate,
     this.trigger = const EnvTrigger.tap(),
     this.showFab = true,
+    this.onRestart,
   });
 
   @override
@@ -57,6 +61,7 @@ class _EnvifiedOverlayState extends State<EnvifiedOverlay> {
         gate: widget.gate,
         trigger: widget.trigger,
         showFab: widget.showFab,
+        onRestart: widget.onRestart,
       ),
     );
   }
@@ -85,12 +90,14 @@ class _OverlayContent extends StatefulWidget {
   final EnvGate? gate;
   final EnvTrigger trigger;
   final bool showFab;
+  final VoidCallback? onRestart;
 
   const _OverlayContent({
     required this.appChild,
     required this.trigger,
     required this.showFab,
     this.gate,
+    this.onRestart,
   });
 
   @override
@@ -100,17 +107,23 @@ class _OverlayContent extends StatefulWidget {
 class _OverlayContentState extends State<_OverlayContent> {
   bool _isOpen = false;
   bool _isAuthenticated = false;
+  bool _isPinVisible = false;
+  String? _pinError;
+  final TextEditingController _pinController = TextEditingController();
 
   void _closePanel() {
     if (mounted) {
       setState(() {
         _isOpen = false;
         _isAuthenticated = false;
+        _isPinVisible = false;
+        _pinError = null;
+        _pinController.clear();
       });
     }
   }
 
-  Future<void> _requestOpen() async {
+  void _requestOpen() {
     if (_isOpen) {
       _closePanel();
       return;
@@ -118,64 +131,113 @@ class _OverlayContentState extends State<_OverlayContent> {
 
     final gate = widget.gate;
     if (gate != null && !_isAuthenticated) {
-      final bool passed = await _showPinDialog(context, gate);
-      if (!passed) return;
-      _isAuthenticated = true;
+      setState(() {
+        _isPinVisible = true;
+        _pinError = null;
+        _pinController.clear();
+      });
+      return;
     }
 
     if (mounted) setState(() => _isOpen = true);
   }
 
-  Future<bool> _showPinDialog(BuildContext context, EnvGate gate) async {
-    final controller = TextEditingController();
-    final result = await showDialog<bool>(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => AlertDialog(
-        title: const Text('Enter PIN'),
-        content: TextField(
-          controller: controller,
-          obscureText: true,
-          autofocus: true,
-          keyboardType: TextInputType.number,
-          decoration: const InputDecoration(hintText: 'Enter 4-digit PIN'),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              if (gate.verify(controller.text)) {
-                Navigator.pop(context, true);
-              } else {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Invalid PIN')),
-                );
-              }
-            },
-            child: const Text('Verify'),
-          ),
-        ],
-      ),
-    );
-    return result ?? false;
+  void _verifyPin() {
+    final gate = widget.gate;
+    if (gate == null) return;
+
+    if (gate.verify(_pinController.text)) {
+      setState(() {
+        _isAuthenticated = true;
+        _isPinVisible = false;
+        _isOpen = true;
+      });
+    } else {
+      setState(() {
+        _pinError = 'Invalid PIN';
+        _pinController.clear();
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _pinController.dispose();
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     return widget.trigger.build(
       onOpen: _requestOpen,
-      isActive: !_isOpen,
+      isActive: !_isOpen && !_isPinVisible,
       child: Stack(
         children: [
           widget.appChild,
-          if (_isOpen)
+          if (_isOpen || _isPinVisible)
             Positioned.fill(
               child: GestureDetector(
                 onTap: _closePanel,
                 child: Container(color: Colors.black54),
+              ),
+            ),
+          if (_isPinVisible)
+            Center(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 32),
+                child: Material(
+                  elevation: 24,
+                  borderRadius: BorderRadius.circular(16),
+                  color: Theme.of(context).cardColor,
+                  child: Padding(
+                    padding: const EdgeInsets.all(24),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Text(
+                          'Enter PIN',
+                          style: TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        TextField(
+                          controller: _pinController,
+                          obscureText: true,
+                          autofocus: true,
+                          keyboardType: TextInputType.number,
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            fontSize: 24,
+                            letterSpacing: 8,
+                          ),
+                          decoration: InputDecoration(
+                            hintText: '••••',
+                            errorText: _pinError,
+                            border: const OutlineInputBorder(),
+                          ),
+                          onSubmitted: (_) => _verifyPin(),
+                        ),
+                        const SizedBox(height: 24),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.end,
+                          children: [
+                            TextButton(
+                              onPressed: _closePanel,
+                              child: const Text('CANCEL'),
+                            ),
+                            const SizedBox(width: 8),
+                            ElevatedButton(
+                              onPressed: _verifyPin,
+                              child: const Text('VERIFY'),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
               ),
             ),
           if (_isOpen)
@@ -203,9 +265,9 @@ class _OverlayContentState extends State<_OverlayContent> {
                       constraints: BoxConstraints(
                         maxHeight: MediaQuery.of(context).size.height * 0.7,
                       ),
-                      child: const SingleChildScrollView(
-                        padding: EdgeInsets.symmetric(vertical: 16),
-                        child: EnvDebugPanel(),
+                      child: SingleChildScrollView(
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        child: EnvDebugPanel(onRestart: widget.onRestart),
                       ),
                     ),
                   ),
@@ -218,7 +280,7 @@ class _OverlayContentState extends State<_OverlayContent> {
               bottom: 24,
               right: 16,
               child: _EnvFab(
-                isOpen: _isOpen,
+                isOpen: _isOpen || _isPinVisible,
                 onTap: _requestOpen,
               ),
             ),
