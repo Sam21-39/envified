@@ -89,7 +89,7 @@ class EnvConfigService {
 
   /// Initializes the service.
   ///
-  /// Call this once in [main] before [runApp].
+  /// Call this once in `main()` before `runApp()`.
   ///
   /// [defaultEnv] — The environment to load if none is persisted.
   /// [autoDiscover] — Whether to scan for .env files automatically.

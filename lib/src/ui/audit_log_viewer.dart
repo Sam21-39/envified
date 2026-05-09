@@ -46,9 +46,8 @@ class AuditLogViewer extends StatelessWidget {
                       height: 24,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        color:
-                            _actionColor(entry.action) // ignore: deprecated_member_use
-.withOpacity(0.15),
+                        // ignore: deprecated_member_use
+                        color: _actionColor(entry.action).withOpacity(0.15),
                       ),
                       child: Icon(
                         _actionIcon(entry.action),
@@ -60,8 +59,8 @@ class AuditLogViewer extends StatelessWidget {
                       Expanded(
                         child: Container(
                           width: 2,
-                          color: Colors.grey // ignore: deprecated_member_use
-.withOpacity(0.2),
+                          // ignore: deprecated_member_use
+                          color: Colors.grey.withOpacity(0.2),
                         ),
                       ),
                   ],

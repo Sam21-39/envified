@@ -44,8 +44,8 @@ class EnvStatusBadge extends StatelessWidget {
                 borderRadius: BorderRadius.circular(4),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black // ignore: deprecated_member_use
-.withOpacity(0.2),
+                    // ignore: deprecated_member_use
+                    color: Colors.black.withOpacity(0.2),
                     blurRadius: 4,
                     offset: const Offset(0, 2),
                   ),

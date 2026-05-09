@@ -197,8 +197,8 @@ class _OverlayContentState extends State<_OverlayContent> {
                         color: Theme.of(context).canvasColor,
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black // ignore: deprecated_member_use
-.withOpacity(0.2),
+                            // ignore: deprecated_member_use
+                            color: Colors.black.withOpacity(0.2),
                             blurRadius: 4,
                           ),
                         ],

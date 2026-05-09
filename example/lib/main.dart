@@ -2,33 +2,35 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:envified/envified.dart';
 
-void main() async {
-  WidgetsFlutterBinding.ensureInitialized();
-
-  // 1. Initialize the EnvConfigService singleton.
-  // We specify sensitive keys that should be blurred in the UI.
-  await EnvConfigService.instance.init(
-    defaultEnv: Env.dev,
-    sensitiveKeys: ['API_KEY', 'JWT_SECRET', 'STRIPE_TOKEN'],
-  );
-
-  runApp(const EnvifiedLuxuryApp());
-}
-
-/// A mock implementation of a shake detector.
-/// In a real app, you would use `package:sensors_plus` here.
+// 1. Define your custom shake detector or use a package like shake.
 class MyShakeDetector implements EnvShakeDetector {
   @override
   void start(double threshold, VoidCallback onShake) {
-    debugPrint('Shake detector started with threshold: $threshold');
-    // Simulate a shake after 10 seconds for demo purposes
-    Future.delayed(const Duration(seconds: 10), onShake);
+    // Implement your shake logic here or use a package
+    debugPrint('Shake listening started with threshold: $threshold');
   }
 
   @override
   void stop() {
-    debugPrint('Shake detector stopped');
+    debugPrint('Shake listening stopped.');
   }
+}
+
+void main() async {
+  // Ensure Flutter is initialized.
+  WidgetsFlutterBinding.ensureInitialized();
+
+  // 2. Initialize Envified.
+  // This loads the active environment and discovers available .env.* files.
+  await EnvConfigService.instance.init(
+    defaultEnv: Env.dev,
+    // Production lock: Only allow switching environments in debug mode.
+    allowProdSwitch: kDebugMode,
+    // Sensitive keys will be blurred in the UI.
+    sensitiveKeys: ['API_KEY', 'AUTH_TOKEN', 'JWT_SECRET'],
+  );
+
+  runApp(const EnvifiedLuxuryApp());
 }
 
 class EnvifiedLuxuryApp extends StatefulWidget {
@@ -45,7 +47,7 @@ class _EnvifiedLuxuryAppState extends State<EnvifiedLuxuryApp> {
   Widget build(BuildContext context) {
     return MaterialApp(
       key: _appKey,
-      title: 'Envified Luxury v3',
+      title: 'Envified Luxury',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         useMaterial3: true,
@@ -59,10 +61,8 @@ class _EnvifiedLuxuryAppState extends State<EnvifiedLuxuryApp> {
           elevation: 0,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(24),
-            // ignore: duplicate_ignore, deprecated_member_use
-            side: BorderSide(
-                color: Colors.white // ignore: deprecated_member_use
-                    .withOpacity(0.05)),
+            // ignore: deprecated_member_use
+            side: BorderSide(color: Colors.white.withOpacity(0.05)),
           ),
         ),
       ),
@@ -125,8 +125,10 @@ class LuxuryHome extends StatelessWidget {
                             const SizedBox(height: 32),
                             _buildSectionHeader('Security Configuration'),
                             const SizedBox(height: 16),
-                            ...config.values.entries.map((e) => _buildSecretTile(e.key, e.value)),
-                            const SizedBox(height: 100), // Space for status badge
+                            ...config.values.entries
+                                .map((e) => _buildSecretTile(e.key, e.value)),
+                            const SizedBox(
+                                height: 100), // Space for status badge
                           ]),
                         ),
                       ),
@@ -163,23 +165,23 @@ class LuxuryHome extends StatelessWidget {
 
   Widget _buildHeroCard(EnvConfig config) {
     return Container(
-      padding: const EdgeInsets.all(32),
+      padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(32),
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
-            const Color(0xFF6200EE) // ignore: deprecated_member_use
-                .withOpacity(0.8),
-            const Color(0xFFBB86FC) // ignore: deprecated_member_use
-                .withOpacity(0.8),
+            // ignore: deprecated_member_use
+            const Color(0xFF6200EE).withOpacity(0.8),
+            // ignore: deprecated_member_use
+            const Color(0xFFBB86FC).withOpacity(0.8),
           ],
         ),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF6200EE) // ignore: deprecated_member_use
-                .withOpacity(0.3),
+            // ignore: deprecated_member_use
+            color: const Color(0xFF6200EE).withOpacity(0.3),
             blurRadius: 32,
             offset: const Offset(0, 16),
           ),
@@ -191,8 +193,8 @@ class LuxuryHome extends StatelessWidget {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
             decoration: BoxDecoration(
-              color: Colors.white // ignore: deprecated_member_use
-                  .withOpacity(0.2),
+              // ignore: deprecated_member_use
+              color: Colors.white.withOpacity(0.2),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Text(
@@ -218,8 +220,8 @@ class LuxuryHome extends StatelessWidget {
             'Last loaded at ${config.loadedAt.hour}:${config.loadedAt.minute}',
             style: TextStyle(
               fontSize: 12,
-              color: Colors.white // ignore: deprecated_member_use
-                  .withOpacity(0.7),
+              // ignore: deprecated_member_use
+              color: Colors.white.withOpacity(0.7),
             ),
           ),
         ],
@@ -233,20 +235,23 @@ class LuxuryHome extends StatelessWidget {
       style: TextStyle(
         fontSize: 11,
         fontWeight: FontWeight.bold,
-        color: Colors.white // ignore: deprecated_member_use
-            .withOpacity(0.4),
+        // ignore: deprecated_member_use
+        color: Colors.white.withOpacity(0.4),
         letterSpacing: 1.5,
       ),
     );
   }
 
-  Widget _buildInfoTile(String title, String value, IconData icon, {bool isOverridden = false}) {
+  Widget _buildInfoTile(String title, String value, IconData icon,
+      {bool isOverridden = false}) {
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(20),
         child: Row(
           children: [
-            Icon(icon, color: isOverridden ? Colors.orangeAccent : Colors.white60, size: 20),
+            Icon(icon,
+                color: isOverridden ? Colors.orangeAccent : Colors.white60,
+                size: 20),
             const SizedBox(width: 16),
             Expanded(
               child: Column(
@@ -255,18 +260,22 @@ class LuxuryHome extends StatelessWidget {
                   Text(title,
                       style: TextStyle(
                           fontSize: 10,
-                          color: Colors.white // ignore: deprecated_member_use
-                              .withOpacity(0.4))),
+                          // ignore: deprecated_member_use
+                          color: Colors.white.withOpacity(0.4))),
                   const SizedBox(height: 4),
                   Text(
                     value,
                     style: const TextStyle(
-                        fontSize: 14, fontWeight: FontWeight.w600, fontFamily: 'monospace'),
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        fontFamily: 'monospace'),
                   ),
                 ],
               ),
             ),
-            if (isOverridden) const Icon(Icons.bolt_rounded, color: Colors.orangeAccent, size: 16),
+            if (isOverridden)
+              const Icon(Icons.bolt_rounded,
+                  color: Colors.orangeAccent, size: 16),
           ],
         ),
       ),
@@ -292,13 +301,15 @@ class LuxuryHome extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(name, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                Text(name,
+                    style: const TextStyle(
+                        fontSize: 12, fontWeight: FontWeight.bold)),
                 Text(
                   isSensitive ? '••••••••••••••••' : value,
                   style: TextStyle(
                       fontSize: 12,
-                      color: Colors.white // ignore: deprecated_member_use
-                          .withOpacity(0.5),
+                      // ignore: deprecated_member_use
+                      color: Colors.white.withOpacity(0.5),
                       fontFamily: 'monospace'),
                 ),
               ],
@@ -307,8 +318,8 @@ class LuxuryHome extends StatelessWidget {
           if (isSensitive)
             Icon(Icons.lock_rounded,
                 size: 14,
-                color: Colors.white // ignore: deprecated_member_use
-                    .withOpacity(0.2)),
+                // ignore: deprecated_member_use
+                color: Colors.white.withOpacity(0.2)),
         ],
       ),
     );
