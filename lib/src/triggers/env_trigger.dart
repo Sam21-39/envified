@@ -1,5 +1,17 @@
 import 'package:flutter/foundation.dart';
 
+/// Interface for a shake detector.
+///
+/// Users must provide an implementation of this interface (e.g., using `sensors_plus`)
+/// if they wish to use the [EnvTrigger.shake] trigger.
+abstract interface class EnvShakeDetector {
+  /// Starts listening for shake events.
+  void start(double threshold, VoidCallback onShake);
+
+  /// Stops listening for shake events.
+  void stop();
+}
+
 /// Sealed class defining the gesture triggers to open the debug panel.
 sealed class EnvTrigger {
   const EnvTrigger();
@@ -12,8 +24,11 @@ sealed class EnvTrigger {
 
   /// Trigger by shaking the device.
   ///
-  /// Note: Requires the `sensors_plus` package to be functional.
-  const factory EnvTrigger.shake({double threshold}) = ShakeTrigger;
+  /// Requires a user-provided [detector] implementation.
+  const factory EnvTrigger.shake({
+    required EnvShakeDetector detector,
+    double threshold,
+  }) = ShakeTrigger;
 }
 
 /// Trigger by tapping multiple times.
@@ -34,8 +49,14 @@ class EdgeSwipeTrigger extends EnvTrigger {
 
 /// Trigger by shaking the device.
 class ShakeTrigger extends EnvTrigger {
+  /// The detector implementation.
+  final EnvShakeDetector detector;
+
   /// The G-force threshold required to trigger.
   final double threshold;
 
-  const ShakeTrigger({this.threshold = 15.0});
+  const ShakeTrigger({
+    required this.detector,
+    this.threshold = 15.0,
+  });
 }
