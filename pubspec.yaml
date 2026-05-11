@@ -2,7 +2,7 @@ name: envified
 description: >-
   Runtime environment switching for Flutter. Load .env files,
   switch dev/staging/prod at runtime — no rebuild required.
-version: 3.0.0
+version: 3.1.0
 repository: https://github.com/Sam21-39/envified
 issue_tracker: https://github.com/Sam21-39/envified/issues
 
