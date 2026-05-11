@@ -37,6 +37,11 @@ class EnvifiedOverlay extends StatefulWidget {
   /// Defaults to `false` for privacy.
   final bool showEnvKeys;
 
+  /// Whether to display the current-environment label badge.
+  ///
+  /// Defaults to `true`.
+  final bool isShowEnvLabel;
+
   /// Callback to restart the application.
   final VoidCallback? onRestart;
 
@@ -48,6 +53,7 @@ class EnvifiedOverlay extends StatefulWidget {
     this.trigger = const EnvTrigger.tap(),
     this.showFab = true,
     this.showEnvKeys = false,
+    this.isShowEnvLabel = true,
     this.onRestart,
   });
 
@@ -68,6 +74,7 @@ class _EnvifiedOverlayState extends State<EnvifiedOverlay> {
         trigger: widget.trigger,
         showFab: widget.showFab,
         showEnvKeys: widget.showEnvKeys,
+        isShowEnvLabel: widget.isShowEnvLabel,
         onRestart: widget.onRestart,
       ),
     );
@@ -98,6 +105,7 @@ class _OverlayContent extends StatefulWidget {
   final EnvTrigger trigger;
   final bool showFab;
   final bool showEnvKeys;
+  final bool isShowEnvLabel;
   final VoidCallback? onRestart;
 
   const _OverlayContent({
@@ -105,6 +113,7 @@ class _OverlayContent extends StatefulWidget {
     required this.trigger,
     required this.showFab,
     required this.showEnvKeys,
+    required this.isShowEnvLabel,
     this.gate,
     this.onRestart,
   });
@@ -336,7 +345,7 @@ class _OverlayContentState extends State<_OverlayContent> with WidgetsBindingObs
                 ),
               ),
             ),
-          const EnvStatusBadge(),
+          if (widget.isShowEnvLabel) const EnvStatusBadge(),
           if (widget.showFab)
             Positioned(
               bottom: 24,

@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The "Restart app to apply changes" banner now appears at the top of the debug panel for immediate visibility instead of being buried below the fold.
 - The "Configuration" section in the debug panel is now collapsible and collapsed by default to reduce visual clutter.
 - Audit log and history timestamps now display in `MM-dd-YYYY HH:mm:ss` format (local time) instead of raw ISO-8601.
+- `EnvifiedOverlay` gains `isShowEnvLabel` (default `true`). Set to `false` to hide the current-environment label/badge while keeping the overlay and gesture trigger fully active.
 
 ## [3.0.0] - 2026-05-09
 
