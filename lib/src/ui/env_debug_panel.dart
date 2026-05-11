@@ -140,19 +140,32 @@ class _EnvDebugPanelState extends State<EnvDebugPanel> {
                 ),
               ),
               const Divider(height: 32),
-              _buildSection(
-                title: 'Configuration',
-                child: Column(
-                  children: config.values.entries.map((e) {
-                    final isSensitive =
-                        EnvConfigService.instance.isSensitive(e.key);
-                    return _ConfigRow(
-                      name: e.key,
-                      value: e.value,
-                      isSensitive: isSensitive,
-                    );
-                  }).toList(),
+              ExpansionTile(
+                title: Text(
+                  'Configuration'.toUpperCase(),
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.grey.shade600,
+                    letterSpacing: 1.2,
+                  ),
                 ),
+                tilePadding: EdgeInsets.zero,
+                childrenPadding: EdgeInsets.zero,
+                initiallyExpanded: false,
+                children: [
+                  Column(
+                    children: config.values.entries.map((e) {
+                      final isSensitive =
+                          EnvConfigService.instance.isSensitive(e.key);
+                      return _ConfigRow(
+                        name: e.key,
+                        value: e.value,
+                        isSensitive: isSensitive,
+                      );
+                    }).toList(),
+                  ),
+                ],
               ),
               const Divider(height: 32),
               ExpansionTile(
