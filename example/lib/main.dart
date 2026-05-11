@@ -325,8 +325,7 @@ class LuxuryHome extends StatelessWidget {
           ),
           if (isSensitive)
             Icon(Icons.lock_rounded,
-                size: 14,
-                color: Colors.white.withValues(alpha: 0.2)),
+                size: 14, color: Colors.white.withValues(alpha: 0.2)),
         ],
       ),
     );
