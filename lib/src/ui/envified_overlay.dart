@@ -303,11 +303,70 @@ class _OverlayContentState extends State<_OverlayContent>
       child: Stack(
         children: [
           widget.appChild,
-          if (_isOpen)
+          if (_isOpen || _isPinVisible)
             Positioned.fill(
               child: GestureDetector(
                 onTap: _closePanel,
                 child: Container(color: Colors.black54),
+              ),
+            ),
+          if (_isPinVisible)
+            Center(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 32),
+                child: Material(
+                  elevation: 24,
+                  borderRadius: BorderRadius.circular(16),
+                  color: Theme.of(context).cardColor,
+                  child: Padding(
+                    padding: const EdgeInsets.all(24),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Text(
+                          'Enter PIN',
+                          style: TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        TextField(
+                          controller: _pinController,
+                          obscureText: true,
+                          autofocus: true,
+                          keyboardType: TextInputType.number,
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            fontSize: 24,
+                            letterSpacing: 8,
+                          ),
+                          decoration: InputDecoration(
+                            hintText: '••••',
+                            errorText: _pinError,
+                            border: const OutlineInputBorder(),
+                          ),
+                          onSubmitted: (_) => _verifyPin(),
+                        ),
+                        const SizedBox(height: 24),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.end,
+                          children: [
+                            TextButton(
+                              onPressed: _closePanel,
+                              child: const Text('CANCEL'),
+                            ),
+                            const SizedBox(width: 8),
+                            ElevatedButton(
+                              onPressed: _verifyPin,
+                              child: const Text('VERIFY'),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
               ),
             ),
           if (_isOpen)
