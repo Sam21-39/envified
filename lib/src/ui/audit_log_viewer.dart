@@ -86,7 +86,7 @@ class AuditLogViewer extends StatelessWidget {
                             ),
                           ),
                           Text(
-                            _formatTime(entry.timestamp),
+                            formatAuditTimestamp(entry.timestamp),
                             style: TextStyle(
                               fontSize: 11,
                               fontFamily: 'monospace',
@@ -117,11 +117,6 @@ class AuditLogViewer extends StatelessWidget {
         );
       },
     );
-  }
-
-  String _formatTime(DateTime dt) {
-    final local = dt.toLocal();
-    return '${local.hour.toString().padLeft(2, '0')}:${local.minute.toString().padLeft(2, '0')}:${local.second.toString().padLeft(2, '0')}';
   }
 
   Color _actionColor(AuditAction action) => switch (action) {

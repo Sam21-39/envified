@@ -71,8 +71,7 @@ class _EnvifiedLuxuryAppState extends State<EnvifiedLuxuryApp> {
           elevation: 0,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(24),
-            // ignore: deprecated_member_use
-            side: BorderSide(color: Colors.white.withOpacity(0.05)),
+            side: BorderSide(color: Colors.white.withValues(alpha: 0.05)),
           ),
         ),
       ),
@@ -87,6 +86,11 @@ class _EnvifiedLuxuryAppState extends State<EnvifiedLuxuryApp> {
         ),
         onRestart: _restart,
         showFab: true,
+        // NEW: Toggle display of .env keys in the debug panel.
+        showEnvKeys: true,
+        // HIDE the package-provided label because this example app
+        // renders its own manual EnvStatusBadge in LuxuryHome.
+        isShowEnvLabel: false,
         child: child!,
       ),
       home: const LuxuryHome(),
@@ -184,16 +188,13 @@ class LuxuryHome extends StatelessWidget {
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
-            // ignore: deprecated_member_use
-            const Color(0xFF6200EE).withOpacity(0.8),
-            // ignore: deprecated_member_use
-            const Color(0xFFBB86FC).withOpacity(0.8),
+            const Color(0xFF6200EE).withValues(alpha: 0.8),
+            const Color(0xFFBB86FC).withValues(alpha: 0.8),
           ],
         ),
         boxShadow: [
           BoxShadow(
-            // ignore: deprecated_member_use
-            color: const Color(0xFF6200EE).withOpacity(0.3),
+            color: const Color(0xFF6200EE).withValues(alpha: 0.3),
             blurRadius: 32,
             offset: const Offset(0, 16),
           ),
@@ -205,8 +206,7 @@ class LuxuryHome extends StatelessWidget {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
             decoration: BoxDecoration(
-              // ignore: deprecated_member_use
-              color: Colors.white.withOpacity(0.2),
+              color: Colors.white.withValues(alpha: 0.2),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Text(
@@ -232,8 +232,7 @@ class LuxuryHome extends StatelessWidget {
             'Last loaded at ${config.loadedAt.hour}:${config.loadedAt.minute}',
             style: TextStyle(
               fontSize: 12,
-              // ignore: deprecated_member_use
-              color: Colors.white.withOpacity(0.7),
+              color: Colors.white.withValues(alpha: 0.7),
             ),
           ),
         ],
@@ -247,8 +246,7 @@ class LuxuryHome extends StatelessWidget {
       style: TextStyle(
         fontSize: 11,
         fontWeight: FontWeight.bold,
-        // ignore: deprecated_member_use
-        color: Colors.white.withOpacity(0.4),
+        color: Colors.white.withValues(alpha: 0.4),
         letterSpacing: 1.5,
       ),
     );
@@ -272,8 +270,7 @@ class LuxuryHome extends StatelessWidget {
                   Text(title,
                       style: TextStyle(
                           fontSize: 10,
-                          // ignore: deprecated_member_use
-                          color: Colors.white.withOpacity(0.4))),
+                          color: Colors.white.withValues(alpha: 0.4))),
                   const SizedBox(height: 4),
                   Text(
                     value,
@@ -320,8 +317,7 @@ class LuxuryHome extends StatelessWidget {
                   isSensitive ? '••••••••••••••••' : value,
                   style: TextStyle(
                       fontSize: 12,
-                      // ignore: deprecated_member_use
-                      color: Colors.white.withOpacity(0.5),
+                      color: Colors.white.withValues(alpha: 0.5),
                       fontFamily: 'monospace'),
                 ),
               ],
@@ -329,9 +325,7 @@ class LuxuryHome extends StatelessWidget {
           ),
           if (isSensitive)
             Icon(Icons.lock_rounded,
-                size: 14,
-                // ignore: deprecated_member_use
-                color: Colors.white.withOpacity(0.2)),
+                size: 14, color: Colors.white.withValues(alpha: 0.2)),
         ],
       ),
     );

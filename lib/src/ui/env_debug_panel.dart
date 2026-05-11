@@ -9,8 +9,13 @@ import 'audit_log_viewer.dart';
 /// A premium debug panel for environment management.
 class EnvDebugPanel extends StatefulWidget {
   final VoidCallback? onRestart;
+  final bool showEnvKeys;
 
-  const EnvDebugPanel({super.key, this.onRestart});
+  const EnvDebugPanel({
+    super.key,
+    this.onRestart,
+    this.showEnvKeys = false,
+  });
 
   @override
   State<EnvDebugPanel> createState() => _EnvDebugPanelState();
@@ -54,6 +59,58 @@ class _EnvDebugPanelState extends State<EnvDebugPanel> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
+              ValueListenableBuilder<bool>(
+                valueListenable: EnvConfigService.instance.restartNeeded,
+                builder: (context, restartNeeded, _) {
+                  if (!restartNeeded) return const SizedBox.shrink();
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 24),
+                    child: Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.orange.shade50,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.orange.shade300),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(Icons.warning_amber_rounded,
+                              color: Colors.orange.shade800),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Restart app to apply changes',
+                                  style: TextStyle(
+                                    color: Colors.orange.shade900,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 13,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          TextButton(
+                            onPressed: () {
+                              EnvConfigService.instance.markAsApplied();
+                              widget.onRestart?.call();
+                            },
+                            style: TextButton.styleFrom(
+                              backgroundColor: Colors.orange.shade700,
+                              foregroundColor: Colors.white,
+                              padding:
+                                  const EdgeInsets.symmetric(horizontal: 16),
+                            ),
+                            child: const Text('Restart now'),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                },
+              ),
               _buildSection(
                 title: 'Active Environment',
                 child: ValueListenableBuilder<List<Env>>(
@@ -65,27 +122,36 @@ class _EnvDebugPanelState extends State<EnvDebugPanel> {
                       runSpacing: 8,
                       children: envs.map((env) {
                         final isActive = config.env == env;
-                        final isLocked = EnvConfigService.instance.isProdLocked;
-                        return ChoiceChip(
-                          label: Text(env.label),
-                          selected: isActive,
-                          onSelected: (selected) {
-                            if (!selected || isActive) return;
-                            if (isLocked) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text(
-                                    'Cannot switch while Production is locked.',
-                                    style: TextStyle(color: Colors.white),
-                                  ),
-                                  backgroundColor: Colors.redAccent,
-                                  duration: Duration(seconds: 2),
+                        final isProd =
+                            EnvConfigService.instance.isProduction(env);
+                        final allowSwitch =
+                            EnvConfigService.instance.allowProdSwitch ||
+                                !isProd;
+
+                        return AbsorbPointer(
+                          absorbing: !allowSwitch,
+                          child: Opacity(
+                            opacity: allowSwitch ? 1.0 : 0.4,
+                            child: Stack(
+                              children: [
+                                ChoiceChip(
+                                  label: Text(env.label),
+                                  selected: isActive,
+                                  onSelected: (selected) {
+                                    if (!selected || isActive) return;
+                                    EnvConfigService.instance.switchTo(env);
+                                  },
                                 ),
-                              );
-                              return;
-                            }
-                            EnvConfigService.instance.switchTo(env);
-                          },
+                                if (!allowSwitch)
+                                  const Positioned(
+                                    top: 4,
+                                    right: 4,
+                                    child: Icon(Icons.lock,
+                                        size: 12, color: Colors.white54),
+                                  ),
+                              ],
+                            ),
+                          ),
                         );
                       }).toList(),
                     );
@@ -140,21 +206,35 @@ class _EnvDebugPanelState extends State<EnvDebugPanel> {
                 ),
               ),
               const Divider(height: 32),
-              _buildSection(
-                title: 'Configuration',
-                child: Column(
-                  children: config.values.entries.map((e) {
-                    final isSensitive =
-                        EnvConfigService.instance.isSensitive(e.key);
-                    return _ConfigRow(
-                      name: e.key,
-                      value: e.value,
-                      isSensitive: isSensitive,
-                    );
-                  }).toList(),
+              if (widget.showEnvKeys) ...[
+                ExpansionTile(
+                  title: Text(
+                    'Configuration'.toUpperCase(),
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.grey.shade600,
+                      letterSpacing: 1.2,
+                    ),
+                  ),
+                  tilePadding: EdgeInsets.zero,
+                  childrenPadding: EdgeInsets.zero,
+                  children: [
+                    Column(
+                      children: config.values.entries.map((e) {
+                        final isSensitive =
+                            EnvConfigService.instance.isSensitive(e.key);
+                        return _ConfigRow(
+                          name: e.key,
+                          value: e.value,
+                          isSensitive: isSensitive,
+                        );
+                      }).toList(),
+                    ),
+                  ],
                 ),
-              ),
-              const Divider(height: 32),
+                const Divider(height: 32),
+              ],
               ExpansionTile(
                 title: const Text('Activity History',
                     style:
@@ -172,19 +252,6 @@ class _EnvDebugPanelState extends State<EnvDebugPanel> {
                 ],
               ),
               const SizedBox(height: 24),
-              if (EnvConfigService.instance.restartNeeded.value)
-                ElevatedButton.icon(
-                  onPressed: () {
-                    EnvConfigService.instance.markAsApplied();
-                    widget.onRestart?.call();
-                  },
-                  icon: const Icon(Icons.refresh),
-                  label: const Text('Restart to Apply Changes'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.orange.shade700,
-                    foregroundColor: Colors.white,
-                  ),
-                ),
             ],
           ),
         );

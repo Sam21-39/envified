@@ -61,4 +61,11 @@ void main() {
       expect(a.hashCode, isNot(equals(c.hashCode)));
     });
   });
+
+  group('formatAuditTimestamp', () {
+    test('formats DateTime as MM-dd-YYYY HH:mm:ss', () {
+      final dt = DateTime(2026, 5, 11, 14, 35, 7);
+      expect(formatAuditTimestamp(dt), '05-11-2026 14:35:07');
+    });
+  });
 }

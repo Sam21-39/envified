@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+## [3.1.0] - 2026-05-11
+
+### Features & Improvements
+- `EnvifiedOverlay` gains `showEnvKeys` (default `false`). Set to `true` to display the .env key-value section in the debug panel.
+- Keys whose names end with `_KEY` or equal `KEY` (e.g. `STRIPE_KEY`, `API_KEY`) are now automatically treated as sensitive in the debug panel — values hidden by default with tap-to-reveal.
+- `allowProdSwitch: false` now correctly prevents switching **to** production. The prod button stays visible but is greyed out (40% opacity) with a 🔒 icon. Previously the behaviour was inverted.
+- Fixed `EnvGate` overlay: now covers full screen with a dark scrim, correctly centres the PIN dialog, eliminates ghost widgets above the PIN input field, handles keyboard appearance without RenderFlex overflow, and dismisses cleanly after authentication.
+- The "Restart app to apply changes" banner now appears at the top of the debug panel for immediate visibility instead of being buried below the fold.
+- The "Configuration" section in the debug panel is now collapsible and collapsed by default to reduce visual clutter.
+- Audit log and history timestamps now display in `MM-dd-YYYY HH:mm:ss` format (local time) instead of raw ISO-8601.
+- `EnvifiedOverlay` gains `isShowEnvLabel` (default `true`). Set to `false` to hide the current-environment label/badge while keeping the overlay and gesture trigger fully active.
+
 ## [3.0.0] - 2026-05-09
 
 ### Breaking Changes

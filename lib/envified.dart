@@ -7,7 +7,8 @@ library envified;
 export 'src/models/env.dart';
 export 'src/models/env_config.dart';
 export 'src/models/envified_exception.dart';
-export 'src/models/audit_entry.dart' show AuditEntry, AuditAction;
+export 'src/models/audit_entry.dart'
+    show AuditEntry, AuditAction, formatAuditTimestamp;
 
 export 'src/gate/env_gate.dart';
 export 'src/service/env_config_service.dart';

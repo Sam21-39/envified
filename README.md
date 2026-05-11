@@ -4,6 +4,7 @@
 [![pub points](https://img.shields.io/pub/points/envified?color=blue)](https://pub.dev/packages/envified/score)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Dart CI](https://github.com/Sam21-39/envified/actions/workflows/ci.yml/badge.svg)](https://github.com/Sam21-39/envified/actions/workflows/ci.yml)
+[![Sponsor](https://img.shields.io/badge/Sponsor-Appamania-EA4AAA?style=flat&logo=buy-me-a-coffee&logoColor=white)](https://paywithchai.in/appamania)
 
 > **Stop rebuilding. Start switching.** ⚡  
 > Runtime environment magic for Flutter apps. Reactive, secure, and — dare we say — a little premium.
@@ -16,18 +17,18 @@ You know the drill. You push to prod. Five minutes later, Slack is on fire becau
 
 ---
 
-## 🚀 What's New in v3.0.0
+## 🚀 What's New in v3.1.0
 
-The big one. We rewrote the guts, polished the chrome, and made the whole thing feel like it *wants* to be in your project.
+Building on the foundation of v3.0.0, we've added major improvements to privacy, safety, and UX:
 
-| Change | The Vibe |
-|--------|----------|
-| ⚛️ **Reactive Architecture** | Built on `ValueNotifier`. Your UI reacts to env changes like it's watching a stock ticker — instantly, no rebuilds needed. |
-| 🏗️ **Singleton Pattern** | `EnvConfigService.instance` — one line, any file, anywhere in your codebase. No context, no ceremony. |
-| 🔒 **Production Lock** | `isProdLocked` mode. Your staging-happy teammates literally cannot switch away from Prod. You're welcome. |
-| 🛡️ **Improved DI** | First-class `AssetBundle` injection. Mock it, fake it, test it — total control. |
-| 🎨 **Luxury UI** | The debug panel got a glow-up: smooth animations, better layout, audit trail that doesn't look like a server log from 2009. |
-| 🧪 **Robust Testing** | Deep coverage for all the edge cases you thought only happened to you. They happen to everyone. |
+| Feature | What it does |
+|---------|--------------|
+| 🕶️ **Auto-Sensitive Detection** | Keys ending in `_KEY` or `KEY` (e.g., `STRIPE_KEY`) are now **automatically** hidden. No manual tagging required. |
+| 🔒 **Robust Production Lock** | `allowProdSwitch: false` now correctly locks the UI *towards* production, preventing accidental "deployments" from your debug build. |
+| 📦 **Collapsible Config** | The Configuration section in the debug panel is now collapsible by default, keeping the UI clean and focused on your audit log. |
+| 🛡️ **Full-Screen EnvGate** | The PIN gate is now a full-screen modal with a dark scrim, better keyboard handling, and auto-dismissal. |
+| 🕒 **Formatted History** | Audit log timestamps are now local and human-readable (`MM-dd-YYYY HH:mm:ss`). |
+| 🎚️ **Badge Toggle** | New `isShowEnvLabel` flag allows you to hide the status badge while keeping the gesture trigger active. |
 
 ---
 
@@ -71,7 +72,7 @@ Give your phone a shake. Panel opens. Switch environments. Shake again to close.
 
 ```yaml
 dependencies:
-  envified: ^3.0.0
+  envified: ^3.1.0
 ```
 
 Then run:
@@ -219,7 +220,7 @@ EnvConfigService.instance.current.addListener(() {
 Two scenarios where production locking saves you:
 
 **Scenario A — Release builds**  
-Set `allowProdSwitch: false` and pass `enabled: false` to `EnvifiedOverlay`. The panel is gone. The service ignores switch attempts. Your prod build is clean and your users have no idea any of this exists.
+**Set `allowProdSwitch: false` and pass `enabled: false` to `EnvifiedOverlay`. The panel is gone. The service ignores switch attempts. Your prod build is clean and your users have no idea any of this exists.
 
 **Scenario B — The brave "always prod" setup**  
 Maybe you want the panel available in staging but default to Prod and lock it there:
