@@ -122,7 +122,8 @@ class _OverlayContent extends StatefulWidget {
   State<_OverlayContent> createState() => _OverlayContentState();
 }
 
-class _OverlayContentState extends State<_OverlayContent> with WidgetsBindingObserver {
+class _OverlayContentState extends State<_OverlayContent>
+    with WidgetsBindingObserver {
   bool _isOpen = false;
   bool _isAuthenticated = false;
   OverlayEntry? _gateEntry;
@@ -135,7 +136,8 @@ class _OverlayContentState extends State<_OverlayContent> with WidgetsBindingObs
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.paused || state == AppLifecycleState.inactive) {
+    if (state == AppLifecycleState.paused ||
+        state == AppLifecycleState.inactive) {
       _closePanel();
     }
   }
@@ -172,7 +174,7 @@ class _OverlayContentState extends State<_OverlayContent> with WidgetsBindingObs
 
   void _showGate() {
     _hideGate(); // Ensure only one exists
-    
+
     final gate = widget.gate;
     if (gate == null) return;
 
@@ -207,7 +209,7 @@ class _OverlayContentState extends State<_OverlayContent> with WidgetsBindingObs
                   child: GestureDetector(
                     onTap: _closePanel,
                     child: ColoredBox(
-                      color: Colors.black.withOpacity(0.88),
+                      color: Colors.black.withValues(alpha: 0.88),
                     ),
                   ),
                 ),

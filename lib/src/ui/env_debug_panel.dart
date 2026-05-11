@@ -74,7 +74,8 @@ class _EnvDebugPanelState extends State<EnvDebugPanel> {
                       ),
                       child: Row(
                         children: [
-                          Icon(Icons.warning_amber_rounded, color: Colors.orange.shade800),
+                          Icon(Icons.warning_amber_rounded,
+                              color: Colors.orange.shade800),
                           const SizedBox(width: 12),
                           Expanded(
                             child: Column(
@@ -99,7 +100,8 @@ class _EnvDebugPanelState extends State<EnvDebugPanel> {
                             style: TextButton.styleFrom(
                               backgroundColor: Colors.orange.shade700,
                               foregroundColor: Colors.white,
-                              padding: const EdgeInsets.symmetric(horizontal: 16),
+                              padding:
+                                  const EdgeInsets.symmetric(horizontal: 16),
                             ),
                             child: const Text('Restart now'),
                           ),
@@ -120,9 +122,12 @@ class _EnvDebugPanelState extends State<EnvDebugPanel> {
                       runSpacing: 8,
                       children: envs.map((env) {
                         final isActive = config.env == env;
-                        final isProd = EnvConfigService.instance.isProduction(env);
-                        final allowSwitch = EnvConfigService.instance.allowProdSwitch || !isProd;
-                        
+                        final isProd =
+                            EnvConfigService.instance.isProduction(env);
+                        final allowSwitch =
+                            EnvConfigService.instance.allowProdSwitch ||
+                                !isProd;
+
                         return AbsorbPointer(
                           absorbing: !allowSwitch,
                           child: Opacity(
@@ -141,7 +146,8 @@ class _EnvDebugPanelState extends State<EnvDebugPanel> {
                                   const Positioned(
                                     top: 4,
                                     right: 4,
-                                    child: Icon(Icons.lock, size: 12, color: Colors.white54),
+                                    child: Icon(Icons.lock,
+                                        size: 12, color: Colors.white54),
                                   ),
                               ],
                             ),
@@ -213,7 +219,6 @@ class _EnvDebugPanelState extends State<EnvDebugPanel> {
                   ),
                   tilePadding: EdgeInsets.zero,
                   childrenPadding: EdgeInsets.zero,
-                  initiallyExpanded: false,
                   children: [
                     Column(
                       children: config.values.entries.map((e) {

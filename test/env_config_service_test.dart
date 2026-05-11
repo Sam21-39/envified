@@ -82,7 +82,8 @@ void main() {
       expect(svc.current.value.env, Env.dev); // Unchanged
     });
 
-    test('allows switching AWAY from prod even when allowProdSwitch is false', () async {
+    test('allows switching AWAY from prod even when allowProdSwitch is false',
+        () async {
       bundle.register('assets/env/.env', 'BASE_URL=https://dev.com');
       bundle.register('assets/env/.env.prod', 'BASE_URL=https://prod.com');
       await svc.init(
