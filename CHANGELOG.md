@@ -5,45 +5,6 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
-
-## [3.1.0] - 2026-05-11
-
-### Features & Improvements
-- `EnvifiedOverlay` gains `showEnvKeys` (default `false`). Set to `true` to display the .env key-value section in the debug panel.
-- Keys whose names end with `_KEY` or equal `KEY` (e.g. `STRIPE_KEY`, `API_KEY`) are now automatically treated as sensitive in the debug panel — values hidden by default with tap-to-reveal.
-- `allowProdSwitch: false` now correctly prevents switching **to** production. The prod button stays visible but is greyed out (40% opacity) with a 🔒 icon. Previously the behaviour was inverted.
-- Fixed `EnvGate` overlay: now covers full screen with a dark scrim, correctly centres the PIN dialog, eliminates ghost widgets above the PIN input field, handles keyboard appearance without RenderFlex overflow, and dismisses cleanly after authentication.
-- The "Restart app to apply changes" banner now appears at the top of the debug panel for immediate visibility instead of being buried below the fold.
-- The "Configuration" section in the debug panel is now collapsible and collapsed by default to reduce visual clutter.
-- Audit log and history timestamps now display in `MM-dd-YYYY HH:mm:ss` format (local time) instead of raw ISO-8601.
-- `EnvifiedOverlay` gains `isShowEnvLabel` (default `true`). Set to `false` to hide the current-environment label/badge while keeping the overlay and gesture trigger fully active.
-
-## [3.0.0] - 2026-05-09
-
-### Breaking Changes
-- **Migration from Enum to Class**: `Env` is now an immutable class. Replaces `Env.dev` enum with `Env.dev` class instance.
-- **Removed sensors_plus**: Shake detector now requires a user-provided implementation of `EnvShakeDetector` to avoid mandatory accelerometer linking.
-- **Platform Restriction**: Removed support for Web, macOS, Windows, and Linux to focus on native mobile (Android/iOS) stability.
-- **Strict Public API**: Reduced public exports to improve maintenance and stability.
-- **Singleton Service**: `EnvConfigService` is now a singleton accessed via `.instance`.
-
-### Added
-- **Dynamic Environment Discovery**: Support for `.env.*` files without pre-defining enums.
-- **SHA-256 Integrity Hashing**: Optional verification of `.env` file contents at startup.
-- **Salted PIN Hashing**: `EnvGate` now hashes PINs with SHA-256 and a static salt.
-- **Value Equality**: All models (`Env`, `EnvConfig`, `AuditEntry`) now implement `operator ==` and `hashCode`.
-- **Typed Getters**: Added `getBool`, `getInt`, `getDouble`, `getUri`, and `getList` to `EnvConfigService`.
-- **Audit Ring Buffer**: Secure storage now limits audit logs to the 50 most recent entries.
-- **URL History**: Persists the last 5 manual base URL overrides.
-- **Flexible Production Definition**: Added `productionEnvs` to `EnvConfigService.init` to support locking multiple staging or production-grade environments.
-
-### Changed
-- **Premium UI Overhaul**: New card-based debug panel with better hierarchy, blurring, and live updates.
-- **Reactive State**: Switched to `ValueNotifier` for real-time reactivity without complex dependencies.
-- **Graceful Lock UX**: Added informative Snackbar feedback when attempting to switch or override URLs while locked.
-- **Android Build Stability**: Upgraded example project to AGP 8.7.2, Kotlin 2.1.0, and Java 17 for modern compatibility.
-
 ## [2.2.1] - 2026-05-08
 
 ### Added
