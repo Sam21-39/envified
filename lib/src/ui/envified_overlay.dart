@@ -32,6 +32,11 @@ class EnvifiedOverlay extends StatefulWidget {
   /// Whether to show the floating 🌿 button.
   final bool showFab;
 
+  /// Whether to display the current-environment label badge.
+  ///
+  /// Defaults to `true`.
+  final bool isShowEnvLabel;
+
   /// Callback to restart the application.
   final VoidCallback? onRestart;
 
@@ -42,6 +47,7 @@ class EnvifiedOverlay extends StatefulWidget {
     this.gate,
     this.trigger = const EnvTrigger.tap(),
     this.showFab = true,
+    this.isShowEnvLabel = true,
     this.onRestart,
   });
 
@@ -61,6 +67,7 @@ class _EnvifiedOverlayState extends State<EnvifiedOverlay> {
         gate: widget.gate,
         trigger: widget.trigger,
         showFab: widget.showFab,
+        isShowEnvLabel: widget.isShowEnvLabel,
         onRestart: widget.onRestart,
       ),
     );
@@ -90,12 +97,14 @@ class _OverlayContent extends StatefulWidget {
   final EnvGate? gate;
   final EnvTrigger trigger;
   final bool showFab;
+  final bool isShowEnvLabel;
   final VoidCallback? onRestart;
 
   const _OverlayContent({
     required this.appChild,
     required this.trigger,
     required this.showFab,
+    required this.isShowEnvLabel,
     this.gate,
     this.onRestart,
   });
@@ -274,7 +283,7 @@ class _OverlayContentState extends State<_OverlayContent> {
                 ),
               ),
             ),
-          const EnvStatusBadge(),
+          if (widget.isShowEnvLabel) const EnvStatusBadge(),
           if (widget.showFab)
             Positioned(
               bottom: 24,
