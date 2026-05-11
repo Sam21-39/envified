@@ -32,6 +32,11 @@ class EnvifiedOverlay extends StatefulWidget {
   /// Whether to show the floating 🌿 button.
   final bool showFab;
 
+  /// Whether to display the .env key-value section in the debug panel.
+  ///
+  /// Defaults to `false` for privacy.
+  final bool showEnvKeys;
+
   /// Callback to restart the application.
   final VoidCallback? onRestart;
 
@@ -42,6 +47,7 @@ class EnvifiedOverlay extends StatefulWidget {
     this.gate,
     this.trigger = const EnvTrigger.tap(),
     this.showFab = true,
+    this.showEnvKeys = false,
     this.onRestart,
   });
 
@@ -61,6 +67,7 @@ class _EnvifiedOverlayState extends State<EnvifiedOverlay> {
         gate: widget.gate,
         trigger: widget.trigger,
         showFab: widget.showFab,
+        showEnvKeys: widget.showEnvKeys,
         onRestart: widget.onRestart,
       ),
     );
@@ -90,12 +97,14 @@ class _OverlayContent extends StatefulWidget {
   final EnvGate? gate;
   final EnvTrigger trigger;
   final bool showFab;
+  final bool showEnvKeys;
   final VoidCallback? onRestart;
 
   const _OverlayContent({
     required this.appChild,
     required this.trigger,
     required this.showFab,
+    required this.showEnvKeys,
     this.gate,
     this.onRestart,
   });
@@ -267,7 +276,10 @@ class _OverlayContentState extends State<_OverlayContent> {
                       ),
                       child: SingleChildScrollView(
                         padding: const EdgeInsets.symmetric(vertical: 16),
-                        child: EnvDebugPanel(onRestart: widget.onRestart),
+                        child: EnvDebugPanel(
+                          onRestart: widget.onRestart,
+                          showEnvKeys: widget.showEnvKeys,
+                        ),
                       ),
                     ),
                   ),

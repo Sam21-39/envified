@@ -9,8 +9,13 @@ import 'audit_log_viewer.dart';
 /// A premium debug panel for environment management.
 class EnvDebugPanel extends StatefulWidget {
   final VoidCallback? onRestart;
+  final bool showEnvKeys;
 
-  const EnvDebugPanel({super.key, this.onRestart});
+  const EnvDebugPanel({
+    super.key,
+    this.onRestart,
+    this.showEnvKeys = false,
+  });
 
   @override
   State<EnvDebugPanel> createState() => _EnvDebugPanelState();
@@ -140,21 +145,23 @@ class _EnvDebugPanelState extends State<EnvDebugPanel> {
                 ),
               ),
               const Divider(height: 32),
-              _buildSection(
-                title: 'Configuration',
-                child: Column(
-                  children: config.values.entries.map((e) {
-                    final isSensitive =
-                        EnvConfigService.instance.isSensitive(e.key);
-                    return _ConfigRow(
-                      name: e.key,
-                      value: e.value,
-                      isSensitive: isSensitive,
-                    );
-                  }).toList(),
+              if (widget.showEnvKeys) ...[
+                _buildSection(
+                  title: 'Configuration',
+                  child: Column(
+                    children: config.values.entries.map((e) {
+                      final isSensitive =
+                          EnvConfigService.instance.isSensitive(e.key);
+                      return _ConfigRow(
+                        name: e.key,
+                        value: e.value,
+                        isSensitive: isSensitive,
+                      );
+                    }).toList(),
+                  ),
                 ),
-              ),
-              const Divider(height: 32),
+                const Divider(height: 32),
+              ],
               ExpansionTile(
                 title: const Text('Activity History',
                     style:
