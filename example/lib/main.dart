@@ -88,8 +88,9 @@ class _EnvifiedLuxuryAppState extends State<EnvifiedLuxuryApp> {
         showFab: true,
         // NEW: Toggle display of .env keys in the debug panel.
         showEnvKeys: true,
-        // NEW: Toggle display of current environment badge.
-        isShowEnvLabel: true,
+        // HIDE the package-provided label because this example app
+        // renders its own manual EnvStatusBadge in LuxuryHome.
+        isShowEnvLabel: false,
         child: child!,
       ),
       home: const LuxuryHome(),
