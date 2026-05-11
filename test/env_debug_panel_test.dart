@@ -39,6 +39,11 @@ void main() {
       expect(find.text('ACTIVE ENVIRONMENT'), findsOneWidget);
       expect(find.text('API ENDPOINT'), findsOneWidget);
       expect(find.text('CONFIGURATION'), findsOneWidget);
+
+      // ExpansionTile is collapsed by default, must expand to see keys
+      await tester.tap(find.text('CONFIGURATION'));
+      await tester.pumpAndSettle();
+
       expect(find.text('API_KEY'), findsOneWidget);
     });
 
