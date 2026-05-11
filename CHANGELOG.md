@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 - `EnvifiedOverlay` gains `showEnvKeys` (default `false`). Set to `true` to display the .env key-value section in the debug panel.
+- Keys whose names end with `_KEY` or equal `KEY` (e.g. `STRIPE_KEY`, `API_KEY`) are now automatically treated as sensitive in the debug panel — values hidden by default with tap-to-reveal.
 
 ## [3.0.0] - 2026-05-09
 

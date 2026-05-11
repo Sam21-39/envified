@@ -98,7 +98,12 @@ class EnvConfigService {
 
   /// Returns true if the [key] is considered sensitive.
   bool isSensitive(String key) {
+    // Rule: treated as sensitive if KEY appears as a full
+    // word-boundary segment — i.e. the key ends with _KEY or equals KEY.
+    // This catches STRIPE_KEY, API_KEY, PUBLIC_KEY but NOT MONKEY or TURKEY.
     final k = key.toUpperCase();
+    if (k == 'KEY' || k.endsWith('_KEY')) return true;
+
     return _sensitiveKeys.any((s) => k.contains(s));
   }
 

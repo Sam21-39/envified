@@ -94,5 +94,16 @@ void main() {
       expect(e1.hashCode, equals(e2.hashCode));
       expect(e1, isNot(equals(e3)));
     });
+
+    test('isSensitiveKey detection rules', () {
+      final service = EnvConfigService.instance;
+      expect(service.isSensitive('STRIPE_KEY'), isTrue);
+      expect(service.isSensitive('API_KEY'), isTrue);
+      expect(service.isSensitive('PUBLIC_KEY'), isTrue);
+      expect(service.isSensitive('KEY'), isTrue);
+      expect(service.isSensitive('TIMEOUT'), isFalse);
+      expect(service.isSensitive('MONKEY'), isFalse);
+      expect(service.isSensitive('TURKEY'), isFalse);
+    });
   });
 }
