@@ -59,6 +59,56 @@ class _EnvDebugPanelState extends State<EnvDebugPanel> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
+              ValueListenableBuilder<bool>(
+                valueListenable: EnvConfigService.instance.restartNeeded,
+                builder: (context, restartNeeded, _) {
+                  if (!restartNeeded) return const SizedBox.shrink();
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 24),
+                    child: Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.orange.shade50,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.orange.shade300),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(Icons.warning_amber_rounded, color: Colors.orange.shade800),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Restart app to apply changes',
+                                  style: TextStyle(
+                                    color: Colors.orange.shade900,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 13,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          TextButton(
+                            onPressed: () {
+                              EnvConfigService.instance.markAsApplied();
+                              widget.onRestart?.call();
+                            },
+                            style: TextButton.styleFrom(
+                              backgroundColor: Colors.orange.shade700,
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(horizontal: 16),
+                            ),
+                            child: const Text('Restart now'),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                },
+              ),
               _buildSection(
                 title: 'Active Environment',
                 child: ValueListenableBuilder<List<Env>>(
@@ -184,19 +234,6 @@ class _EnvDebugPanelState extends State<EnvDebugPanel> {
                 ],
               ),
               const SizedBox(height: 24),
-              if (EnvConfigService.instance.restartNeeded.value)
-                ElevatedButton.icon(
-                  onPressed: () {
-                    EnvConfigService.instance.markAsApplied();
-                    widget.onRestart?.call();
-                  },
-                  icon: const Icon(Icons.refresh),
-                  label: const Text('Restart to Apply Changes'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.orange.shade700,
-                    foregroundColor: Colors.white,
-                  ),
-                ),
             ],
           ),
         );
