@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fixed `EnvGate` overlay: now covers full screen with a dark scrim, correctly centres the PIN dialog, eliminates ghost widgets above the PIN input field, handles keyboard appearance without RenderFlex overflow, and dismisses cleanly after authentication.
 - The "Restart app to apply changes" banner now appears at the top of the debug panel for immediate visibility instead of being buried below the fold.
 - The "Configuration" section in the debug panel is now collapsible and collapsed by default to reduce visual clutter.
+- Audit log and history timestamps now display in `MM-dd-YYYY HH:mm:ss` format (local time) instead of raw ISO-8601.
 
 ## [3.0.0] - 2026-05-09
 
