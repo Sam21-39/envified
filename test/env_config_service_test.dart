@@ -70,8 +70,20 @@ void main() {
       expect(await fakeStorage.read(key: 'envified.active_env'), 'prod');
     });
 
-    test('throws EnvifiedLockException when prod switch is disallowed',
-        () async {
+    test('blocks switching TO prod when allowProdSwitch is false', () async {
+      bundle.register('assets/env/.env', 'BASE_URL=https://dev.com');
+      bundle.register('assets/env/.env.prod', 'BASE_URL=https://prod.com');
+      await svc.init(
+        bundle: bundle,
+        allowProdSwitch: false,
+      );
+
+      await svc.switchTo(Env.prod);
+      expect(svc.current.value.env, Env.dev); // Unchanged
+    });
+
+    test('allows switching AWAY from prod even when allowProdSwitch is false', () async {
+      bundle.register('assets/env/.env', 'BASE_URL=https://dev.com');
       bundle.register('assets/env/.env.prod', 'BASE_URL=https://prod.com');
       await svc.init(
         defaultEnv: Env.prod,
@@ -79,10 +91,8 @@ void main() {
         allowProdSwitch: false,
       );
 
-      expect(
-        () => svc.switchTo(Env.dev),
-        throwsA(isA<EnvifiedLockException>()),
-      );
+      await svc.switchTo(Env.dev);
+      expect(svc.current.value.env, Env.dev); // Allowed
     });
   });
 

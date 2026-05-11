@@ -74,6 +74,9 @@ class EnvConfigService {
   /// Whether switching away from production is allowed.
   bool get allowProdSwitch => _allowProdSwitch;
 
+  /// Returns true if the [env] is considered a production environment.
+  bool isProduction(Env env) => _productionEnvs.contains(env);
+
   /// Returns true if the service is currently in a production-like environment and [allowProdSwitch] is false.
   bool get isProdLocked =>
       _productionEnvs.contains(current.value.env) && !_allowProdSwitch;
@@ -147,9 +150,9 @@ class EnvConfigService {
 
   /// Switches the active environment.
   Future<void> switchTo(Env env) async {
-    if (isProdLocked) {
-      throw EnvifiedLockException(
-          'Cannot switch environment while locked in Production.');
+    if (isProduction(env) && !_allowProdSwitch) {
+      // Silent no-op if trying to switch TO prod when blocked
+      return;
     }
     final from = current.value.env;
     if (from == env) return;

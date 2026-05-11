@@ -65,27 +65,32 @@ class _EnvDebugPanelState extends State<EnvDebugPanel> {
                       runSpacing: 8,
                       children: envs.map((env) {
                         final isActive = config.env == env;
-                        final isLocked = EnvConfigService.instance.isProdLocked;
-                        return ChoiceChip(
-                          label: Text(env.label),
-                          selected: isActive,
-                          onSelected: (selected) {
-                            if (!selected || isActive) return;
-                            if (isLocked) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text(
-                                    'Cannot switch while Production is locked.',
-                                    style: TextStyle(color: Colors.white),
-                                  ),
-                                  backgroundColor: Colors.redAccent,
-                                  duration: Duration(seconds: 2),
+                        final isProd = EnvConfigService.instance.isProduction(env);
+                        final allowSwitch = EnvConfigService.instance.allowProdSwitch || !isProd;
+                        
+                        return AbsorbPointer(
+                          absorbing: !allowSwitch,
+                          child: Opacity(
+                            opacity: allowSwitch ? 1.0 : 0.4,
+                            child: Stack(
+                              children: [
+                                ChoiceChip(
+                                  label: Text(env.label),
+                                  selected: isActive,
+                                  onSelected: (selected) {
+                                    if (!selected || isActive) return;
+                                    EnvConfigService.instance.switchTo(env);
+                                  },
                                 ),
-                              );
-                              return;
-                            }
-                            EnvConfigService.instance.switchTo(env);
-                          },
+                                if (!allowSwitch)
+                                  const Positioned(
+                                    top: 4,
+                                    right: 4,
+                                    child: Icon(Icons.lock, size: 12, color: Colors.white54),
+                                  ),
+                              ],
+                            ),
+                          ),
                         );
                       }).toList(),
                     );
