@@ -4,6 +4,7 @@
 [![pub points](https://img.shields.io/pub/points/envified?color=blue)](https://pub.dev/packages/envified/score)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Dart CI](https://github.com/Sam21-39/envified/actions/workflows/ci.yml/badge.svg)](https://github.com/Sam21-39/envified/actions/workflows/ci.yml)
+[![Sponsor](https://img.shields.io/badge/Sponsor-Appamania-EA4AAA?style=flat&logo=buy-me-a-coffee&logoColor=white)](https://paywithchai.in/appamania)
 
 > **Stop rebuilding. Start switching.** ⚡  
 > Runtime environment magic for Flutter apps. Reactive, secure, and — dare we say — a little premium.
@@ -71,7 +72,7 @@ Give your phone a shake. Panel opens. Switch environments. Shake again to close.
 
 ```yaml
 dependencies:
-  envified: ^3.0.0
+  envified: ^3.1.0
 ```
 
 Then run:
@@ -219,7 +220,7 @@ EnvConfigService.instance.current.addListener(() {
 Two scenarios where production locking saves you:
 
 **Scenario A — Release builds**  
-Set `allowProdSwitch: false` and pass `enabled: false` to `EnvifiedOverlay`. The panel is gone. The service ignores switch attempts. Your prod build is clean and your users have no idea any of this exists.
+**Set `allowProdSwitch: false` and pass `enabled: false` to `EnvifiedOverlay`. The panel is gone. The service ignores switch attempts. Your prod build is clean and your users have no idea any of this exists.
 
 **Scenario B — The brave "always prod" setup**  
 Maybe you want the panel available in staging but default to Prod and lock it there:

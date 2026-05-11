@@ -44,3 +44,13 @@ feat(auto-discovery): scan assets for .env.* files automatically
 ## Community Standards
 
 Please refer to our [Code of Conduct](CODE_OF_CONDUCT.md) for details on our code of conduct and the process for submitting pull requests to us.
+
+---
+
+## ☕ Support the Project
+
+If you find `envified` helpful and want to support its continued development, you can support us via:
+
+👉 **[Pay with Chai (Appamania)](https://paywithchai.in/appamania)**
+
+Your support helps us keep the project maintained and the coffee brewing!
