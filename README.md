@@ -17,7 +17,7 @@ You know the drill. You push to prod. Five minutes later, Slack is on fire becau
 
 ---
 
-## 🚀 What's New in v3.1.0
+## 🚀 What's New in v3.1.1
 
 Building on the foundation of v3.0.0, we've added major improvements to privacy, safety, and UX:
 
@@ -72,7 +72,7 @@ Give your phone a shake. Panel opens. Switch environments. Shake again to close.
 
 ```yaml
 dependencies:
-  envified: ^3.1.0
+  envified: ^3.1.1
 ```
 
 Then run:

@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.1.1] - 2026-05-12
+
+### Refactor & Maintenance
+- Consolidated CI/CD workflows into a unified pipeline for better reliability and faster feedback loops.
+- Implemented automated release publishing pipelines to streamline the pub.dev deployment process.
+- Updated project dependencies and internal plugin registries in the example project.
+
 ## [3.1.0] - 2026-05-11
 
 ### Features & Improvements
