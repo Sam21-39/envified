@@ -42,7 +42,7 @@ It's not just a config switcher. It's **enterprise-grade security** meets **deve
 
 ---
 
-## 🚀 What's New in v3.1.0
+## 🚀 What's New in v3.1.1
 
 Building on the foundation of v3.0.0, we've added major improvements to privacy, safety, and UX:
 
@@ -80,7 +80,7 @@ Building on the foundation of v3.0.0, we've added major improvements to privacy,
 
 ```yaml
 dependencies:
-  envified: ^3.1.0
+  envified: ^3.1.1
 ```
 
 Then run:
