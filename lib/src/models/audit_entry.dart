@@ -83,3 +83,15 @@ class AuditEntry {
       toEnv.hashCode ^
       url.hashCode;
 }
+
+/// Formats an audit timestamp as MM-dd-YYYY HH:mm:ss in local time.
+String formatAuditTimestamp(DateTime dt) {
+  final local = dt.toLocal();
+  final mm = local.month.toString().padLeft(2, '0');
+  final dd = local.day.toString().padLeft(2, '0');
+  final yyyy = local.year.toString();
+  final hh = local.hour.toString().padLeft(2, '0');
+  final min = local.minute.toString().padLeft(2, '0');
+  final ss = local.second.toString().padLeft(2, '0');
+  return '$mm-$dd-$yyyy $hh:$min:$ss';
+}

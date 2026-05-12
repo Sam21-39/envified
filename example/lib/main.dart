@@ -1,63 +1,52 @@
-import 'package:flutter/foundation.dart';
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:envified/envified.dart';
-
-// 1. Define your custom shake detector or use a package like shake.
-class MyShakeDetector implements EnvShakeDetector {
-  @override
-  void start(double threshold, VoidCallback onShake) {
-    // Implement your shake logic here or use a package
-    debugPrint('Shake listening started with threshold: $threshold');
-  }
-
-  @override
-  void stop() {
-    debugPrint('Shake listening stopped.');
-  }
-}
+import 'package:http/http.dart' as http;
 
 void main() async {
-  // Ensure Flutter is initialized.
+  // 1. Ensure Flutter is initialized
   WidgetsFlutterBinding.ensureInitialized();
 
-  // 2. Initialize Envified.
-  // This loads the active environment and discovers available .env.* files.
+  // 2. Initialize the EnvConfigService before runApp
+  // This loads the default .env files and checks for persisted overrides.
   await EnvConfigService.instance.init(
-    defaultEnv: Env.dev,
-    // Production lock: Only allow switching environments in debug mode.
-    allowProdSwitch: kDebugMode,
-    // Auto-discover .env.* files from assets.
-    autoDiscover: true,
-    // Sensitive keys will be blurred in the UI.
-    sensitiveKeys: ['API_KEY', 'AUTH_TOKEN', 'JWT_SECRET'],
-    // Define which environments should be treated as production (security locked).
-    productionEnvs: [Env.prod, Env.dynamic("production")],
+    defaultEnv: Env.staging,
+    allowProdSwitch: false, // 🔒 Lock production by default
+    verifyIntegrity: false,
+    onAfterSwitch: (config) {
+      debugPrint('Environment changed: ${config.env.name}');
+    },
   );
 
-  runApp(const EnvifiedLuxuryApp());
+  runApp(const EnvifiedDemoApp());
 }
 
-class EnvifiedLuxuryApp extends StatefulWidget {
-  const EnvifiedLuxuryApp({super.key});
+class EnvifiedDemoApp extends StatefulWidget {
+  const EnvifiedDemoApp({super.key});
 
   @override
-  State<EnvifiedLuxuryApp> createState() => _EnvifiedLuxuryAppState();
+  State<EnvifiedDemoApp> createState() => _EnvifiedDemoAppState();
 }
 
-class _EnvifiedLuxuryAppState extends State<EnvifiedLuxuryApp> {
+class _EnvifiedDemoAppState extends State<EnvifiedDemoApp> {
+  // Use a UniqueKey to trigger a full widget tree rebuild during "Restart Now"
   Key _appKey = UniqueKey();
 
-  void _restart() {
+  void _handleRestart() {
+    // 4. Reset the restartNeeded flag once the app acknowledges the restart
+    EnvConfigService.instance.acknowledgeRestart();
+
     setState(() {
       _appKey = UniqueKey();
     });
+    debugPrint('App tree re-initialized via Envified restart handler.');
   }
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       key: _appKey,
-      title: 'Envified Luxury',
+      title: 'Envified-Demo',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         useMaterial3: true,
@@ -71,8 +60,7 @@ class _EnvifiedLuxuryAppState extends State<EnvifiedLuxuryApp> {
           elevation: 0,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(24),
-            // ignore: deprecated_member_use
-            side: BorderSide(color: Colors.white.withOpacity(0.05)),
+            side: BorderSide(color: Colors.white.withValues(alpha: 0.05)),
           ),
         ),
       ),
@@ -87,74 +75,168 @@ class _EnvifiedLuxuryAppState extends State<EnvifiedLuxuryApp> {
         ),
         onRestart: _restart,
         showFab: true,
+        // NEW: Toggle display of .env keys in the debug panel.
+        showEnvKeys: true,
+        // HIDE the package-provided label because this example app
+        // renders its own manual EnvStatusBadge in LuxuryHome.
+        isShowEnvLabel: false,
         child: child!,
       ),
-      home: const LuxuryHome(),
+      home: const LoginGate(),
     );
   }
 }
 
-class LuxuryHome extends StatelessWidget {
-  const LuxuryHome({super.key});
+class LoginGate extends StatefulWidget {
+  const LoginGate({super.key});
+
+  @override
+  State<LoginGate> createState() => _LoginGateState();
+}
+
+class _LoginGateState extends State<LoginGate> {
+  bool _isLoggedIn = false;
+
+  void _login() {
+    setState(() => _isLoggedIn = true);
+  }
+
+  void _logout() {
+    setState(() => _isLoggedIn = false);
+  }
 
   @override
   Widget build(BuildContext context) {
-    return ValueListenableBuilder<EnvConfig>(
-      valueListenable: EnvConfigService.instance.current,
-      builder: (context, config, _) {
-        return Scaffold(
-          body: Container(
-            decoration: const BoxDecoration(
-              gradient: RadialGradient(
-                center: Alignment.topLeft,
-                radius: 1.5,
-                colors: [
-                  Color(0xFF1E1E2E),
-                  Color(0xFF0F0F1A),
-                ],
+    if (_isLoggedIn) {
+      return HomePage(onLogout: _logout);
+    }
+    return LoginPage(onLogin: _login);
+  }
+}
+
+class LoginPage extends StatelessWidget {
+  final VoidCallback onLogin;
+
+  const LoginPage({super.key, required this.onLogin});
+
+  @override
+  Widget build(BuildContext context) {
+    final config = EnvConfigService.instance.current.value;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return Scaffold(
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors:
+                isDark ? [Colors.teal.shade900, Colors.black] : [Colors.teal.shade50, Colors.white],
+          ),
+        ),
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 400),
+            child: Card(
+              margin: const EdgeInsets.all(24),
+              elevation: 0,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(24),
+                side: BorderSide(color: Colors.teal.withOpacity(0.1)),
               ),
-            ),
-            child: SafeArea(
-              child: Stack(
-                children: [
-                  CustomScrollView(
-                    slivers: [
-                      _buildAppBar(config),
-                      SliverPadding(
-                        padding: const EdgeInsets.all(24),
-                        sliver: SliverList(
-                          delegate: SliverChildListDelegate([
-                            _buildHeroCard(config),
-                            const SizedBox(height: 32),
-                            _buildSectionHeader('Connection Details'),
-                            const SizedBox(height: 16),
-                            _buildInfoTile(
-                              'API ENDPOINT',
-                              config.baseUrl,
-                              Icons.api_rounded,
-                              isOverridden: config.isBaseUrlOverridden,
-                            ),
-                            const SizedBox(height: 32),
-                            _buildSectionHeader('Security Configuration'),
-                            const SizedBox(height: 16),
-                            ...config.values.entries
-                                .map((e) => _buildSecretTile(e.key, e.value)),
-                            const SizedBox(
-                                height: 100), // Space for status badge
-                          ]),
+              child: Padding(
+                padding: const EdgeInsets.all(32),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: Colors.teal.withOpacity(0.1),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Text('🌿', style: TextStyle(fontSize: 32)),
+                    ),
+                    const SizedBox(height: 24),
+                    Text(
+                      config.values['APP_TITLE'] ?? 'Envified-Demo',
+                      style: const TextStyle(
+                        fontSize: 28,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: -0.5,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: Colors.teal.withOpacity(0.15),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        'Environment: ${config.env.label}',
+                        style: const TextStyle(
+                          color: Colors.teal,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 11,
                         ),
                       ),
-                    ],
-                  ),
-                  const EnvStatusBadge(
-                    margin: EdgeInsets.fromLTRB(0, 24, 24, 0),
-                  ),
-                ],
+                    ),
+                    const SizedBox(height: 32),
+                    const TextField(
+                      decoration: InputDecoration(
+                        labelText: 'Email',
+                        border: OutlineInputBorder(),
+                        prefixIcon: Icon(Icons.email_outlined),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    const TextField(
+                      obscureText: true,
+                      decoration: InputDecoration(
+                        labelText: 'Password',
+                        border: OutlineInputBorder(),
+                        prefixIcon: Icon(Icons.lock_outline),
+                      ),
+                    ),
+                    const SizedBox(height: 32),
+                    SizedBox(
+                      width: double.infinity,
+                      height: 54,
+                      child: FilledButton(
+                        onPressed: onLogin,
+                        style: FilledButton.styleFrom(
+                          backgroundColor: Colors.teal,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        child: const Text(
+                          'Sign In',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    Text(
+                      'API endpoint: ${config.baseUrl}',
+                      style: TextStyle(
+                        fontSize: 10,
+                        color: Colors.grey.shade500,
+                        fontFamily: 'monospace',
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
-        );
-      },
+        ),
+      ),
     );
   }
 
@@ -184,16 +266,13 @@ class LuxuryHome extends StatelessWidget {
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
-            // ignore: deprecated_member_use
-            const Color(0xFF6200EE).withOpacity(0.8),
-            // ignore: deprecated_member_use
-            const Color(0xFFBB86FC).withOpacity(0.8),
+            const Color(0xFF6200EE).withValues(alpha: 0.8),
+            const Color(0xFFBB86FC).withValues(alpha: 0.8),
           ],
         ),
         boxShadow: [
           BoxShadow(
-            // ignore: deprecated_member_use
-            color: const Color(0xFF6200EE).withOpacity(0.3),
+            color: const Color(0xFF6200EE).withValues(alpha: 0.3),
             blurRadius: 32,
             offset: const Offset(0, 16),
           ),
@@ -205,8 +284,7 @@ class LuxuryHome extends StatelessWidget {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
             decoration: BoxDecoration(
-              // ignore: deprecated_member_use
-              color: Colors.white.withOpacity(0.2),
+              color: Colors.white.withValues(alpha: 0.2),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Text(
@@ -232,8 +310,7 @@ class LuxuryHome extends StatelessWidget {
             'Last loaded at ${config.loadedAt.hour}:${config.loadedAt.minute}',
             style: TextStyle(
               fontSize: 12,
-              // ignore: deprecated_member_use
-              color: Colors.white.withOpacity(0.7),
+              color: Colors.white.withValues(alpha: 0.7),
             ),
           ),
         ],
@@ -247,58 +324,80 @@ class LuxuryHome extends StatelessWidget {
       style: TextStyle(
         fontSize: 11,
         fontWeight: FontWeight.bold,
-        // ignore: deprecated_member_use
-        color: Colors.white.withOpacity(0.4),
+        color: Colors.white.withValues(alpha: 0.4),
         letterSpacing: 1.5,
       ),
     );
   }
 
-  Widget _buildInfoTile(String title, String value, IconData icon,
-      {bool isOverridden = false}) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(20),
+  Widget _buildDynamicItem(dynamic item) {
+    // Detect content type based on keys
+    if (item.containsKey('completed')) {
+      return _buildTodoItem(item);
+    } else if (item.containsKey('email')) {
+      return _buildUserItem(item);
+    } else if (item.containsKey('thumbnailUrl')) {
+      return _buildPhotoItem(item);
+    }
+
+    return ListTile(title: Text(item.toString()));
+  }
+
+  Widget _buildTodoItem(dynamic item) {
+    return ListTile(
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      leading: CircleAvatar(
+        backgroundColor: Colors.teal.shade50,
+        child: Text('${item['id']}',
+            style:
+                TextStyle(color: Colors.teal.shade700, fontSize: 12, fontWeight: FontWeight.bold)),
+      ),
+      title: Text(
+        item['title'],
+        style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+      ),
+      subtitle: Padding(
+        padding: const EdgeInsets.only(top: 6),
         child: Row(
           children: [
-            Icon(icon,
-                color: isOverridden ? Colors.orangeAccent : Colors.white60,
-                size: 20),
+            Icon(icon, color: isOverridden ? Colors.orangeAccent : Colors.white60, size: 20),
             const SizedBox(width: 16),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(title,
-                      style: TextStyle(
-                          fontSize: 10,
-                          // ignore: deprecated_member_use
-                          color: Colors.white.withOpacity(0.4))),
+                      style: TextStyle(fontSize: 10, color: Colors.white.withValues(alpha: 0.4))),
                   const SizedBox(height: 4),
                   Text(
                     value,
                     style: const TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                        fontFamily: 'monospace'),
+                        fontSize: 14, fontWeight: FontWeight.w600, fontFamily: 'monospace'),
                   ),
                 ],
               ),
             ),
-            if (isOverridden)
-              const Icon(Icons.bolt_rounded,
-                  color: Colors.orangeAccent, size: 16),
+            if (isOverridden) const Icon(Icons.bolt_rounded, color: Colors.orangeAccent, size: 16),
           ],
         ),
       ),
+      trailing: Icon(Icons.chevron_right, color: Colors.grey.shade400),
     );
   }
 
-  Widget _buildSecretTile(String name, String value) {
-    final isSensitive = EnvConfigService.instance.isSensitive(name);
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: Row(
+  Widget _buildUserItem(dynamic item) {
+    return ListTile(
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      leading: CircleAvatar(
+        backgroundColor: Colors.blue.shade50,
+        child: const Icon(Icons.person, color: Colors.blue),
+      ),
+      title: Text(
+        item['name'],
+        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+      ),
+      subtitle: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Container(
             width: 4,
@@ -313,25 +412,19 @@ class LuxuryHome extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(name,
-                    style: const TextStyle(
-                        fontSize: 12, fontWeight: FontWeight.bold)),
+                Text(name, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
                 Text(
                   isSensitive ? '••••••••••••••••' : value,
                   style: TextStyle(
                       fontSize: 12,
-                      // ignore: deprecated_member_use
-                      color: Colors.white.withOpacity(0.5),
+                      color: Colors.white.withValues(alpha: 0.5),
                       fontFamily: 'monospace'),
                 ),
               ],
             ),
           ),
           if (isSensitive)
-            Icon(Icons.lock_rounded,
-                size: 14,
-                // ignore: deprecated_member_use
-                color: Colors.white.withOpacity(0.2)),
+            Icon(Icons.lock_rounded, size: 14, color: Colors.white.withValues(alpha: 0.2)),
         ],
       ),
     );

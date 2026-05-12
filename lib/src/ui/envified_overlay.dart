@@ -1,47 +1,111 @@
-import 'package:envified/envified.dart';
 import 'package:flutter/material.dart';
 
-/// A transparent wrapper widget that injects the environment debug panel
-/// into the app's [Overlay].
+import '../env_config_service.dart';
+import '../env_gate.dart';
+import 'env_debug_panel.dart';
+import 'env_trigger.dart';
+
+/// A transparent wrapper widget that optionally injects a floating debug button
+/// into the app's [Overlay], allowing [EnvDebugPanel] to be opened at any time.
 ///
-/// The recommended placement is inside the `builder` of your [MaterialApp]:
+/// The recommended placement is inside the `builder` of your [MaterialApp] so
+/// the overlay persists across all routes:
 ///
 /// ```dart
 /// MaterialApp(
 ///   builder: (context, child) => EnvifiedOverlay(
+///     service: EnvConfigService.instance,
 ///     enabled: kDebugMode,
 ///     gate: EnvGate(pin: '1234'),
 ///     trigger: const EnvTrigger.tap(count: 7),
 ///     child: child ?? const SizedBox.shrink(),
 ///   ),
+///   home: const MyApp(),
 /// )
 /// ```
+///
+/// ## Gate (access control)
+///
+/// When [gate] is non-null, the user must authenticate before the panel opens.
+/// Supported methods:
+/// - PIN dialog: `EnvGate(pin: '1234')`
+/// - Biometric: `EnvGate(biometric: true)`
+/// - Either: `EnvGate(pin: '1234', biometric: true)`
+///
+/// If authentication fails, a `'Authentication failed'` SnackBar is shown.
+///
+/// ## Trigger (gesture)
+///
+/// [trigger] controls how the panel is opened. Defaults to 7 rapid taps.
+/// Other options: `EnvTrigger.shake()`, `EnvTrigger.edgeSwipe()`.
+///
+/// ## Auto-lock
+///
+/// The panel automatically closes (and re-requires authentication) whenever
+/// the app is hidden or paused ([AppLifecycleState.hidden] /
+/// [AppLifecycleState.paused]).
+///
+/// When [enabled] is `false` the widget is a transparent pass-through with
+/// no runtime overhead.
+///
+/// @see EnvDebugPanel
+/// @see EnvConfigService
+/// @see EnvGate
+/// @see EnvTrigger
 class EnvifiedOverlay extends StatefulWidget {
+  /// The [EnvConfigService] instance passed through to [EnvDebugPanel].
+  final EnvConfigService service;
+
   /// The widget tree to render beneath the overlay.
   final Widget child;
 
-  /// When `false`, this widget is a transparent pass-through.
+  /// When `false`, this widget is a transparent pass-through with no runtime
+  /// cost. Pass `kDebugMode` here to automatically disable in production builds.
   final bool enabled;
 
+  /// Optional callback forwarded to [EnvDebugPanel.onRestart].
+  final VoidCallback? onRestart;
+
   /// Optional access gate that must be passed before the panel is revealed.
+  ///
+  /// See [EnvGate] for available authentication strategies.
   final EnvGate? gate;
 
   /// The gesture that opens the debug panel.
+  ///
+  /// Defaults to 7 rapid taps anywhere on the child widget tree.
   final EnvTrigger trigger;
 
-  /// Whether to show the floating 🌿 button.
+  /// Whether to show the floating 🌿 button in the bottom-right corner.
+  ///
+  /// Defaults to `true`. Set to `false` to use the [trigger] as the exclusive
+  /// way to open the panel (stealth mode).
   final bool showFab;
+
+  /// Whether to display the .env key-value section in the debug panel.
+  ///
+  /// Defaults to `false` for privacy.
+  final bool showEnvKeys;
+
+  /// Whether to display the current-environment label badge.
+  ///
+  /// Defaults to `true`.
+  final bool isShowEnvLabel;
 
   /// Callback to restart the application.
   final VoidCallback? onRestart;
 
   const EnvifiedOverlay({
-    required this.child,
     super.key,
+    required this.service,
+    required this.child,
     this.enabled = true,
+    this.onRestart,
     this.gate,
-    this.trigger = const EnvTrigger.tap(),
+    this.trigger = const EnvTrigger.tap(count: 7),
     this.showFab = true,
+    this.showEnvKeys = false,
+    this.isShowEnvLabel = true,
     this.onRestart,
   });
 
@@ -57,10 +121,14 @@ class _EnvifiedOverlayState extends State<EnvifiedOverlay> {
     super.initState();
     _entry = OverlayEntry(
       builder: (context) => _OverlayContent(
+        service: widget.service,
         appChild: widget.child,
+        onRestart: widget.onRestart,
         gate: widget.gate,
         trigger: widget.trigger,
         showFab: widget.showFab,
+        showEnvKeys: widget.showEnvKeys,
+        isShowEnvLabel: widget.isShowEnvLabel,
         onRestart: widget.onRestart,
       ),
     );
@@ -69,6 +137,7 @@ class _EnvifiedOverlayState extends State<EnvifiedOverlay> {
   @override
   void didUpdateWidget(EnvifiedOverlay oldWidget) {
     super.didUpdateWidget(oldWidget);
+    // When the MaterialApp rebuilds and provides a new child, re-render.
     _entry.markNeedsBuild();
   }
 
@@ -76,6 +145,8 @@ class _EnvifiedOverlayState extends State<EnvifiedOverlay> {
   Widget build(BuildContext context) {
     if (!widget.enabled) return widget.child;
 
+    // A dedicated Overlay is critical when used in MaterialApp.builder,
+    // because the builder context is above the Navigator's Overlay.
     return Directionality(
       textDirection: TextDirection.ltr,
       child: Overlay(
@@ -86,16 +157,25 @@ class _EnvifiedOverlayState extends State<EnvifiedOverlay> {
 }
 
 class _OverlayContent extends StatefulWidget {
+  final EnvConfigService service;
   final Widget appChild;
+  final VoidCallback? onRestart;
   final EnvGate? gate;
   final EnvTrigger trigger;
   final bool showFab;
+  final bool showEnvKeys;
+  final bool isShowEnvLabel;
   final VoidCallback? onRestart;
 
   const _OverlayContent({
+    required this.service,
     required this.appChild,
+    this.onRestart,
+    this.gate,
     required this.trigger,
     required this.showFab,
+    required this.showEnvKeys,
+    required this.isShowEnvLabel,
     this.gate,
     this.onRestart,
   });
@@ -104,23 +184,37 @@ class _OverlayContent extends StatefulWidget {
   State<_OverlayContent> createState() => _OverlayContentState();
 }
 
-class _OverlayContentState extends State<_OverlayContent> {
+class _OverlayContentState extends State<_OverlayContent> with WidgetsBindingObserver {
   bool _isOpen = false;
   bool _isAuthenticated = false;
-  bool _isPinVisible = false;
-  String? _pinError;
-  final TextEditingController _pinController = TextEditingController();
+  OverlayEntry? _gateEntry;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.paused || state == AppLifecycleState.inactive) {
+      _closePanel();
+    }
+  }
 
   void _closePanel() {
+    _hideGate();
     if (mounted) {
       setState(() {
         _isOpen = false;
         _isAuthenticated = false;
-        _isPinVisible = false;
-        _pinError = null;
-        _pinController.clear();
       });
     }
+  }
+
+  void _hideGate() {
+    _gateEntry?.remove();
+    _gateEntry = null;
   }
 
   void _requestOpen() {
@@ -129,40 +223,135 @@ class _OverlayContentState extends State<_OverlayContent> {
       return;
     }
 
-    final gate = widget.gate;
+    final EnvGate? gate = widget.gate;
     if (gate != null && !_isAuthenticated) {
-      setState(() {
-        _isPinVisible = true;
-        _pinError = null;
-        _pinController.clear();
-      });
+      _showGate();
       return;
     }
 
     if (mounted) setState(() => _isOpen = true);
   }
 
-  void _verifyPin() {
+  void _showGate() {
+    _hideGate(); // Ensure only one exists
+
     final gate = widget.gate;
     if (gate == null) return;
 
-    if (gate.verify(_pinController.text)) {
-      setState(() {
-        _isAuthenticated = true;
-        _isPinVisible = false;
-        _isOpen = true;
-      });
-    } else {
-      setState(() {
-        _pinError = 'Invalid PIN';
-        _pinController.clear();
-      });
-    }
+    final pinController = TextEditingController();
+    String? pinError;
+
+    _gateEntry = OverlayEntry(
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setGateState) {
+            void verifyPin() {
+              if (gate.verify(pinController.text)) {
+                _hideGate();
+                if (mounted) {
+                  setState(() {
+                    _isAuthenticated = true;
+                    _isOpen = true;
+                  });
+                }
+              } else {
+                setGateState(() {
+                  pinError = 'Invalid PIN';
+                  pinController.clear();
+                });
+              }
+            }
+
+            return Stack(
+              children: [
+                // Dark Scrim
+                Positioned.fill(
+                  child: GestureDetector(
+                    onTap: _closePanel,
+                    child: ColoredBox(
+                      color: Colors.black.withValues(alpha: 0.88),
+                    ),
+                  ),
+                ),
+                // Centered Dialog
+                Scaffold(
+                  backgroundColor: Colors.transparent,
+                  resizeToAvoidBottomInset: true,
+                  body: Center(
+                    child: SingleChildScrollView(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 24),
+                        child: Material(
+                          elevation: 24,
+                          borderRadius: BorderRadius.circular(16),
+                          color: Theme.of(context).cardColor,
+                          child: Padding(
+                            padding: const EdgeInsets.all(24),
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Text(
+                                  'Enter PIN',
+                                  style: TextStyle(
+                                    fontSize: 20,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                const SizedBox(height: 16),
+                                TextField(
+                                  controller: pinController,
+                                  obscureText: true,
+                                  autofocus: true,
+                                  keyboardType: TextInputType.number,
+                                  textAlign: TextAlign.center,
+                                  style: const TextStyle(
+                                    fontSize: 24,
+                                    letterSpacing: 8,
+                                  ),
+                                  decoration: InputDecoration(
+                                    hintText: '••••',
+                                    errorText: pinError,
+                                    border: const OutlineInputBorder(),
+                                  ),
+                                  onSubmitted: (_) => verifyPin(),
+                                ),
+                                const SizedBox(height: 24),
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.end,
+                                  children: [
+                                    TextButton(
+                                      onPressed: _closePanel,
+                                      child: const Text('CANCEL'),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    ElevatedButton(
+                                      onPressed: verifyPin,
+                                      child: const Text('VERIFY'),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+
+    Overlay.of(context).insert(_gateEntry!);
   }
 
   @override
   void dispose() {
-    _pinController.dispose();
+    WidgetsBinding.instance.removeObserver(this);
+    _hideGate();
     super.dispose();
   }
 
@@ -170,81 +359,22 @@ class _OverlayContentState extends State<_OverlayContent> {
   Widget build(BuildContext context) {
     return widget.trigger.build(
       onOpen: _requestOpen,
-      isActive: !_isOpen && !_isPinVisible,
+      isActive: !_isOpen && _gateEntry == null,
       child: Stack(
         children: [
           widget.appChild,
-          if (_isOpen || _isPinVisible)
+          if (_isOpen)
             Positioned.fill(
               child: GestureDetector(
                 onTap: _closePanel,
                 child: Container(color: Colors.black54),
               ),
             ),
-          if (_isPinVisible)
-            Center(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 32),
-                child: Material(
-                  elevation: 24,
-                  borderRadius: BorderRadius.circular(16),
-                  color: Theme.of(context).cardColor,
-                  child: Padding(
-                    padding: const EdgeInsets.all(24),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Text(
-                          'Enter PIN',
-                          style: TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-                        TextField(
-                          controller: _pinController,
-                          obscureText: true,
-                          autofocus: true,
-                          keyboardType: TextInputType.number,
-                          textAlign: TextAlign.center,
-                          style: const TextStyle(
-                            fontSize: 24,
-                            letterSpacing: 8,
-                          ),
-                          decoration: InputDecoration(
-                            hintText: '••••',
-                            errorText: _pinError,
-                            border: const OutlineInputBorder(),
-                          ),
-                          onSubmitted: (_) => _verifyPin(),
-                        ),
-                        const SizedBox(height: 24),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.end,
-                          children: [
-                            TextButton(
-                              onPressed: _closePanel,
-                              child: const Text('CANCEL'),
-                            ),
-                            const SizedBox(width: 8),
-                            ElevatedButton(
-                              onPressed: _verifyPin,
-                              child: const Text('VERIFY'),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            ),
           if (_isOpen)
             Positioned(
               left: 16,
               right: 16,
-              bottom: 80,
+              bottom: 80, // Above the FAB
               child: SafeArea(
                 child: Material(
                   elevation: 8,
@@ -252,35 +382,31 @@ class _OverlayContentState extends State<_OverlayContent> {
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(16),
                     child: Container(
-                      decoration: BoxDecoration(
-                        color: Theme.of(context).canvasColor,
-                        boxShadow: [
-                          BoxShadow(
-                            // ignore: deprecated_member_use
-                            color: Colors.black.withOpacity(0.2),
-                            blurRadius: 4,
-                          ),
-                        ],
-                      ),
+                      color: Theme.of(context).canvasColor,
                       constraints: BoxConstraints(
-                        maxHeight: MediaQuery.of(context).size.height * 0.7,
+                        maxHeight: MediaQuery.of(context).size.height -
+                            MediaQuery.of(context).padding.top -
+                            120, // 80 (bottom) + 40 (top margin)
                       ),
                       child: SingleChildScrollView(
                         padding: const EdgeInsets.symmetric(vertical: 16),
-                        child: EnvDebugPanel(onRestart: widget.onRestart),
+                        child: EnvDebugPanel(
+                          onRestart: widget.onRestart,
+                          showEnvKeys: widget.showEnvKeys,
+                        ),
                       ),
                     ),
                   ),
                 ),
               ),
             ),
-          const EnvStatusBadge(),
+          if (widget.isShowEnvLabel) const EnvStatusBadge(),
           if (widget.showFab)
             Positioned(
               bottom: 24,
               right: 16,
               child: _EnvFab(
-                isOpen: _isOpen || _isPinVisible,
+                isOpen: _isOpen || _gateEntry != null,
                 onTap: _requestOpen,
               ),
             ),
@@ -291,29 +417,35 @@ class _OverlayContentState extends State<_OverlayContent> {
 }
 
 class _EnvFab extends StatelessWidget {
+  final EnvConfigService service;
   final bool isOpen;
   final VoidCallback onTap;
 
   const _EnvFab({
+    required this.service,
     required this.isOpen,
     required this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    return ValueListenableBuilder<bool>(
-      valueListenable: EnvConfigService.instance.restartNeeded,
-      builder: (context, restartNeeded, _) {
+    return ValueListenableBuilder<dynamic>(
+      valueListenable: service.current,
+      builder: (context, config, _) {
+        final bool locked = service.isProdLocked;
+
         return FloatingActionButton(
           heroTag: 'envified_fab',
           mini: true,
-          backgroundColor:
-              restartNeeded ? Colors.orange.shade700 : Colors.blueGrey.shade800,
+          backgroundColor: locked ? Colors.red.shade700 : Colors.blueGrey.shade800,
           foregroundColor: Colors.white,
+          tooltip: isOpen ? 'Close Panel' : 'envified — Environment Panel',
           onPressed: onTap,
           child: isOpen
               ? const Icon(Icons.close, size: 18)
-              : const Text('🌿', style: TextStyle(fontSize: 18)),
+              : locked
+                  ? const Icon(Icons.lock, size: 18)
+                  : const Text('🌿', style: TextStyle(fontSize: 18)),
         );
       },
     );

@@ -74,6 +74,9 @@ class EnvConfigService {
   /// Whether switching away from production is allowed.
   bool get allowProdSwitch => _allowProdSwitch;
 
+  /// Returns true if the [env] is considered a production environment.
+  bool isProduction(Env env) => _productionEnvs.contains(env);
+
   /// Returns true if the service is currently in a production-like environment and [allowProdSwitch] is false.
   bool get isProdLocked =>
       _productionEnvs.contains(current.value.env) && !_allowProdSwitch;
@@ -98,7 +101,12 @@ class EnvConfigService {
 
   /// Returns true if the [key] is considered sensitive.
   bool isSensitive(String key) {
+    // Rule: treated as sensitive if KEY appears as a full
+    // word-boundary segment — i.e. the key ends with _KEY or equals KEY.
+    // This catches STRIPE_KEY, API_KEY, PUBLIC_KEY but NOT MONKEY or TURKEY.
     final k = key.toUpperCase();
+    if (k == 'KEY' || k.endsWith('_KEY')) return true;
+
     return _sensitiveKeys.any((s) => k.contains(s));
   }
 
@@ -147,9 +155,9 @@ class EnvConfigService {
 
   /// Switches the active environment.
   Future<void> switchTo(Env env) async {
-    if (isProdLocked) {
-      throw EnvifiedLockException(
-          'Cannot switch environment while locked in Production.');
+    if (isProduction(env) && !_allowProdSwitch) {
+      // Silent no-op if trying to switch TO prod when blocked
+      return;
     }
     final from = current.value.env;
     if (from == env) return;

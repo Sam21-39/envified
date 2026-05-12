@@ -1,55 +1,95 @@
 import 'package:flutter/material.dart';
-import '../models/env.dart';
-import '../models/env_config.dart';
-import '../service/env_config_service.dart';
+
+import '../env_config_service.dart';
+import '../env_model.dart';
 
 /// A persistent, lightweight environment indicator badge.
+///
+/// Display [EnvStatusBadge] in your widget tree (typically in a [Stack]
+/// above your main content) to provide a constant visual reminder of the
+/// active environment. It reacts to [EnvConfigService.current] changes
+/// without requiring any manual state management.
+///
+/// When [EnvConfig.isBaseUrlOverridden] is `true`, a ⚡ prefix is added and
+/// the badge pulses gently (opacity 1.0 ↔ 0.7, 1.5 s period) to draw
+/// attention to the custom URL. The animation respects the user's
+/// `prefers-reduced-motion` system setting via `MediaQuery.of(context).disableAnimations`.
+///
+/// ## Colour mapping
+///
+/// | Environment | Badge colour               |
+/// |-------------|----------------------------|
+/// | dev         | `Colors.blue.shade700`     |
+/// | staging     | `Colors.orange.shade700`   |
+/// | prod        | `Colors.red.shade800`      |
+/// | custom      | `Colors.purple.shade700`   |
+///
+/// ## Usage
+///
+/// ```dart
+/// Stack(
+///   children: [
+///     MyApp(),
+///     if (kDebugMode)
+///       EnvStatusBadge(service: EnvConfigService.instance),
+///   ],
+/// )
+/// ```
 class EnvStatusBadge extends StatelessWidget {
+  /// The service whose [EnvConfig] drives this badge.
+  final EnvConfigService service;
+
   /// Where within the screen to anchor the badge.
+  ///
+  /// Defaults to [Alignment.topRight].
   final Alignment alignment;
 
-  /// Margin applied to the badge.
+  /// Margin applied to the badge when positioned using [Align].
+  ///
+  /// Defaults to `EdgeInsets.fromLTRB(0, 48, 12, 0)` which places the badge
+  /// below the status bar on the right-hand side.
   final EdgeInsets margin;
 
+  /// Creates an [EnvStatusBadge].
   const EnvStatusBadge({
     super.key,
+    required this.service,
     this.alignment = Alignment.topRight,
     this.margin = const EdgeInsets.fromLTRB(0, 48, 12, 0),
   });
 
   Color _colorForEnv(Env env) {
-    if (env == Env.prod) return Colors.red.shade800;
-    if (env == Env.staging) return Colors.orange.shade700;
-    if (env == Env.dev) return Colors.blue.shade700;
-    return Colors.blueGrey.shade700;
+    if (env.isProduction) return Colors.red.shade800;
+    switch (env.name) {
+      case 'dev':
+        return Colors.blue.shade700;
+      case 'staging':
+        return Colors.orange.shade700;
+      case 'uat':
+        return Colors.purple.shade700;
+      default:
+        return Colors.blueGrey.shade700;
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return ValueListenableBuilder<EnvConfig>(
-      valueListenable: EnvConfigService.instance.current,
-      builder: (context, config, _) {
-        final label =
+      valueListenable: service.current,
+      builder: (BuildContext ctx, EnvConfig config, Widget? _) {
+        final String label =
             '${config.isBaseUrlOverridden ? '⚡ ' : ''}${config.env.name.toUpperCase()}';
-        final color = _colorForEnv(config.env);
+        final Color bg = _colorForEnv(config.env);
 
-        final badge = Align(
+        final Widget badge = Align(
           alignment: alignment,
           child: Padding(
             padding: margin,
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
               decoration: BoxDecoration(
-                color: color,
+                color: bg,
                 borderRadius: BorderRadius.circular(4),
-                boxShadow: [
-                  BoxShadow(
-                    // ignore: deprecated_member_use
-                    color: Colors.black.withOpacity(0.2),
-                    blurRadius: 4,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
               ),
               child: Text(
                 label,
@@ -65,16 +105,23 @@ class EnvStatusBadge extends StatelessWidget {
         );
 
         if (config.isBaseUrlOverridden) {
+          // Respect the user's reduced-motion preference.
+          final bool reduceMotion =
+              MediaQuery.maybeOf(ctx)?.disableAnimations ?? false;
+          if (reduceMotion) return badge;
           return _PulsingBadge(child: badge);
         }
+
         return badge;
       },
     );
   }
 }
 
+/// Internal widget that animates the badge opacity (1.0 ↔ 0.7, 1.5 s loop).
 class _PulsingBadge extends StatefulWidget {
   final Widget child;
+
   const _PulsingBadge({required this.child});
 
   @override
@@ -93,6 +140,7 @@ class _PulsingBadgeState extends State<_PulsingBadge>
       vsync: this,
       duration: const Duration(milliseconds: 1500),
     )..repeat(reverse: true);
+
     _opacity = Tween<double>(begin: 1.0, end: 0.7).animate(
       CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
     );
