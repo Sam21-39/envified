@@ -21,7 +21,7 @@ class EnvDebugPanel extends StatefulWidget {
     super.key,
     required this.service,
     this.onRestart,
-    required this.showEnvKeys,
+    this.showEnvKeys = true,
   });
 
   @override
@@ -31,6 +31,7 @@ class EnvDebugPanel extends StatefulWidget {
 class _EnvDebugPanelState extends State<EnvDebugPanel> {
   final TextEditingController _urlController = TextEditingController();
   bool _kvExpanded = true;
+  bool _configExpanded = false;
   bool _auditExpanded = false;
   String? _errorMessage;
   String _configSearchQuery = '';
@@ -228,76 +229,102 @@ class _EnvDebugPanelState extends State<EnvDebugPanel> {
               ),
             ),
 
-            // Config Values Card
+            const SizedBox(height: 12),
+
+            // Configuration Card
             _buildCard(
               title: 'Configuration',
               icon: Icons.settings_outlined,
-              itemCount: _svc.current.value.values.length,
               expandable: true,
-              isExpanded: _kvExpanded,
-              onExpandToggle: (val) => setState(() => _kvExpanded = val),
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    _ConfigSearchField(
-                      onSearch: (val) =>
-                          setState(() => _configSearchQuery = val),
-                    ),
-                    const SizedBox(height: 16),
-                    Builder(builder: (context) {
-                      final entries =
-                          _svc.current.value.values.entries.toList();
-                      final query = _configSearchQuery.toLowerCase();
-                      final filtered = entries.where((e) {
-                        return e.key.toLowerCase().contains(query) ||
-                            e.value.toLowerCase().contains(query);
-                      }).toList();
-
-                      if (filtered.isEmpty) {
-                        return Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 32),
-                          child: Column(
-                            children: [
-                              Icon(Icons.search_off_outlined,
-                                  size: 32, color: Colors.grey.shade300),
-                              const SizedBox(height: 12),
-                              Text(
-                                query.isEmpty
-                                    ? 'No configuration values'
-                                    : 'No matches for "$_configSearchQuery"',
-                                style: TextStyle(
-                                  color: Colors.grey.shade500,
-                                  fontSize: 13,
-                                ),
-                                textAlign: TextAlign.center,
-                              ),
-                            ],
-                          ),
-                        );
-                      }
-
-                      return Column(
-                        children: [
-                          for (int i = 0; i < filtered.length; i++) ...[
-                            _buildKvRow(filtered[i].key, filtered[i].value),
-                            if (i < filtered.length - 1)
-                              Divider(
-                                height: 24,
-                                thickness: 1,
-                                color: Theme.of(context)
-                                    .dividerColor
-                                    .withOpacity(0.05),
-                              ),
-                          ],
-                        ],
-                      );
-                    }),
-                  ],
-                ),
+              isExpanded: _configExpanded,
+              onExpandToggle: (val) => setState(() => _configExpanded = val),
+              child: Column(
+                children: [
+                  _buildConfigDetailRow(
+                      'Auto-Discovery', _svc.autoDiscover ? 'ON' : 'OFF'),
+                  _buildConfigDetailRow(
+                      'Verify Integrity', _svc.verifyIntegrity ? 'ON' : 'OFF'),
+                  _buildConfigDetailRow(
+                      'Allow Prod Switch', _svc.allowProdSwitch ? 'YES' : 'NO'),
+                  _buildConfigDetailRow('Production Envs',
+                      _svc.productionEnvs.map((e) => e.label).join(', ')),
+                ],
               ),
             ),
+
+            if (widget.showEnvKeys) ...[
+              const SizedBox(height: 12),
+              // Config Values Card
+              _buildCard(
+                title: 'Configuration Values',
+                icon: Icons.vpn_key_outlined,
+                itemCount: _svc.current.value.values.length,
+                expandable: true,
+                isExpanded: _kvExpanded,
+                onExpandToggle: (val) => setState(() => _kvExpanded = val),
+                child: Padding(
+                  padding: const EdgeInsets.only(top: 8),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      _ConfigSearchField(
+                        onSearch: (val) =>
+                            setState(() => _configSearchQuery = val),
+                      ),
+                      const SizedBox(height: 16),
+                      Builder(builder: (context) {
+                        final entries =
+                            _svc.current.value.values.entries.toList();
+                        final query = _configSearchQuery.toLowerCase();
+                        final filtered = entries.where((e) {
+                          return e.key.toLowerCase().contains(query) ||
+                              e.value.toLowerCase().contains(query);
+                        }).toList();
+
+                        if (filtered.isEmpty) {
+                          return Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 32),
+                            child: Column(
+                              children: [
+                                Icon(Icons.search_off_outlined,
+                                    size: 32, color: Colors.grey.shade300),
+                                const SizedBox(height: 12),
+                                Text(
+                                  query.isEmpty
+                                      ? 'No configuration values'
+                                      : 'No matches for "$_configSearchQuery"',
+                                  style: TextStyle(
+                                    color: Colors.grey.shade500,
+                                    fontSize: 13,
+                                  ),
+                                  textAlign: TextAlign.center,
+                                ),
+                              ],
+                            ),
+                          );
+                        }
+
+                        return Column(
+                          children: [
+                            for (int i = 0; i < filtered.length; i++) ...[
+                              _buildKvRow(filtered[i].key, filtered[i].value),
+                              if (i < filtered.length - 1)
+                                Divider(
+                                  height: 24,
+                                  thickness: 1,
+                                  color: Theme.of(context)
+                                      .dividerColor
+                                      .withOpacity(0.05),
+                                ),
+                            ],
+                          ],
+                        );
+                      }),
+                    ],
+                  ),
+                ),
+              ),
+            ],
 
             const SizedBox(height: 12),
 
@@ -401,7 +428,9 @@ class _EnvDebugPanelState extends State<EnvDebugPanel> {
         return _EnvButton(
           env: env,
           isActive: isActive,
-          onPressed: _svc.isProdLocked ? null : () => _switchEnv(env),
+          onPressed: (env.isProduction && !_svc.allowProdSwitch)
+              ? null
+              : () => _switchEnv(env),
           isLocked: env.isProduction && !_svc.allowProdSwitch,
           hasUrl: hasUrl,
         );
@@ -463,6 +492,44 @@ class _EnvDebugPanelState extends State<EnvDebugPanel> {
     );
   }
 
+  Widget _buildUrlHistory() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'RECENT OVERRIDES',
+          style: TextStyle(
+            fontSize: 9,
+            fontWeight: FontWeight.bold,
+            color: Colors.grey.shade500,
+          ),
+        ),
+        const SizedBox(height: 6),
+        Wrap(
+          spacing: 6,
+          runSpacing: 6,
+          children: _urlHistory.take(5).map((url) {
+            return InkWell(
+              onTap: _svc.isProdLocked ? null : () => _applyUrlOverride(url),
+              borderRadius: BorderRadius.circular(4),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                decoration: BoxDecoration(
+                  border: Border.all(color: Colors.grey.shade300),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: Text(
+                  url,
+                  style: TextStyle(fontSize: 10, color: Colors.grey.shade700),
+                ),
+              ),
+            );
+          }).toList(),
+        ),
+      ],
+    );
+  }
+
   Widget _buildResetConfirm() {
     return Container(
       padding: const EdgeInsets.all(16),
@@ -514,75 +581,22 @@ class _EnvDebugPanelState extends State<EnvDebugPanel> {
     );
   }
 
-  Widget _buildUrlHistory() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'RECENT OVERRIDES',
-          style: TextStyle(
-            fontSize: 9,
-            fontWeight: FontWeight.bold,
-            color: Colors.grey.shade500,
-          ),
-        ),
-        const SizedBox(height: 6),
-        Wrap(
-          spacing: 6,
-          runSpacing: 6,
-          children: _urlHistory.take(5).map((url) {
-            return InkWell(
-              onTap: _svc.isProdLocked ? null : () => _applyUrlOverride(url),
-              borderRadius: BorderRadius.circular(4),
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
-                decoration: BoxDecoration(
-                  border: Border.all(color: Colors.grey.shade300),
-                  borderRadius: BorderRadius.circular(4),
-                ),
-                child: Text(
-                  url,
-                  style: TextStyle(fontSize: 10, color: Colors.grey.shade700),
-                ),
-              ),
-            );
-          }).toList(),
-        ),
-      ],
-    );
+  Widget _buildKvRow(String key, String value) {
+    return _SensitiveKvRow(keyName: key, value: value);
   }
 
-  Widget _buildKvRow(String key, String value) {
-    final isSensitive = EnvConfig.isSensitiveKey(key);
-    final theme = Theme.of(context);
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Expanded(
-              child: Text(
-                key,
-                style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w700,
-                  color: theme.colorScheme.primary,
-                  fontFamily: 'monospace',
-                  letterSpacing: 0.5,
-                ),
-              ),
-            ),
-            if (isSensitive)
-              const Icon(Icons.lock_outline, size: 12, color: Colors.grey),
-          ],
-        ),
-        const SizedBox(height: 6),
-        SensitiveValueDisplay(
-          value: value,
-          isSensitive: isSensitive,
-        ),
-      ],
+  Widget _buildConfigDetailRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(label, style: const TextStyle(fontSize: 11, color: Colors.grey)),
+          Text(value,
+              style:
+                  const TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+        ],
+      ),
     );
   }
 
@@ -603,6 +617,63 @@ class _EnvDebugPanelState extends State<EnvDebugPanel> {
               message,
               style: const TextStyle(color: Colors.red, fontSize: 13),
             ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SensitiveKvRow extends StatefulWidget {
+  final String keyName;
+  final String value;
+
+  const _SensitiveKvRow({required this.keyName, required this.value});
+
+  @override
+  State<_SensitiveKvRow> createState() => _SensitiveKvRowState();
+}
+
+class _SensitiveKvRowState extends State<_SensitiveKvRow> {
+  bool _revealed = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final isSensitive = EnvConfig.isSensitiveKey(widget.keyName);
+    final theme = Theme.of(context);
+
+    return InkWell(
+      onTap: isSensitive ? () => setState(() => _revealed = !_revealed) : null,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  isSensitive && !_revealed ? '••••••••' : widget.keyName,
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    color: theme.colorScheme.primary,
+                    fontFamily: 'monospace',
+                    letterSpacing: 0.5,
+                  ),
+                ),
+              ),
+              if (isSensitive)
+                Icon(
+                  _revealed ? Icons.lock_open : Icons.lock_outline,
+                  size: 12,
+                  color: Colors.grey,
+                ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          SensitiveValueDisplay(
+            value: widget.value,
+            isSensitive: isSensitive,
+            forceReveal: _revealed,
           ),
         ],
       ),
@@ -852,10 +923,13 @@ class SensitiveValueDisplay extends StatefulWidget {
   final String value;
   final bool isSensitive;
 
+  final bool forceReveal;
+
   const SensitiveValueDisplay({
     super.key,
     required this.value,
     this.isSensitive = false,
+    this.forceReveal = false,
   });
 
   @override
@@ -908,67 +982,41 @@ class _SensitiveValueDisplayState extends State<SensitiveValueDisplay> {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
-    if (_confirming) {
-      return InkWell(
-        onTap: _confirm,
-        borderRadius: BorderRadius.circular(6),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-          decoration: BoxDecoration(
-            color: Colors.blue.withOpacity(0.1),
-            borderRadius: BorderRadius.circular(6),
-            border: Border.all(color: Colors.blue.withOpacity(0.3)),
-          ),
-          child: const Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(Icons.lock_open, size: 16, color: Colors.blue),
-              SizedBox(width: 8),
-              Text(
-                'Reveal & Copy?',
-                style: TextStyle(
-                    fontSize: 11,
-                    color: Colors.blue,
-                    fontWeight: FontWeight.bold),
-              ),
-            ],
+    if (widget.forceReveal || _revealed) {
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+        decoration: BoxDecoration(
+          color: isDark ? Colors.white.withOpacity(0.05) : Colors.grey.shade50,
+          borderRadius: BorderRadius.circular(6),
+          border: Border.all(
+            color:
+                isDark ? Colors.white.withOpacity(0.1) : Colors.grey.shade200,
           ),
         ),
-      );
-    }
-
-    if (_revealed) {
-      return InkWell(
-        onTap: _hide,
-        borderRadius: BorderRadius.circular(6),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-          decoration: BoxDecoration(
-            color:
-                isDark ? Colors.white.withOpacity(0.05) : Colors.grey.shade50,
-            borderRadius: BorderRadius.circular(6),
-            border: Border.all(
-              color:
-                  isDark ? Colors.white.withOpacity(0.1) : Colors.grey.shade200,
-            ),
-          ),
-          child: Row(
-            children: [
-              Expanded(
-                child: SelectableText(
-                  widget.value,
-                  style: const TextStyle(
-                    fontFamily: 'monospace',
-                    fontSize: 12,
-                  ),
+        child: Row(
+          children: [
+            Expanded(
+              child: SelectableText(
+                widget.value,
+                style: const TextStyle(
+                  fontFamily: 'monospace',
+                  fontSize: 12,
                 ),
               ),
+            ),
+            if (!widget.forceReveal) ...[
               const Icon(Icons.visibility, size: 16, color: Colors.blue),
               const SizedBox(width: 4),
               Text('Hide',
                   style: TextStyle(fontSize: 10, color: Colors.grey.shade500)),
-            ],
-          ),
+            ] else
+              IconButton(
+                onPressed: _copyValue,
+                icon: const Icon(Icons.copy, size: 16),
+                tooltip: 'Copy',
+                visualDensity: VisualDensity.compact,
+              ),
+          ],
         ),
       );
     }

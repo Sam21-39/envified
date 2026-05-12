@@ -42,6 +42,8 @@ class EnvConfigService {
   bool _verifyIntegrity = false;
   List<String>? _allowedUrls;
   Map<Env, String> _urls = <Env, String>{};
+  bool _autoDiscover = true;
+  Set<Env> _productionEnvs = {Env.prod};
   String _assetDir = '';
   AssetBundle? _bundle;
 
@@ -75,6 +77,7 @@ class EnvConfigService {
     List<String>? allowedUrls,
     Map<Env, String>? urls,
     bool autoDiscover = true,
+    Set<Env>? productionEnvs,
     String assetDir = '',
     AssetBundle? bundle,
   }) async {
@@ -85,6 +88,8 @@ class EnvConfigService {
     _onBeforeSwitch = onBeforeSwitch;
     _onAfterSwitch = onAfterSwitch;
     _allowedUrls = allowedUrls;
+    _autoDiscover = autoDiscover;
+    _productionEnvs = productionEnvs ?? {Env.prod};
     _assetDir = assetDir;
     _bundle = bundle;
 
@@ -253,6 +258,18 @@ class EnvConfigService {
   String get(String key, {String fallback = ''}) {
     return current.value.values[key] ?? fallback;
   }
+
+  /// Returns true if the [env] is considered a production environment.
+  bool isProduction(Env env) => _productionEnvs.contains(env);
+
+  /// Whether auto-discovery is enabled.
+  bool get autoDiscover => _autoDiscover;
+
+  /// Whether integrity verification is enabled.
+  bool get verifyIntegrity => _verifyIntegrity;
+
+  /// The list of production-grade environments.
+  Set<Env> get productionEnvs => _productionEnvs;
 
   /// Returns `true` if the key contains sensitive data (e.g. 'API_KEY').
   bool isSensitive(String key) {

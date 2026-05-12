@@ -53,10 +53,9 @@ void main() {
         );
 
     Future<void> ensureConfigurationExpanded(WidgetTester tester) async {
-      // Configuration is expanded by default in EnvDebugPanel (_kvExpanded = true).
-      // We only tap if we can't find a known key, but for simplicity in tests
-      // we'll just ensure the state matches our expectation.
-      if (find.text('API_KEY').evaluate().isEmpty) {
+      // Configuration is expanded by default in EnvDebugPanel (_kvExpanded = false now).
+      // We check for masked key '••••••••' which is API_KEY.
+      if (find.text('••••••••').evaluate().isEmpty) {
         await tester.tap(find.text('CONFIGURATION'));
         await tester.pump(const Duration(milliseconds: 300));
       }
@@ -72,7 +71,9 @@ void main() {
 
       await ensureConfigurationExpanded(tester);
 
-      expect(find.text('API_KEY'), findsOneWidget);
+      // API_KEY is sensitive, so it should be masked
+      expect(find.text('••••••••'), findsOneWidget);
+      expect(find.text('API_KEY'), findsNothing);
     });
 
     testWidgets('reveals sensitive values on tap', (tester) async {
@@ -81,19 +82,19 @@ void main() {
 
       await ensureConfigurationExpanded(tester);
 
+      // Initially masked
+      expect(find.text('••••••••'), findsOneWidget);
       expect(find.text('Tap to reveal & copy'), findsOneWidget);
-      expect(find.byIcon(Icons.visibility_off_outlined), findsOneWidget);
 
-      // First tap to show confirmation
-      await tester.tap(find.text('Tap to reveal & copy'));
-      await tester.pump();
-      expect(find.text('Reveal & Copy?'), findsOneWidget);
-
-      // Second tap to reveal
-      await tester.tap(find.text('Reveal & Copy?'));
+      // Tap the row (the masked key) to reveal
+      await tester.tap(find.text('••••••••'));
       await tester.pump();
 
+      // Now revealed
+      expect(find.text('API_KEY'), findsOneWidget);
       expect(find.text('secret_123'), findsOneWidget);
+      expect(find.byIcon(Icons.copy),
+          findsNWidgets(2)); // One for BASE_URL, one for API_KEY
       expect(find.text('Tap to reveal & copy'), findsNothing);
     });
 

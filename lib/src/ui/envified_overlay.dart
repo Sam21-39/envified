@@ -59,7 +59,7 @@ class EnvifiedOverlay extends StatefulWidget {
   /// cost. Pass `kDebugMode` here to automatically disable in production builds.
   final bool enabled;
 
-  /// Optional callback forwarded to [EnvDebugPanel.onRestart].
+  /// Callback to restart the application.
   final VoidCallback? onRestart;
 
   /// Optional access gate that must be passed before the panel is revealed.
@@ -268,59 +268,62 @@ class _OverlayContentState extends State<_OverlayContent>
                   backgroundColor: Colors.transparent,
                   resizeToAvoidBottomInset: true,
                   body: Center(
-                    child: SingleChildScrollView(
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 24),
-                        child: Material(
-                          elevation: 24,
-                          borderRadius: BorderRadius.circular(16),
-                          color: Theme.of(context).cardColor,
-                          child: Padding(
-                            padding: const EdgeInsets.all(24),
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                const Text(
-                                  'Enter PIN',
-                                  style: TextStyle(
-                                    fontSize: 20,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                                const SizedBox(height: 16),
-                                TextField(
-                                  controller: pinController,
-                                  obscureText: true,
-                                  autofocus: true,
-                                  keyboardType: TextInputType.number,
-                                  textAlign: TextAlign.center,
-                                  style: const TextStyle(
-                                    fontSize: 24,
-                                    letterSpacing: 8,
-                                  ),
-                                  decoration: InputDecoration(
-                                    hintText: '••••',
-                                    errorText: pinError,
-                                    border: const OutlineInputBorder(),
-                                  ),
-                                  onSubmitted: (_) => verifyPin(),
-                                ),
-                                const SizedBox(height: 24),
-                                Row(
-                                  mainAxisAlignment: MainAxisAlignment.end,
-                                  children: [
-                                    TextButton(
-                                      onPressed: _closePanel,
-                                      child: const Text('CANCEL'),
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 360),
+                      child: SingleChildScrollView(
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 24),
+                          child: Material(
+                            elevation: 24,
+                            borderRadius: BorderRadius.circular(16),
+                            color: Theme.of(context).cardColor,
+                            child: Padding(
+                              padding: const EdgeInsets.all(24),
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Text(
+                                    'Enter PIN',
+                                    style: TextStyle(
+                                      fontSize: 20,
+                                      fontWeight: FontWeight.bold,
                                     ),
-                                    const SizedBox(width: 8),
-                                    ElevatedButton(
-                                      onPressed: verifyPin,
-                                      child: const Text('VERIFY'),
+                                  ),
+                                  const SizedBox(height: 16),
+                                  TextField(
+                                    controller: pinController,
+                                    obscureText: true,
+                                    autofocus: true,
+                                    keyboardType: TextInputType.number,
+                                    textAlign: TextAlign.center,
+                                    style: const TextStyle(
+                                      fontSize: 24,
+                                      letterSpacing: 8,
                                     ),
-                                  ],
-                                ),
-                              ],
+                                    decoration: InputDecoration(
+                                      hintText: '••••',
+                                      errorText: pinError,
+                                      border: const OutlineInputBorder(),
+                                    ),
+                                    onSubmitted: (_) => verifyPin(),
+                                  ),
+                                  const SizedBox(height: 24),
+                                  Row(
+                                    mainAxisAlignment: MainAxisAlignment.end,
+                                    children: [
+                                      TextButton(
+                                        onPressed: _closePanel,
+                                        child: const Text('CANCEL'),
+                                      ),
+                                      const SizedBox(width: 8),
+                                      ElevatedButton(
+                                        onPressed: verifyPin,
+                                        child: const Text('VERIFY'),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
                             ),
                           ),
                         ),
