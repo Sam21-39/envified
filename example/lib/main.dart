@@ -8,7 +8,6 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   // 2. Initialize the EnvConfigService before runApp
-  // This loads the default .env files and checks for persisted overrides.
   await EnvConfigService.instance.init(
     defaultEnv: Env.staging,
     allowProdSwitch: false, // 🔒 Lock production by default
@@ -21,6 +20,18 @@ void main() async {
   runApp(const EnvifiedDemoApp());
 }
 
+class MyShakeDetector implements EnvTriggerDetector {
+  @override
+  void start(double threshold, VoidCallback onShake) {
+    debugPrint('Shake listening started with threshold: $threshold');
+  }
+
+  @override
+  void stop() {
+    debugPrint('Shake listening stopped');
+  }
+}
+
 class EnvifiedDemoApp extends StatefulWidget {
   const EnvifiedDemoApp({super.key});
 
@@ -29,13 +40,10 @@ class EnvifiedDemoApp extends StatefulWidget {
 }
 
 class _EnvifiedDemoAppState extends State<EnvifiedDemoApp> {
-  // Use a UniqueKey to trigger a full widget tree rebuild during "Restart Now"
   Key _appKey = UniqueKey();
 
-  void _handleRestart() {
-    // 4. Reset the restartNeeded flag once the app acknowledges the restart
+  void _restart() {
     EnvConfigService.instance.acknowledgeRestart();
-
     setState(() {
       _appKey = UniqueKey();
     });
@@ -64,22 +72,18 @@ class _EnvifiedDemoAppState extends State<EnvifiedDemoApp> {
           ),
         ),
       ),
-      // 3. Wrap with the EnvifiedOverlay.
-      // We provide a PIN-protected gate and a Shake trigger.
       builder: (context, child) => EnvifiedOverlay(
+        service: EnvConfigService.instance,
         enabled: true,
-        gate: EnvGate(pin: '8888'),
+        gate: const EnvGate(pin: '8888'),
         trigger: EnvTrigger.shake(
           detector: MyShakeDetector(),
           threshold: 15.0,
         ),
         onRestart: _restart,
         showFab: true,
-        // NEW: Toggle display of .env keys in the debug panel.
         showEnvKeys: true,
-        // HIDE the package-provided label because this example app
-        // renders its own manual EnvStatusBadge in LuxuryHome.
-        isShowEnvLabel: false,
+        isShowEnvLabel: true,
         child: child!,
       ),
       home: const LoginGate(),
@@ -130,8 +134,9 @@ class LoginPage extends StatelessWidget {
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors:
-                isDark ? [Colors.teal.shade900, Colors.black] : [Colors.teal.shade50, Colors.white],
+            colors: isDark
+                ? [Colors.teal.shade900, Colors.black]
+                : [Colors.teal.shade50, Colors.white],
           ),
         ),
         child: Center(
@@ -139,11 +144,6 @@ class LoginPage extends StatelessWidget {
             constraints: const BoxConstraints(maxWidth: 400),
             child: Card(
               margin: const EdgeInsets.all(24),
-              elevation: 0,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(24),
-                side: BorderSide(color: Colors.teal.withOpacity(0.1)),
-              ),
               child: Padding(
                 padding: const EdgeInsets.all(32),
                 child: Column(
@@ -163,12 +163,12 @@ class LoginPage extends StatelessWidget {
                       style: const TextStyle(
                         fontSize: 28,
                         fontWeight: FontWeight.bold,
-                        letterSpacing: -0.5,
                       ),
                     ),
                     const SizedBox(height: 8),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 10, vertical: 4),
                       decoration: BoxDecoration(
                         color: Colors.teal.withOpacity(0.15),
                         borderRadius: BorderRadius.circular(12),
@@ -205,19 +205,8 @@ class LoginPage extends StatelessWidget {
                       height: 54,
                       child: FilledButton(
                         onPressed: onLogin,
-                        style: FilledButton.styleFrom(
-                          backgroundColor: Colors.teal,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                        ),
-                        child: const Text(
-                          'Sign In',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
+                        child: const Text('Sign In',
+                            style: TextStyle(fontWeight: FontWeight.bold)),
                       ),
                     ),
                     const SizedBox(height: 20),
@@ -228,7 +217,6 @@ class LoginPage extends StatelessWidget {
                         color: Colors.grey.shade500,
                         fontFamily: 'monospace',
                       ),
-                      textAlign: TextAlign.center,
                     ),
                   ],
                 ),
@@ -239,99 +227,116 @@ class LoginPage extends StatelessWidget {
       ),
     );
   }
+}
 
-  Widget _buildAppBar(EnvConfig config) {
-    return const SliverAppBar(
-      backgroundColor: Colors.transparent,
-      floating: true,
-      title: Text(
-        'ENVIFIED LUXURY',
-        style: TextStyle(
-          fontSize: 14,
-          fontWeight: FontWeight.w900,
-          letterSpacing: 2.0,
-          color: Colors.white70,
-        ),
-      ),
-      centerTitle: true,
-    );
+class HomePage extends StatefulWidget {
+  final VoidCallback onLogout;
+
+  const HomePage({super.key, required this.onLogout});
+
+  @override
+  State<HomePage> createState() => _HomePageState();
+}
+
+class _HomePageState extends State<HomePage> {
+  late Future<List<dynamic>> _data;
+
+  @override
+  void initState() {
+    super.initState();
+    _data = _fetchData();
   }
 
-  Widget _buildHeroCard(EnvConfig config) {
-    return Container(
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(32),
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            const Color(0xFF6200EE).withValues(alpha: 0.8),
-            const Color(0xFFBB86FC).withValues(alpha: 0.8),
+  Future<List<dynamic>> _fetchData() async {
+    final baseUrl = EnvConfigService.instance.current.value.baseUrl;
+    if (baseUrl.isEmpty) return [];
+
+    try {
+      final response = await http.get(Uri.parse(baseUrl));
+      if (response.statusCode == 200) {
+        final dynamic decoded = jsonDecode(response.body);
+        if (decoded is List) {
+          return decoded.take(10).toList();
+        }
+        return [];
+      } else {
+        throw Exception('Server responded with ${response.statusCode}');
+      }
+    } catch (e) {
+      debugPrint('Error fetching data: $e');
+      return [];
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final config = EnvConfigService.instance.current.value;
+
+    return Scaffold(
+      appBar: AppBar(
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(config.values['APP_TITLE'] ?? 'Home'),
+            Text(
+              '${config.env.label} • ${config.baseUrl}',
+              style:
+                  const TextStyle(fontSize: 10, fontWeight: FontWeight.normal),
+            ),
           ],
         ),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFF6200EE).withValues(alpha: 0.3),
-            blurRadius: 32,
-            offset: const Offset(0, 16),
+        actions: [
+          IconButton(
+            onPressed: widget.onLogout,
+            icon: const Icon(Icons.logout),
           ),
         ],
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.2),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Text(
-              config.env.name.toUpperCase(),
-              style: const TextStyle(
-                fontSize: 10,
-                fontWeight: FontWeight.bold,
-                color: Colors.white,
+      body: FutureBuilder<List<dynamic>>(
+        future: _data,
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          if (snapshot.hasError ||
+              (snapshot.hasData && snapshot.data!.isEmpty)) {
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(Icons.info_outline, size: 48, color: Colors.grey),
+                  const SizedBox(height: 16),
+                  const Text('No data or error occurred'),
+                  const SizedBox(height: 16),
+                  ElevatedButton(
+                    onPressed: () => setState(() => _data = _fetchData()),
+                    child: const Text('Retry'),
+                  ),
+                ],
               ),
-            ),
-          ),
-          const SizedBox(height: 16),
-          const Text(
-            'Active Configuration',
-            style: TextStyle(
-              fontSize: 24,
-              fontWeight: FontWeight.bold,
-              color: Colors.white,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Last loaded at ${config.loadedAt.hour}:${config.loadedAt.minute}',
-            style: TextStyle(
-              fontSize: 12,
-              color: Colors.white.withValues(alpha: 0.7),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+            );
+          }
 
-  Widget _buildSectionHeader(String title) {
-    return Text(
-      title.toUpperCase(),
-      style: TextStyle(
-        fontSize: 11,
-        fontWeight: FontWeight.bold,
-        color: Colors.white.withValues(alpha: 0.4),
-        letterSpacing: 1.5,
+          final items = snapshot.data!;
+          return ListView.builder(
+            padding: const EdgeInsets.all(16),
+            itemCount: items.length,
+            itemBuilder: (context, index) {
+              final item = items[index];
+              return Card(
+                margin: const EdgeInsets.only(bottom: 12),
+                child: _buildDynamicItem(item),
+              );
+            },
+          );
+        },
       ),
     );
   }
 
   Widget _buildDynamicItem(dynamic item) {
-    // Detect content type based on keys
+    if (item is! Map) return ListTile(title: Text(item.toString()));
+
     if (item.containsKey('completed')) {
       return _buildTodoItem(item);
     } else if (item.containsKey('email')) {
@@ -343,90 +348,37 @@ class LoginPage extends StatelessWidget {
     return ListTile(title: Text(item.toString()));
   }
 
-  Widget _buildTodoItem(dynamic item) {
+  Widget _buildTodoItem(Map<dynamic, dynamic> item) {
+    final bool completed = item['completed'] == true;
     return ListTile(
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       leading: CircleAvatar(
         backgroundColor: Colors.teal.shade50,
         child: Text('${item['id']}',
-            style:
-                TextStyle(color: Colors.teal.shade700, fontSize: 12, fontWeight: FontWeight.bold)),
+            style: TextStyle(color: Colors.teal.shade700, fontSize: 12)),
       ),
-      title: Text(
-        item['title'],
-        style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
-      ),
-      subtitle: Padding(
-        padding: const EdgeInsets.only(top: 6),
-        child: Row(
-          children: [
-            Icon(icon, color: isOverridden ? Colors.orangeAccent : Colors.white60, size: 20),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(title,
-                      style: TextStyle(fontSize: 10, color: Colors.white.withValues(alpha: 0.4))),
-                  const SizedBox(height: 4),
-                  Text(
-                    value,
-                    style: const TextStyle(
-                        fontSize: 14, fontWeight: FontWeight.w600, fontFamily: 'monospace'),
-                  ),
-                ],
-              ),
-            ),
-            if (isOverridden) const Icon(Icons.bolt_rounded, color: Colors.orangeAccent, size: 16),
-          ],
-        ),
-      ),
-      trailing: Icon(Icons.chevron_right, color: Colors.grey.shade400),
+      title: Text(item['title'] ?? ''),
+      subtitle: Text(completed ? 'Completed' : 'Pending',
+          style: TextStyle(
+              color: completed ? Colors.green : Colors.orange, fontSize: 11)),
     );
   }
 
-  Widget _buildUserItem(dynamic item) {
+  Widget _buildUserItem(Map<dynamic, dynamic> item) {
     return ListTile(
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      leading: CircleAvatar(
-        backgroundColor: Colors.blue.shade50,
-        child: const Icon(Icons.person, color: Colors.blue),
-      ),
-      title: Text(
-        item['name'],
-        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-      ),
-      subtitle: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            width: 4,
-            height: 32,
-            decoration: BoxDecoration(
-              color: isSensitive ? Colors.redAccent : Colors.tealAccent,
-              borderRadius: BorderRadius.circular(2),
-            ),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(name, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
-                Text(
-                  isSensitive ? '••••••••••••••••' : value,
-                  style: TextStyle(
-                      fontSize: 12,
-                      color: Colors.white.withValues(alpha: 0.5),
-                      fontFamily: 'monospace'),
-                ),
-              ],
-            ),
-          ),
-          if (isSensitive)
-            Icon(Icons.lock_rounded, size: 14, color: Colors.white.withValues(alpha: 0.2)),
-        ],
-      ),
+      leading: const CircleAvatar(child: Icon(Icons.person)),
+      title: Text(item['name'] ?? ''),
+      subtitle: Text(item['email'] ?? ''),
+    );
+  }
+
+  Widget _buildPhotoItem(Map<dynamic, dynamic> item) {
+    return ListTile(
+      leading: Image.network(item['thumbnailUrl'],
+          width: 40,
+          height: 40,
+          fit: BoxFit.cover,
+          errorBuilder: (_, __, ___) => const Icon(Icons.image)),
+      title: Text(item['title'] ?? ''),
     );
   }
 }

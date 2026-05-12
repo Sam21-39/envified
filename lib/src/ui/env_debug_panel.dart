@@ -21,6 +21,7 @@ class EnvDebugPanel extends StatefulWidget {
     super.key,
     required this.service,
     this.onRestart,
+    this.showEnvKeys = true,
   });
 
   @override
@@ -29,10 +30,11 @@ class EnvDebugPanel extends StatefulWidget {
 
 class _EnvDebugPanelState extends State<EnvDebugPanel> {
   final TextEditingController _urlController = TextEditingController();
-  final bool _kvExpanded = true;
+  bool _kvExpanded = true;
+  bool _configExpanded = false;
   bool _auditExpanded = false;
   String? _errorMessage;
-  final String _configSearchQuery = '';
+  String _configSearchQuery = '';
   bool _showNewConfig = true;
   bool _showResetConfirm = false;
   Env? _pendingEnv;
@@ -163,7 +165,8 @@ class _EnvDebugPanelState extends State<EnvDebugPanel> {
   Widget build(BuildContext context) {
     return AnimatedCrossFade(
       duration: const Duration(milliseconds: 200),
-      crossFadeState: _showNewConfig ? CrossFadeState.showSecond : CrossFadeState.showFirst,
+      crossFadeState:
+          _showNewConfig ? CrossFadeState.showSecond : CrossFadeState.showFirst,
       firstChild: const SizedBox(height: 400),
       secondChild: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -185,9 +188,11 @@ class _EnvDebugPanelState extends State<EnvDebugPanel> {
 
             // Environment Card
             _buildCard(
-              title: 'Environment',
+              title: 'Active Environment',
               icon: Icons.layers_outlined,
-              child: _pendingEnv != null ? _buildConfirmSwitch(_pendingEnv!) : _buildEnvSwitcher(),
+              child: _pendingEnv != null
+                  ? _buildConfirmSwitch(_pendingEnv!)
+                  : _buildEnvSwitcher(),
             ),
 
             const SizedBox(height: 12),
@@ -224,83 +229,104 @@ class _EnvDebugPanelState extends State<EnvDebugPanel> {
               ),
             ),
 
-            /* 
-            // TODO: Fix configuration search and rendering in the next patch.
-            // Temporarily hidden to improve panel stability and UX.
-            
-            // Config Values Card
+            const SizedBox(height: 12),
+
+            // Configuration Card
             _buildCard(
               title: 'Configuration',
               icon: Icons.settings_outlined,
-              itemCount: _svc.current.value.values.length,
               expandable: true,
-              isExpanded: _kvExpanded,
-              onExpandToggle: (val) => setState(() => _kvExpanded = val),
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    _ConfigSearchField(
-                      onSearch: (val) =>
-                          setState(() => _configSearchQuery = val),
-                    ),
-                    const SizedBox(height: 16),
-                    Builder(builder: (context) {
-                      final entries =
-                          _svc.current.value.values.entries.toList();
-                      final query = _configSearchQuery.toLowerCase();
-                      final filtered = entries.where((e) {
-                        return e.key.toLowerCase().contains(query) ||
-                            e.value.toLowerCase().contains(query);
-                      }).toList();
-
-                      if (filtered.isEmpty) {
-                        return Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 32),
-                          child: Column(
-                            children: [
-                              Icon(Icons.search_off_outlined,
-                                  size: 32, color: Colors.grey.shade300),
-                              const SizedBox(height: 12),
-                              Text(
-                                query.isEmpty
-                                    ? 'No configuration values'
-                                    : 'No matches for "$_configSearchQuery"',
-                                style: TextStyle(
-                                  color: Colors.grey.shade500,
-                                  fontSize: 13,
-                                ),
-                                textAlign: TextAlign.center,
-                              ),
-                            ],
-                          ),
-                        );
-                      }
-
-                      return Column(
-                        children: [
-                          for (int i = 0; i < filtered.length; i++) ...[
-                            _buildKvRow(filtered[i].key, filtered[i].value),
-                            if (i < filtered.length - 1)
-                              Divider(
-                                height: 24,
-                                thickness: 1,
-                                color: Theme.of(context)
-                                    .dividerColor
-                                    .withOpacity(0.05),
-                              ),
-                          ],
-                        ],
-                      );
-                    }),
-                  ],
-                ),
+              isExpanded: _configExpanded,
+              onExpandToggle: (val) => setState(() => _configExpanded = val),
+              child: Column(
+                children: [
+                  _buildConfigDetailRow(
+                      'Auto-Discovery', _svc.autoDiscover ? 'ON' : 'OFF'),
+                  _buildConfigDetailRow(
+                      'Verify Integrity', _svc.verifyIntegrity ? 'ON' : 'OFF'),
+                  _buildConfigDetailRow(
+                      'Allow Prod Switch', _svc.allowProdSwitch ? 'YES' : 'NO'),
+                  _buildConfigDetailRow('Production Envs',
+                      _svc.productionEnvs.map((e) => e.label).join(', ')),
+                ],
               ),
             ),
 
+            if (widget.showEnvKeys) ...[
+              const SizedBox(height: 12),
+              // Config Values Card
+              _buildCard(
+                title: 'Configuration Values',
+                icon: Icons.vpn_key_outlined,
+                itemCount: _svc.current.value.values.length,
+                expandable: true,
+                isExpanded: _kvExpanded,
+                onExpandToggle: (val) => setState(() => _kvExpanded = val),
+                child: Padding(
+                  padding: const EdgeInsets.only(top: 8),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      _ConfigSearchField(
+                        onSearch: (val) =>
+                            setState(() => _configSearchQuery = val),
+                      ),
+                      const SizedBox(height: 16),
+                      Builder(builder: (context) {
+                        final entries =
+                            _svc.current.value.values.entries.toList();
+                        final query = _configSearchQuery.toLowerCase();
+                        final filtered = entries.where((e) {
+                          return e.key.toLowerCase().contains(query) ||
+                              e.value.toLowerCase().contains(query);
+                        }).toList();
+
+                        if (filtered.isEmpty) {
+                          return Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 32),
+                            child: Column(
+                              children: [
+                                Icon(Icons.search_off_outlined,
+                                    size: 32, color: Colors.grey.shade300),
+                                const SizedBox(height: 12),
+                                Text(
+                                  query.isEmpty
+                                      ? 'No configuration values'
+                                      : 'No matches for "$_configSearchQuery"',
+                                  style: TextStyle(
+                                    color: Colors.grey.shade500,
+                                    fontSize: 13,
+                                  ),
+                                  textAlign: TextAlign.center,
+                                ),
+                              ],
+                            ),
+                          );
+                        }
+
+                        return Column(
+                          children: [
+                            for (int i = 0; i < filtered.length; i++) ...[
+                              _buildKvRow(filtered[i].key, filtered[i].value),
+                              if (i < filtered.length - 1)
+                                Divider(
+                                  height: 24,
+                                  thickness: 1,
+                                  color: Theme.of(context)
+                                      .dividerColor
+                                      .withOpacity(0.05),
+                                ),
+                            ],
+                          ],
+                        );
+                      }),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+
             const SizedBox(height: 12),
-            */
 
             // Audit Log Card
             FutureBuilder<List<AuditEntry>>(
@@ -314,7 +340,8 @@ class _EnvDebugPanelState extends State<EnvDebugPanel> {
                   expandable: true,
                   isExpanded: _auditExpanded,
                   onExpandToggle: (val) => setState(() => _auditExpanded = val),
-                  child: AuditLogViewer(entries: entries.reversed.take(20).toList()),
+                  child: AuditLogViewer(
+                      entries: entries.reversed.take(20).toList()),
                 );
               },
             ),
@@ -401,7 +428,9 @@ class _EnvDebugPanelState extends State<EnvDebugPanel> {
         return _EnvButton(
           env: env,
           isActive: isActive,
-          onPressed: _svc.isProdLocked ? null : () => _switchEnv(env),
+          onPressed: (env.isProduction && !_svc.allowProdSwitch)
+              ? null
+              : () => _switchEnv(env),
           isLocked: env.isProduction && !_svc.allowProdSwitch,
           hasUrl: hasUrl,
         );
@@ -422,7 +451,8 @@ class _EnvDebugPanelState extends State<EnvDebugPanel> {
         children: [
           Row(
             children: [
-              const Icon(Icons.warning_amber_rounded, color: Colors.red, size: 18),
+              const Icon(Icons.warning_amber_rounded,
+                  color: Colors.red, size: 18),
               const SizedBox(width: 8),
               Text(
                 'Switch to ${env.label}?',
@@ -454,56 +484,6 @@ class _EnvDebugPanelState extends State<EnvDebugPanel> {
                   visualDensity: VisualDensity.compact,
                 ),
                 child: const Text('Confirm Switch'),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildResetConfirm() {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.red.withOpacity(0.05),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.red.withOpacity(0.2)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Row(
-            children: [
-              Icon(Icons.refresh_rounded, color: Colors.red, size: 20),
-              SizedBox(width: 12),
-              Text(
-                'Reset Everything?',
-                style: TextStyle(fontWeight: FontWeight.bold, color: Colors.red),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          const Text(
-            'This will clear all custom URLs, your selection history, and the audit log. The app will return to its default configuration.',
-            style: TextStyle(fontSize: 13, height: 1.4),
-          ),
-          const SizedBox(height: 16),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.end,
-            children: [
-              TextButton(
-                onPressed: () => setState(() => _showResetConfirm = false),
-                child: const Text('Cancel'),
-              ),
-              const SizedBox(width: 8),
-              FilledButton(
-                onPressed: _reset,
-                style: FilledButton.styleFrom(
-                  backgroundColor: Colors.red,
-                  visualDensity: VisualDensity.compact,
-                ),
-                child: const Text('Confirm Reset'),
               ),
             ],
           ),
@@ -550,36 +530,73 @@ class _EnvDebugPanelState extends State<EnvDebugPanel> {
     );
   }
 
-  Widget _buildKvRow(String key, String value) {
-    final isSensitive = EnvConfig.isSensitiveKey(key);
-    final theme = Theme.of(context);
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Expanded(
-              child: Text(
-                key,
-                style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w700,
-                  color: theme.colorScheme.primary,
-                  fontFamily: 'monospace',
-                  letterSpacing: 0.5,
-                ),
+  Widget _buildResetConfirm() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.red.withOpacity(0.05),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.red.withOpacity(0.2)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Row(
+            children: [
+              Icon(Icons.refresh_rounded, color: Colors.red, size: 20),
+              SizedBox(width: 12),
+              Text(
+                'Reset Everything?',
+                style:
+                    TextStyle(fontWeight: FontWeight.bold, color: Colors.red),
               ),
-            ),
-            if (isSensitive) const Icon(Icons.lock_outline, size: 12, color: Colors.grey),
-          ],
-        ),
-        const SizedBox(height: 6),
-        SensitiveValueDisplay(
-          value: value,
-          isSensitive: isSensitive,
-        ),
-      ],
+            ],
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            'This will clear all custom URLs, your selection history, and the audit log. The app will return to its default configuration.',
+            style: TextStyle(fontSize: 13, height: 1.4),
+          ),
+          const SizedBox(height: 16),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              TextButton(
+                onPressed: () => setState(() => _showResetConfirm = false),
+                child: const Text('Cancel'),
+              ),
+              const SizedBox(width: 8),
+              FilledButton(
+                onPressed: _reset,
+                style: FilledButton.styleFrom(
+                  backgroundColor: Colors.red,
+                  visualDensity: VisualDensity.compact,
+                ),
+                child: const Text('Confirm Reset'),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildKvRow(String key, String value) {
+    return _SensitiveKvRow(keyName: key, value: value);
+  }
+
+  Widget _buildConfigDetailRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(label, style: const TextStyle(fontSize: 11, color: Colors.grey)),
+          Text(value,
+              style:
+                  const TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+        ],
+      ),
     );
   }
 
@@ -600,6 +617,63 @@ class _EnvDebugPanelState extends State<EnvDebugPanel> {
               message,
               style: const TextStyle(color: Colors.red, fontSize: 13),
             ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SensitiveKvRow extends StatefulWidget {
+  final String keyName;
+  final String value;
+
+  const _SensitiveKvRow({required this.keyName, required this.value});
+
+  @override
+  State<_SensitiveKvRow> createState() => _SensitiveKvRowState();
+}
+
+class _SensitiveKvRowState extends State<_SensitiveKvRow> {
+  bool _revealed = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final isSensitive = EnvConfig.isSensitiveKey(widget.keyName);
+    final theme = Theme.of(context);
+
+    return InkWell(
+      onTap: isSensitive ? () => setState(() => _revealed = !_revealed) : null,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  isSensitive && !_revealed ? '••••••••' : widget.keyName,
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    color: theme.colorScheme.primary,
+                    fontFamily: 'monospace',
+                    letterSpacing: 0.5,
+                  ),
+                ),
+              ),
+              if (isSensitive)
+                Icon(
+                  _revealed ? Icons.lock_open : Icons.lock_outline,
+                  size: 12,
+                  color: Colors.grey,
+                ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          SensitiveValueDisplay(
+            value: widget.value,
+            isSensitive: isSensitive,
+            forceReveal: _revealed,
           ),
         ],
       ),
@@ -669,7 +743,8 @@ class _EnvButton extends StatelessWidget {
               ),
               if (isLocked) ...[
                 const SizedBox(width: 6),
-                Icon(Icons.lock, size: 12, color: isActive ? Colors.white : color),
+                Icon(Icons.lock,
+                    size: 12, color: isActive ? Colors.white : color),
               ],
             ],
           ),
@@ -740,7 +815,8 @@ class _SectionHeader extends StatelessWidget {
                       if (itemCount != null) ...[
                         const SizedBox(width: 8),
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 6, vertical: 2),
                           decoration: BoxDecoration(
                             color: Colors.grey.withOpacity(0.1),
                             borderRadius: BorderRadius.circular(10),
@@ -847,10 +923,13 @@ class SensitiveValueDisplay extends StatefulWidget {
   final String value;
   final bool isSensitive;
 
+  final bool forceReveal;
+
   const SensitiveValueDisplay({
     super.key,
     required this.value,
     this.isSensitive = false,
+    this.forceReveal = false,
   });
 
   @override
@@ -903,61 +982,41 @@ class _SensitiveValueDisplayState extends State<SensitiveValueDisplay> {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
-    if (_confirming) {
-      return InkWell(
-        onTap: _confirm,
-        borderRadius: BorderRadius.circular(6),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-          decoration: BoxDecoration(
-            color: Colors.blue.withOpacity(0.1),
-            borderRadius: BorderRadius.circular(6),
-            border: Border.all(color: Colors.blue.withOpacity(0.3)),
-          ),
-          child: const Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(Icons.lock_open, size: 16, color: Colors.blue),
-              SizedBox(width: 8),
-              Text(
-                'Reveal & Copy?',
-                style: TextStyle(fontSize: 11, color: Colors.blue, fontWeight: FontWeight.bold),
-              ),
-            ],
+    if (widget.forceReveal || _revealed) {
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+        decoration: BoxDecoration(
+          color: isDark ? Colors.white.withOpacity(0.05) : Colors.grey.shade50,
+          borderRadius: BorderRadius.circular(6),
+          border: Border.all(
+            color:
+                isDark ? Colors.white.withOpacity(0.1) : Colors.grey.shade200,
           ),
         ),
-      );
-    }
-
-    if (_revealed) {
-      return InkWell(
-        onTap: _hide,
-        borderRadius: BorderRadius.circular(6),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-          decoration: BoxDecoration(
-            color: isDark ? Colors.white.withOpacity(0.05) : Colors.grey.shade50,
-            borderRadius: BorderRadius.circular(6),
-            border: Border.all(
-              color: isDark ? Colors.white.withOpacity(0.1) : Colors.grey.shade200,
-            ),
-          ),
-          child: Row(
-            children: [
-              Expanded(
-                child: SelectableText(
-                  widget.value,
-                  style: const TextStyle(
-                    fontFamily: 'monospace',
-                    fontSize: 12,
-                  ),
+        child: Row(
+          children: [
+            Expanded(
+              child: SelectableText(
+                widget.value,
+                style: const TextStyle(
+                  fontFamily: 'monospace',
+                  fontSize: 12,
                 ),
               ),
+            ),
+            if (!widget.forceReveal) ...[
               const Icon(Icons.visibility, size: 16, color: Colors.blue),
               const SizedBox(width: 4),
-              Text('Hide', style: TextStyle(fontSize: 10, color: Colors.grey.shade500)),
-            ],
-          ),
+              Text('Hide',
+                  style: TextStyle(fontSize: 10, color: Colors.grey.shade500)),
+            ] else
+              IconButton(
+                onPressed: _copyValue,
+                icon: const Icon(Icons.copy, size: 16),
+                tooltip: 'Copy',
+                visualDensity: VisualDensity.compact,
+              ),
+          ],
         ),
       );
     }
@@ -969,7 +1028,8 @@ class _SensitiveValueDisplayState extends State<SensitiveValueDisplay> {
           color: isDark ? Colors.white.withOpacity(0.05) : Colors.grey.shade50,
           borderRadius: BorderRadius.circular(6),
           border: Border.all(
-            color: isDark ? Colors.white.withOpacity(0.1) : Colors.grey.shade200,
+            color:
+                isDark ? Colors.white.withOpacity(0.1) : Colors.grey.shade200,
           ),
         ),
         child: Row(
@@ -1007,7 +1067,8 @@ class _SensitiveValueDisplayState extends State<SensitiveValueDisplay> {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.visibility_off_outlined, size: 16, color: Colors.grey.shade600),
+            Icon(Icons.visibility_off_outlined,
+                size: 16, color: Colors.grey.shade600),
             const SizedBox(width: 8),
             Text(
               'Tap to reveal & copy',
@@ -1090,7 +1151,8 @@ class _UrlInputFieldState extends State<_UrlInputField> {
             : null,
         errorText: _error,
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
       ),
       onSubmitted: _error == null ? widget.onSubmit : null,
     );

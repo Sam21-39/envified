@@ -12,79 +12,105 @@ void main() {
 
     setUp(() async {
       EnvConfigService.resetInstance();
-      storage = EnvStorage(store: FakeFlutterSecureStorage());
+      storage = EnvStorage(storage: FakeFlutterSecureStorage());
       EnvConfigService.overrideForTesting(
         storage: storage,
-        parser: const EnvFileParser(),
+        parser: EnvFileParser(),
       );
+
       bundle = FakeAssetBundle();
-      bundle.register('assets/env/.env',
-          'BASE_URL=https://dev.api.com\nAPI_KEY=secret_123');
-      bundle.register('assets/env/.env.prod', 'BASE_URL=https://api.com');
+      bundle.register(
+        '.env',
+        'BASE_URL=https://dev.api.com\nAPI_KEY=secret_123',
+      );
+      bundle.register('.env.prod', 'BASE_URL=https://api.com');
+
+      // Init once per test — not inside each testWidgets
+      await EnvConfigService.instance.init(
+        bundle: bundle,
+        autoDiscover: false,
+        allowProdSwitch: true,
+        urls: {
+          Env.dev: 'https://dev.api.com',
+          Env.prod: 'https://api.com',
+        },
+      );
     });
 
-    testWidgets('renders sections correctly', (tester) async {
-      await EnvConfigService.instance.init(bundle: bundle);
+    tearDown(() {
+      EnvConfigService.resetInstance();
+    });
 
-      await tester.pumpWidget(
-        const MaterialApp(
+    Widget buildPanel() => MaterialApp(
           home: Scaffold(
             body: SingleChildScrollView(
-              child: EnvDebugPanel(showEnvKeys: true),
+              child: EnvDebugPanel(
+                service: EnvConfigService.instance,
+                showEnvKeys: true,
+              ),
             ),
           ),
-        ),
-      );
+        );
+
+    Future<void> ensureConfigurationExpanded(WidgetTester tester) async {
+      // Configuration is expanded by default in EnvDebugPanel (_kvExpanded = false now).
+      // We check for masked key '••••••••' which is API_KEY.
+      if (find.text('••••••••').evaluate().isEmpty) {
+        await tester.tap(find.text('CONFIGURATION'));
+        await tester.pump(const Duration(milliseconds: 300));
+      }
+    }
+
+    testWidgets('renders sections correctly', (tester) async {
+      await tester.pumpWidget(buildPanel());
+      await tester.pump(); // single frame to build
 
       expect(find.text('ACTIVE ENVIRONMENT'), findsOneWidget);
       expect(find.text('API ENDPOINT'), findsOneWidget);
       expect(find.text('CONFIGURATION'), findsOneWidget);
 
-      // ExpansionTile is collapsed by default, must expand to see keys
-      await tester.tap(find.text('CONFIGURATION'));
-      await tester.pumpAndSettle();
+      await ensureConfigurationExpanded(tester);
 
-      expect(find.text('API_KEY'), findsOneWidget);
+      // API_KEY is sensitive, so it should be masked
+      expect(find.text('••••••••'), findsOneWidget);
+      expect(find.text('API_KEY'), findsNothing);
     });
 
     testWidgets('reveals sensitive values on tap', (tester) async {
-      await EnvConfigService.instance.init(bundle: bundle);
-
-      await tester.pumpWidget(
-        const MaterialApp(
-          home: Scaffold(
-            body: SingleChildScrollView(
-              child: EnvDebugPanel(showEnvKeys: true),
-            ),
-          ),
-        ),
-      );
-
-      // ExpansionTile is collapsed by default, must expand to see keys
-      await tester.tap(find.text('CONFIGURATION'));
-      await tester.pumpAndSettle();
-
-      expect(find.text('••••••••••••••••'), findsOneWidget);
-
-      await tester.tap(find.byIcon(Icons.visibility));
+      await tester.pumpWidget(buildPanel());
       await tester.pump();
 
+      await ensureConfigurationExpanded(tester);
+
+      // Initially masked
+      expect(find.text('••••••••'), findsOneWidget);
+      expect(find.text('Tap to reveal & copy'), findsOneWidget);
+
+      // Tap the row (the masked key) to reveal
+      await tester.tap(find.text('••••••••'));
+      await tester.pump();
+
+      // Now revealed
+      expect(find.text('API_KEY'), findsOneWidget);
       expect(find.text('secret_123'), findsOneWidget);
+      expect(find.byIcon(Icons.copy),
+          findsNWidgets(2)); // One for BASE_URL, one for API_KEY
+      expect(find.text('Tap to reveal & copy'), findsNothing);
     });
 
     testWidgets('switches environment on chip selection', (tester) async {
-      await EnvConfigService.instance.init(bundle: bundle);
+      await tester.pumpWidget(buildPanel());
+      await tester.pump();
 
-      await tester.pumpWidget(
-        const MaterialApp(
-          home: Scaffold(
-            body: SingleChildScrollView(child: EnvDebugPanel()),
-          ),
-        ),
-      );
+      await tester.tap(find.text('Production'));
+      await tester.pump(); // Show confirmation dialog
 
-      await tester.tap(find.text('Prod'));
-      await tester.pumpAndSettle();
+      expect(find.text('Confirm Switch'), findsOneWidget);
+      await tester.tap(find.text('Confirm Switch'));
+
+      // env switch is async — give it a moment then pump
+      await tester.pump(const Duration(milliseconds: 100));
+      await tester.pump(); // rebuild
 
       expect(EnvConfigService.instance.current.value.env, Env.prod);
     });

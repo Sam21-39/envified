@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
-import '../env_config_service.dart';
-import '../env_model.dart';
+import '../service/env_config_service.dart';
+import '../models/env.dart';
 
 /// A persistent, lightweight environment indicator badge.
 ///

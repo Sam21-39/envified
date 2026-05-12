@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import 'package:envified/src/env_model.dart';
-import 'package:envified/src/env_storage.dart';
+import 'package:envified/src/models/env.dart';
+import 'package:envified/src/storage/env_storage.dart';
 import 'package:mocktail/mocktail.dart';
 
 class MockFlutterSecureStorage extends Mock implements FlutterSecureStorage {}
@@ -11,11 +11,12 @@ void main() {
     late MockFlutterSecureStorage mockSecureStorage;
     late EnvStorage storage;
 
-    const testConfig = EnvConfig(
+    final testConfig = EnvConfig(
       env: Env.staging,
       baseUrl: 'https://staging.api.com',
-      values: {'TIMEOUT': '5000'},
+      values: const {'TIMEOUT': '5000'},
       isBaseUrlOverridden: true,
+      loadedAt: DateTime.now(),
     );
 
     setUp(() {
@@ -39,7 +40,7 @@ void main() {
 
     test('loadConfig restores EnvConfig from valid JSON', () async {
       const json =
-          '{"env":"staging","baseUrl":"https://staging.api.com","values":{"TIMEOUT":"5000"},"isBaseUrlOverridden":true}';
+          '{"env":"staging","baseUrl":"https://staging.api.com","values":{"TIMEOUT":"5000"},"isBaseUrlOverridden":true,"loadedAt":"2026-05-12T00:00:00.000"}';
 
       when(() => mockSecureStorage.read(key: 'envified_config'))
           .thenAnswer((_) async => json);

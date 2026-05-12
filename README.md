@@ -42,7 +42,7 @@ It's not just a config switcher. It's **enterprise-grade security** meets **deve
 
 ---
 
-## 🚀 What's New in v3.1.1
+## 🚀 What's New in v3.2.0
 
 Building on the foundation of v3.0.0, we've added major improvements to privacy, safety, and UX:
 
@@ -80,7 +80,7 @@ Building on the foundation of v3.0.0, we've added major improvements to privacy,
 
 ```yaml
 dependencies:
-  envified: ^3.1.1
+  envified: ^3.2.0
 ```
 
 Then run:
@@ -280,19 +280,25 @@ This package follows [Semantic Versioning](https://semver.org/):
 
 ---
 
+## 💚 Support & Sponsorship
+
+`envified` is free and open source, built with ☕ by **Sumit Pal** ([@appamania](https://appamania.in)).
+
+| Tier | Link | What it buys |
+|---|---|---|
+| ☕ A sip of chai | [₹20](https://paywithchai.in/appamania) | You liked the package |
+| 🍵 A full cup | [₹50](https://paywithchai.in/appamania) | It saved you real time |
+| 🚀 Keep the lights on | [₹100](https://paywithchai.in/appamania) | You ship with it in prod |
+
+[![Buy me a Chai](https://img.shields.io/badge/☕%20Buy%20me%20a%20Chai-FF5722?style=for-the-badge&logo=upi&logoColor=white)](https://paywithchai.in/appamania)
+
 ## 🤝 Contributing
 
-See [CONTRIBUTING.md](https://github.com/Sam21-39/envified/blob/main/CONTRIBUTING.md) for details. Found a bug? Open an [Issue](https://github.com/Sam21-39/envified/issues)!
+We welcome all contributions! Please read [CONTRIBUTING.md](./CONTRIBUTING.md) before opening a PR.
 
----
-
-## Support the Project ☕
-
-If `envified` saves your rebuild time and improves your workflow, you can support the project here:
-
-👉 https://paywithchai.in/appamania
-
----
+- 🐛 [Report a Bug](https://github.com/Sam21-39/envified/issues/new?template=bug_report.md)
+- 💡 [Request a Feature](https://github.com/Sam21-39/envified/issues/new?template=feature_request.md)
+- 🔀 [Open a Pull Request](https://github.com/Sam21-39/envified/pulls)
 
 ## 📄 License
 

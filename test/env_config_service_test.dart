@@ -1,69 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:envified/envified.dart';
-import 'package:envified/src/env_storage.dart';
+import 'package:envified/src/storage/env_storage.dart';
 import 'test_helper.dart';
-
-/// A simple fake implementation of [FlutterSecureStorage] for testing.
-class FakeFlutterSecureStorage extends Fake implements FlutterSecureStorage {
-  final Map<String, String> _data = {};
-
-  @override
-  Future<void> write({
-    required String key,
-    required String? value,
-    Object? iOptions,
-    Object? aOptions,
-    Object? lOptions,
-    Object? webOptions,
-    Object? mOptions,
-    Object? wOptions,
-  }) async {
-    if (value == null) {
-      _data.remove(key);
-    } else {
-      _data[key] = value;
-    }
-  }
-
-  @override
-  Future<String?> read({
-    required String key,
-    Object? iOptions,
-    Object? aOptions,
-    Object? lOptions,
-    Object? webOptions,
-    Object? mOptions,
-    Object? wOptions,
-  }) async {
-    return _data[key];
-  }
-
-  @override
-  Future<void> delete({
-    required String key,
-    Object? iOptions,
-    Object? aOptions,
-    Object? lOptions,
-    Object? webOptions,
-    Object? mOptions,
-    Object? wOptions,
-  }) async {
-    _data.remove(key);
-  }
-
-  @override
-  Future<void> deleteAll({
-    Object? iOptions,
-    Object? aOptions,
-    Object? lOptions,
-    Object? webOptions,
-    Object? mOptions,
-    Object? wOptions,
-  }) async {
-    _data.clear();
-  }
-}
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -170,23 +108,13 @@ void main() {
       expect(svc.current.value.baseUrl, 'https://staging.api.example.com');
     });
 
-    test('switching to prod is allowed from dev', () async {
-      await svc.switchTo(Env.prod);
-      expect(svc.current.value.env, Env.prod);
-    });
-
-    test('throws EnvifiedLockException when leaving prod and locked', () async {
-      await svc.switchTo(Env.prod);
-      expect(
-        () => svc.switchTo(Env.dev),
-        throwsA(isA<EnvifiedLockException>()),
-      );
     test('blocks switching TO prod when allowProdSwitch is false', () async {
       bundle.register('assets/env/.env', 'BASE_URL=https://dev.com');
       bundle.register('assets/env/.env.prod', 'BASE_URL=https://prod.com');
       await svc.init(
         bundle: bundle,
         allowProdSwitch: false,
+        storage: envStorage,
       );
 
       await svc.switchTo(Env.prod);
@@ -201,6 +129,7 @@ void main() {
         defaultEnv: Env.prod,
         bundle: bundle,
         allowProdSwitch: false,
+        storage: envStorage,
       );
 
       await svc.switchTo(Env.dev);

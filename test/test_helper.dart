@@ -1,6 +1,69 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:flutter_test/flutter_test.dart';
+
+/// A simple fake implementation of [FlutterSecureStorage] for testing.
+class FakeFlutterSecureStorage extends Fake implements FlutterSecureStorage {
+  final Map<String, String> _data = {};
+
+  @override
+  Future<void> write({
+    required String key,
+    required String? value,
+    Object? iOptions,
+    Object? aOptions,
+    Object? lOptions,
+    Object? webOptions,
+    Object? mOptions,
+    Object? wOptions,
+  }) async {
+    if (value == null) {
+      _data.remove(key);
+    } else {
+      _data[key] = value;
+    }
+  }
+
+  @override
+  Future<String?> read({
+    required String key,
+    Object? iOptions,
+    Object? aOptions,
+    Object? lOptions,
+    Object? webOptions,
+    Object? mOptions,
+    Object? wOptions,
+  }) async {
+    return _data[key];
+  }
+
+  @override
+  Future<void> delete({
+    required String key,
+    Object? iOptions,
+    Object? aOptions,
+    Object? lOptions,
+    Object? webOptions,
+    Object? mOptions,
+    Object? wOptions,
+  }) async {
+    _data.remove(key);
+  }
+
+  @override
+  Future<void> deleteAll({
+    Object? iOptions,
+    Object? aOptions,
+    Object? lOptions,
+    Object? webOptions,
+    Object? mOptions,
+    Object? wOptions,
+  }) async {
+    _data.clear();
+  }
+}
 
 /// A robust [AssetBundle] for testing that supports on-the-fly asset registration
 /// and automatic [AssetManifest] generation.
