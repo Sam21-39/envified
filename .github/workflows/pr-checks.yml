@@ -2,52 +2,68 @@ name: PR Checks
 
 on:
   pull_request:
-    branches: [main, develop, release/*]
-  push:
-    branches: [develop, release/*]
+    branches: [main, develop]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   validate:
+    name: Validate PR
     runs-on: ubuntu-latest
-    
+
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      
-      - uses: subosito/flutter-action@v2
-        with:
-          flutter-version: '3.41.9'
-          channel: 'stable'
-      
+
       - name: Check branch name
         run: |
-          BRANCH=${{ github.head_ref || github.ref_name }}
-          if [[ ! $BRANCH =~ ^(feature|fix|docs|release|hotfix)\/ ]] && [[ $BRANCH != "develop" ]] && [[ $BRANCH != "main" ]]; then
-            echo "❌ Invalid branch name: $BRANCH"
-            echo "Use: feature/*, fix/*, hotfix/*, docs/*, or release/*"
+          BRANCH="${{ github.head_ref }}"
+          if [[ "$BRANCH" =~ ^(feature|fix|docs|hotfix|release)/ ]] \
+             || [[ "$BRANCH" == "develop" ]] \
+             || [[ "$BRANCH" == "main" ]]; then
+            echo "✅ Branch name valid: $BRANCH"
+          else
+            echo "❌ Invalid branch: $BRANCH"
+            echo "Expected: feature/*, fix/*, hotfix/*, docs/*, release/*, develop, main"
             exit 1
           fi
-          echo "✅ Branch name valid: $BRANCH"
-      
-      - name: Check CHANGELOG updated
+
+      - name: Require CHANGELOG update on feature/fix branches
+        if: startsWith(github.head_ref, 'feature/') || startsWith(github.head_ref, 'fix/')
         run: |
-          if git diff origin/develop HEAD -- CHANGELOG.md | grep -q "^[+-]"; then
+          if git diff origin/${{ github.base_ref }}...HEAD -- CHANGELOG.md | grep -q "^+"; then
             echo "✅ CHANGELOG updated"
           else
-            echo "⚠️ CHANGELOG not updated (required for feature/fix branches)"
+            echo "❌ CHANGELOG.md must be updated for feature/* and fix/* PRs"
+            exit 1
           fi
-      
-      - name: Check pubspec.yaml version
+
+      - name: Require version bump for release branches
+        if: startsWith(github.head_ref, 'release/')
         run: |
-          # Warn if version not bumped
-          if ! git diff origin/develop HEAD -- pubspec.yaml | grep -q "version:"; then
-            echo "⚠️ Version not bumped in pubspec.yaml"
+          if git diff origin/${{ github.base_ref }}...HEAD -- pubspec.yaml | grep -q "^+version:"; then
+            echo "✅ Version bumped in pubspec.yaml"
+          else
+            echo "❌ pubspec.yaml version must be bumped on release/* branches"
+            exit 1
           fi
-      
-      - name: Run all checks
-        run: |
-          flutter pub get
-          dart format --output=none --set-exit-if-changed .
-          flutter analyze
-          flutter test
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Verify formatting
+        run: dart format --output=none --set-exit-if-changed .
+
+      - name: Analyze
+        run: flutter analyze --fatal-infos
+
+      - name: Run tests
+        run: flutter test

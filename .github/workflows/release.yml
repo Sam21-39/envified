@@ -1,41 +1,74 @@
-name: Create Release
+name: Release
 
 on:
   push:
     tags:
-      - 'v[0-9]+.[0-9]+.[0-9]+*'
+      - 'v[0-9]+.[0-9]+.[0-9]+'      # stable: v3.1.0
+      - 'v[0-9]+.[0-9]+.[0-9]+-*'    # pre-release: v3.1.0-beta.1
 
 jobs:
-  create-release:
+  release:
+    name: Publish & create GitHub release
     runs-on: ubuntu-latest
     permissions:
-      contents: write
-    
+      contents: write   # create GitHub release
+      id-token: write   # OIDC for pub.dev publishing
+
     steps:
       - uses: actions/checkout@v4
-      
-      - name: Extract version
-        id: version
-        run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
-      
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      # Full gate before we touch pub.dev
+      - name: Verify formatting
+        run: dart format --output=none --set-exit-if-changed .
+
+      - name: Analyze
+        run: flutter analyze --fatal-infos
+
+      - name: Run tests
+        run: flutter test
+
+      # Verify the tag matches pubspec.yaml version
+      - name: Verify tag matches pubspec version
+        run: |
+          TAG="${GITHUB_REF#refs/tags/v}"
+          PUBSPEC_VERSION=$(grep "^version:" pubspec.yaml | awk '{print $2}')
+          if [[ "$TAG" != "$PUBSPEC_VERSION" ]]; then
+            echo "❌ Tag v$TAG does not match pubspec.yaml version $PUBSPEC_VERSION"
+            exit 1
+          fi
+          echo "✅ Tag matches pubspec: $PUBSPEC_VERSION"
+
+      # Extract the relevant CHANGELOG block
       - name: Extract CHANGELOG entry
         id: changelog
         run: |
-          VERSION=${{ steps.version.outputs.VERSION }}
-          # Extract changelog for this version
-          # Removes the 'v' prefix if it exists in the tag but not in CHANGELOG
-          CLEAN_VERSION=${VERSION#v}
-          CHANGELOG=$(sed -n "/^## ${CLEAN_VERSION}/,/^## /p" CHANGELOG.md | head -n -1)
-          echo "CHANGELOG<<EOF" >> $GITHUB_OUTPUT
-          echo "$CHANGELOG" >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
-      
-      - name: Create Release
-        uses: softprops/action-gh-release@v1
+          VERSION="${GITHUB_REF#refs/tags/v}"
+          BODY=$(awk "/^## \[?${VERSION}\]?/{found=1; next} found && /^## /{exit} found{print}" CHANGELOG.md)
+          if [[ -z "$BODY" ]]; then
+            BODY="See CHANGELOG.md for details."
+          fi
+          {
+            echo "BODY<<EOF"
+            echo "$BODY"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Create GitHub release
+        uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ steps.version.outputs.VERSION }}
-          body: ${{ steps.changelog.outputs.CHANGELOG }}
+          tag_name: ${{ github.ref_name }}
+          name: ${{ github.ref_name }}
+          body: ${{ steps.changelog.outputs.BODY }}
           draft: false
-          prerelease: false
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          prerelease: ${{ contains(github.ref_name, '-') }}
+
+      - name: Publish to pub.dev
+        run: dart pub publish --force

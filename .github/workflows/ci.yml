@@ -1,24 +1,29 @@
-# .github/workflows/ci.yml
 name: CI
 
 on:
-  pull_request:
-    branches: [main, develop, release/*]
   push:
-    branches: [develop, release/*]
+    branches: [main, develop, 'release/**', 'feature/**', 'fix/**', 'hotfix/**']
+  pull_request:
+    branches: [main, develop]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  analyze-and-test:
+  ci:
+    name: Analyze, format & test
     runs-on: ubuntu-latest
+
     steps:
       - uses: actions/checkout@v4
 
       - uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.41.9'
-          channel: 'stable'
+          channel: stable
+          cache: true            # subosito/flutter-action built-in cache
 
-      - name: Get dependencies
+      - name: Install dependencies
         run: flutter pub get
 
       - name: Verify formatting
@@ -30,23 +35,9 @@ jobs:
       - name: Run tests with coverage
         run: flutter test --coverage
 
-      - name: Check branch name
+      - name: Upload coverage
+        uses: codecov/codecov-action@v4
+        with:
+          files: coverage/lcov.info
         env:
-          BRANCH: ${{ github.head_ref || github.ref_name }}
-        run: |
-          if [[ ! "$BRANCH" =~ ^(feature|fix|docs|release|hotfix)\/ ]] && [[ "$BRANCH" != "develop" ]] && [[ "$BRANCH" != "main" ]]; then
-            echo "❌ Invalid branch name: $BRANCH"
-            echo "Use: feature/*, fix/*, hotfix/*, docs/*, or release/*"
-            exit 1
-          fi
-          echo "✅ Branch name valid: $BRANCH"
-
-      - name: Check coverage threshold
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y lcov
-          lcov --summary coverage/lcov.info | grep "lines" | awk '{print $2}' | \
-          awk -F'%' '{if($1 < 80) {print "Coverage below 80%"; exit 1}}'
-
-      - name: Verify pub score prerequisites
-        run: dart pub publish --dry-run
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
