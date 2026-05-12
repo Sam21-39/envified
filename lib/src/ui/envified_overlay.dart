@@ -1,9 +1,5 @@
+import 'package:envified/envified.dart';
 import 'package:flutter/material.dart';
-
-import '../env_config_service.dart';
-import '../env_gate.dart';
-import 'env_debug_panel.dart';
-import 'env_trigger.dart';
 
 /// A transparent wrapper widget that optionally injects a floating debug button
 /// into the app's [Overlay], allowing [EnvDebugPanel] to be opened at any time.
@@ -92,9 +88,6 @@ class EnvifiedOverlay extends StatefulWidget {
   /// Defaults to `true`.
   final bool isShowEnvLabel;
 
-  /// Callback to restart the application.
-  final VoidCallback? onRestart;
-
   const EnvifiedOverlay({
     super.key,
     required this.service,
@@ -106,7 +99,6 @@ class EnvifiedOverlay extends StatefulWidget {
     this.showFab = true,
     this.showEnvKeys = false,
     this.isShowEnvLabel = true,
-    this.onRestart,
   });
 
   @override
@@ -129,7 +121,6 @@ class _EnvifiedOverlayState extends State<EnvifiedOverlay> {
         showFab: widget.showFab,
         showEnvKeys: widget.showEnvKeys,
         isShowEnvLabel: widget.isShowEnvLabel,
-        onRestart: widget.onRestart,
       ),
     );
   }
@@ -165,7 +156,6 @@ class _OverlayContent extends StatefulWidget {
   final bool showFab;
   final bool showEnvKeys;
   final bool isShowEnvLabel;
-  final VoidCallback? onRestart;
 
   const _OverlayContent({
     required this.service,
@@ -176,15 +166,14 @@ class _OverlayContent extends StatefulWidget {
     required this.showFab,
     required this.showEnvKeys,
     required this.isShowEnvLabel,
-    this.gate,
-    this.onRestart,
   });
 
   @override
   State<_OverlayContent> createState() => _OverlayContentState();
 }
 
-class _OverlayContentState extends State<_OverlayContent> with WidgetsBindingObserver {
+class _OverlayContentState extends State<_OverlayContent>
+    with WidgetsBindingObserver {
   bool _isOpen = false;
   bool _isAuthenticated = false;
   OverlayEntry? _gateEntry;
@@ -197,7 +186,8 @@ class _OverlayContentState extends State<_OverlayContent> with WidgetsBindingObs
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.paused || state == AppLifecycleState.inactive) {
+    if (state == AppLifecycleState.paused ||
+        state == AppLifecycleState.inactive) {
       _closePanel();
     }
   }
@@ -391,6 +381,7 @@ class _OverlayContentState extends State<_OverlayContent> with WidgetsBindingObs
                       child: SingleChildScrollView(
                         padding: const EdgeInsets.symmetric(vertical: 16),
                         child: EnvDebugPanel(
+                          service: widget.service,
                           onRestart: widget.onRestart,
                           showEnvKeys: widget.showEnvKeys,
                         ),
@@ -400,12 +391,13 @@ class _OverlayContentState extends State<_OverlayContent> with WidgetsBindingObs
                 ),
               ),
             ),
-          if (widget.isShowEnvLabel) const EnvStatusBadge(),
+          if (widget.isShowEnvLabel) EnvStatusBadge(service: widget.service),
           if (widget.showFab)
             Positioned(
               bottom: 24,
               right: 16,
               child: _EnvFab(
+                service: widget.service,
                 isOpen: _isOpen || _gateEntry != null,
                 onTap: _requestOpen,
               ),
@@ -437,7 +429,8 @@ class _EnvFab extends StatelessWidget {
         return FloatingActionButton(
           heroTag: 'envified_fab',
           mini: true,
-          backgroundColor: locked ? Colors.red.shade700 : Colors.blueGrey.shade800,
+          backgroundColor:
+              locked ? Colors.red.shade700 : Colors.blueGrey.shade800,
           foregroundColor: Colors.white,
           tooltip: isOpen ? 'Close Panel' : 'envified — Environment Panel',
           onPressed: onTap,

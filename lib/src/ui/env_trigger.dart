@@ -4,48 +4,34 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:sensors_plus/sensors_plus.dart';
 
+/// Interface for custom trigger detectors (e.g. shake, volume buttons).
+abstract class EnvTriggerDetector {
+  /// Start listening for the trigger.
+  void start(double threshold, VoidCallback onTrigger);
+
+  /// Stop listening for the trigger.
+  void stop();
+}
+
 /// Defines the gesture that opens the [EnvifiedOverlay] debug panel.
-///
-/// Use one of the factory constructors to select a trigger type:
-///
-/// ```dart
-/// EnvifiedOverlay(
-///   trigger: const EnvTrigger.tap(count: 7),    // default — 7 rapid taps
-///   // trigger: const EnvTrigger.shake(),         // device shake
-///   // trigger: const EnvTrigger.edgeSwipe(),     // right-edge swipe
-///   ...
-/// )
-/// ```
 sealed class EnvTrigger {
   const EnvTrigger();
 
-  /// Open the panel by tapping any child widget [count] times rapidly
-  /// (within an 800 ms window).
-  ///
-  /// Defaults to 7 taps, which is unlikely to trigger accidentally.
+  /// Open the panel by tapping any child widget [count] times rapidly.
   const factory EnvTrigger.tap({int? count}) = _TapTrigger;
 
   /// Open the panel by shaking the device.
   ///
-  /// Listens to the accelerometer via `sensors_plus`. A shake is detected
-  /// when the total acceleration magnitude exceeds [threshold] m/s².
-  /// A 2-second debounce prevents repeated triggers.
-  ///
-  /// Requires `sensors_plus` to be configured in `pubspec.yaml`.
-  const factory EnvTrigger.shake({double? threshold}) = _ShakeTrigger;
+  /// If [detector] is null, a default implementation using `sensors_plus` is used.
+  const factory EnvTrigger.shake({
+    double? threshold,
+    EnvTriggerDetector? detector,
+  }) = _ShakeTrigger;
 
   /// Open the panel by swiping inward from the right screen edge.
-  ///
-  /// A transparent strip of width [edgeWidth] (default 20 px) is placed along
-  /// the right edge. A right-to-left horizontal drag starting inside that strip
-  /// opens the panel.
   const factory EnvTrigger.edgeSwipe({double? edgeWidth}) = _EdgeSwipeTrigger;
 
-  /// Wraps [child] in a gesture-detecting widget that calls [onOpen] when the
-  /// configured trigger fires.
-  ///
-  /// [isActive] should be true when the trigger is actively listening (e.g.
-  /// when the panel is closed).
+  /// Wraps [child] in a gesture-detecting widget.
   Widget build({
     required Widget child,
     required VoidCallback onOpen,
@@ -57,9 +43,7 @@ sealed class EnvTrigger {
 
 final class _TapTrigger extends EnvTrigger {
   final int count;
-  const _TapTrigger({int? count})
-      : count = count ?? 7,
-        super();
+  const _TapTrigger({int? count}) : count = count ?? 7;
 
   @override
   Widget build({
@@ -132,9 +116,10 @@ class _TapTriggerWidgetState extends State<_TapTriggerWidget> {
 
 final class _ShakeTrigger extends EnvTrigger {
   final double threshold;
-  const _ShakeTrigger({double? threshold})
-      : threshold = threshold ?? 15.0,
-        super();
+  final EnvTriggerDetector? detector;
+
+  const _ShakeTrigger({double? threshold, this.detector})
+      : threshold = threshold ?? 15.0;
 
   @override
   Widget build({
@@ -144,6 +129,7 @@ final class _ShakeTrigger extends EnvTrigger {
   }) {
     return _ShakeTriggerWidget(
       threshold: threshold,
+      detector: detector ?? const _DefaultShakeDetector(),
       onOpen: onOpen,
       isActive: isActive,
       child: child,
@@ -153,12 +139,14 @@ final class _ShakeTrigger extends EnvTrigger {
 
 class _ShakeTriggerWidget extends StatefulWidget {
   final double threshold;
+  final EnvTriggerDetector detector;
   final VoidCallback onOpen;
   final bool isActive;
   final Widget child;
 
   const _ShakeTriggerWidget({
     required this.threshold,
+    required this.detector,
     required this.onOpen,
     required this.isActive,
     required this.child,
@@ -169,35 +157,33 @@ class _ShakeTriggerWidget extends StatefulWidget {
 }
 
 class _ShakeTriggerWidgetState extends State<_ShakeTriggerWidget> {
-  StreamSubscription<AccelerometerEvent>? _subscription;
-  DateTime? _lastTrigger;
-
   @override
   void initState() {
     super.initState();
-    _subscription = accelerometerEventStream().listen(_onAccelerometer);
+    _startListening();
   }
 
-  void _onAccelerometer(AccelerometerEvent event) {
-    final double magnitude = math.sqrt(
-      event.x * event.x + event.y * event.y + event.z * event.z,
-    );
-
-    if (!widget.isActive) return;
-
-    if (magnitude > widget.threshold) {
-      final DateTime now = DateTime.now();
-      if (_lastTrigger == null ||
-          now.difference(_lastTrigger!) > const Duration(seconds: 2)) {
-        _lastTrigger = now;
-        widget.onOpen();
+  @override
+  void didUpdateWidget(_ShakeTriggerWidget oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.isActive != oldWidget.isActive) {
+      if (widget.isActive) {
+        _startListening();
+      } else {
+        widget.detector.stop();
       }
+    }
+  }
+
+  void _startListening() {
+    if (widget.isActive) {
+      widget.detector.start(widget.threshold, widget.onOpen);
     }
   }
 
   @override
   void dispose() {
-    _subscription?.cancel();
+    widget.detector.stop();
     super.dispose();
   }
 
@@ -205,13 +191,43 @@ class _ShakeTriggerWidgetState extends State<_ShakeTriggerWidget> {
   Widget build(BuildContext context) => widget.child;
 }
 
+class _DefaultShakeDetector implements EnvTriggerDetector {
+  static StreamSubscription<AccelerometerEvent>? _subscription;
+  static DateTime? _lastTrigger;
+
+  const _DefaultShakeDetector();
+
+  @override
+  void start(double threshold, VoidCallback onTrigger) {
+    _subscription?.cancel();
+    _subscription = accelerometerEventStream().listen((event) {
+      final double magnitude = math.sqrt(
+        event.x * event.x + event.y * event.y + event.z * event.z,
+      );
+
+      if (magnitude > threshold) {
+        final DateTime now = DateTime.now();
+        if (_lastTrigger == null ||
+            now.difference(_lastTrigger!) > const Duration(seconds: 2)) {
+          _lastTrigger = now;
+          onTrigger();
+        }
+      }
+    });
+  }
+
+  @override
+  void stop() {
+    _subscription?.cancel();
+    _subscription = null;
+  }
+}
+
 // ── Edge-swipe trigger ────────────────────────────────────────────────────────
 
 final class _EdgeSwipeTrigger extends EnvTrigger {
   final double edgeWidth;
-  const _EdgeSwipeTrigger({double? edgeWidth})
-      : edgeWidth = edgeWidth ?? 20.0,
-        super();
+  const _EdgeSwipeTrigger({double? edgeWidth}) : edgeWidth = edgeWidth ?? 20.0;
 
   @override
   Widget build({
@@ -263,9 +279,8 @@ class _EdgeSwipeTriggerWidgetState extends State<_EdgeSwipeTriggerWidget> {
   void _onPointerMove(PointerMoveEvent event) {
     if (!_startedInEdge || _pointerDownPosition == null) return;
     final double dx = event.localPosition.dx - _pointerDownPosition!.dx;
-    // Swipe inward = from right edge towards left = negative dx.
     if (dx < -40) {
-      _startedInEdge = false; // Prevent repeated triggers.
+      _startedInEdge = false;
       widget.onOpen();
     }
   }

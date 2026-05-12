@@ -19,6 +19,12 @@ class EnvGate {
     String? pin,
   }) : _pin = pin;
 
+  /// Returns `true` if the provided PIN is correct.
+  bool verify(String input) {
+    if (_pin == null) return true;
+    return _pin == input;
+  }
+
   /// Authenticate using PIN.
   ///
   /// Returns `true` if authentication succeeds, `false` if it fails or is cancelled.

@@ -4,10 +4,11 @@ import 'package:envified/envified.dart';
 
 void main() {
   group('EnvConfig', () {
-    const baseConfig = EnvConfig(
+    final baseConfig = EnvConfig(
       env: Env.dev,
       baseUrl: 'https://dev.api.example.com',
-      values: {'KEY': 'value', 'BASE_URL': 'https://dev.api.example.com'},
+      values: const {'KEY': 'value', 'BASE_URL': 'https://dev.api.example.com'},
+      loadedAt: DateTime.now(),
     );
 
     test('isBaseUrlOverridden defaults to false', () {
@@ -55,29 +56,33 @@ void main() {
     });
 
     test('equality operator compares all fields', () {
-      const a = EnvConfig(
+      final a = EnvConfig(
         env: Env.prod,
         baseUrl: 'https://api.com',
-        values: {'A': '1'},
+        values: const {'A': '1'},
+        loadedAt: DateTime(2026),
       );
-      const b = EnvConfig(
+      final b = EnvConfig(
         env: Env.prod,
         baseUrl: 'https://api.com',
-        values: {'A': '1'},
+        values: const {'A': '1'},
+        loadedAt: DateTime(2026),
       );
       expect(a, equals(b));
     });
 
     test('equality operator detects difference in values map', () {
-      const a = EnvConfig(
+      final a = EnvConfig(
         env: Env.dev,
         baseUrl: 'https://dev.com',
-        values: {'A': '1'},
+        values: const {'A': '1'},
+        loadedAt: DateTime.now(),
       );
-      const b = EnvConfig(
+      final b = EnvConfig(
         env: Env.dev,
         baseUrl: 'https://dev.com',
-        values: {'A': '2'},
+        values: const {'A': '2'},
+        loadedAt: DateTime.now(),
       );
       expect(a, isNot(equals(b)));
     });

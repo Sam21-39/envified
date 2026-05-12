@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import '../env_model.dart';
-import '../env_config_service.dart';
+import '../models/env.dart';
+import '../service/env_config_service.dart';
 
 /// A widget that injects the current [EnvConfig] into the widget tree
 /// and automatically rebuilds when the environment changes.

@@ -90,6 +90,18 @@ class Env {
     );
   }
 
+  /// Creates a dynamic [Env] from a name.
+  factory Env.dynamic(String name) {
+    if (name == 'prod' || name == 'production') return prod;
+    if (name == 'stag' || name == 'staging') return staging;
+    if (name == 'dev' || name == 'development') return dev;
+    return Env(
+      name: name,
+      label: name[0].toUpperCase() + name.substring(1),
+      assetFileName: '.env.$name',
+    );
+  }
+
   /// Returns a copy of this [Env] with specific fields replaced.
   Env copyWith({
     String? name,
@@ -132,7 +144,10 @@ class EnvConfig {
   /// The full merged key-value map from the active `.env*` file.
   final Map<String, String> values;
 
-  /// Whether [baseUrl] was set manually via [EnvConfigService.setBaseUrl].
+  /// When the configuration was loaded.
+  final DateTime loadedAt;
+
+  /// Whether the base URL has been manually overridden by the user.
   final bool isBaseUrlOverridden;
 
   /// Creates an [EnvConfig].
@@ -140,6 +155,7 @@ class EnvConfig {
     required this.env,
     required this.baseUrl,
     required this.values,
+    required this.loadedAt,
     this.isBaseUrlOverridden = false,
   });
 
@@ -148,12 +164,14 @@ class EnvConfig {
     Env? env,
     String? baseUrl,
     Map<String, String>? values,
+    DateTime? loadedAt,
     bool? isBaseUrlOverridden,
   }) {
     return EnvConfig(
       env: env ?? this.env,
       baseUrl: baseUrl ?? this.baseUrl,
       values: values ?? this.values,
+      loadedAt: loadedAt ?? this.loadedAt,
       isBaseUrlOverridden: isBaseUrlOverridden ?? this.isBaseUrlOverridden,
     );
   }
@@ -168,12 +186,17 @@ class EnvConfig {
     'AUTH_TOKEN',
     'JWT',
     'OAUTH_SECRET',
+    '_KEY',
   ];
 
   /// Check if a key contains sensitive data.
   static bool isSensitiveKey(String key) {
-    final upper = key.toUpperCase();
-    return _sensitiveKeys.any((sensitive) => upper.contains(sensitive));
+    final String upper = key.toUpperCase().trim();
+    if (upper == 'KEY') return true;
+    for (final String sensitive in _sensitiveKeys) {
+      if (upper.contains(sensitive)) return true;
+    }
+    return false;
   }
 
   /// Serialises this [EnvConfig] to a JSON-compatible map.
@@ -185,6 +208,7 @@ class EnvConfig {
       'label': env.label,
       'baseUrl': baseUrl,
       'values': values,
+      'loadedAt': loadedAt.toIso8601String(),
       'isBaseUrlOverridden': isBaseUrlOverridden,
     };
   }
@@ -205,6 +229,9 @@ class EnvConfig {
       values: Map<String, String>.from(
         (map['values'] as Map<Object?, Object?>?) ?? <String, String>{},
       ),
+      loadedAt: map['loadedAt'] != null
+          ? DateTime.parse(map['loadedAt'] as String)
+          : DateTime.now(),
       isBaseUrlOverridden: map['isBaseUrlOverridden'] as bool? ?? false,
     );
   }

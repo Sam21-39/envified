@@ -12,10 +12,10 @@ void main() {
 
     setUp(() async {
       EnvConfigService.resetInstance();
-      storage = EnvStorage(store: FakeFlutterSecureStorage());
+      storage = EnvStorage(storage: FakeFlutterSecureStorage());
       EnvConfigService.overrideForTesting(
         storage: storage,
-        parser: const EnvFileParser(),
+        parser: EnvFileParser(),
       );
       bundle = FakeAssetBundle();
       bundle.register('assets/env/.env',
@@ -24,13 +24,23 @@ void main() {
     });
 
     testWidgets('renders sections correctly', (tester) async {
-      await EnvConfigService.instance.init(bundle: bundle);
+      await EnvConfigService.instance.init(
+        bundle: bundle,
+        autoDiscover: false,
+        urls: {
+          Env.dev: 'https://dev.api.com',
+          Env.prod: 'https://api.com',
+        },
+      );
 
       await tester.pumpWidget(
-        const MaterialApp(
+        MaterialApp(
           home: Scaffold(
             body: SingleChildScrollView(
-              child: EnvDebugPanel(showEnvKeys: true),
+              child: EnvDebugPanel(
+                service: EnvConfigService.instance,
+                showEnvKeys: true,
+              ),
             ),
           ),
         ),
@@ -42,19 +52,29 @@ void main() {
 
       // ExpansionTile is collapsed by default, must expand to see keys
       await tester.tap(find.text('CONFIGURATION'));
-      await tester.pumpAndSettle();
+      await tester.pump(const Duration(milliseconds: 300));
 
       expect(find.text('API_KEY'), findsOneWidget);
     });
 
     testWidgets('reveals sensitive values on tap', (tester) async {
-      await EnvConfigService.instance.init(bundle: bundle);
+      await EnvConfigService.instance.init(
+        bundle: bundle,
+        autoDiscover: false,
+        urls: {
+          Env.dev: 'https://dev.api.com',
+          Env.prod: 'https://api.com',
+        },
+      );
 
       await tester.pumpWidget(
-        const MaterialApp(
+        MaterialApp(
           home: Scaffold(
             body: SingleChildScrollView(
-              child: EnvDebugPanel(showEnvKeys: true),
+              child: EnvDebugPanel(
+                service: EnvConfigService.instance,
+                showEnvKeys: true,
+              ),
             ),
           ),
         ),
@@ -62,7 +82,7 @@ void main() {
 
       // ExpansionTile is collapsed by default, must expand to see keys
       await tester.tap(find.text('CONFIGURATION'));
-      await tester.pumpAndSettle();
+      await tester.pump(const Duration(milliseconds: 300));
 
       expect(find.text('••••••••••••••••'), findsOneWidget);
 
@@ -73,18 +93,29 @@ void main() {
     });
 
     testWidgets('switches environment on chip selection', (tester) async {
-      await EnvConfigService.instance.init(bundle: bundle);
+      await EnvConfigService.instance.init(
+        bundle: bundle,
+        autoDiscover: false,
+        urls: {
+          Env.dev: 'https://dev.api.com',
+          Env.prod: 'https://api.com',
+        },
+      );
 
       await tester.pumpWidget(
-        const MaterialApp(
+        MaterialApp(
           home: Scaffold(
-            body: SingleChildScrollView(child: EnvDebugPanel()),
+            body: SingleChildScrollView(
+                child: EnvDebugPanel(
+              service: EnvConfigService.instance,
+              showEnvKeys: true,
+            )),
           ),
         ),
       );
 
       await tester.tap(find.text('Prod'));
-      await tester.pumpAndSettle();
+      await tester.pump(const Duration(milliseconds: 300));
 
       expect(EnvConfigService.instance.current.value.env, Env.prod);
     });

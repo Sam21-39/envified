@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../audit_entry.dart';
+import '../models/audit_entry.dart';
 
 /// A styled viewer for audit log entries.
 class AuditLogViewer extends StatelessWidget {

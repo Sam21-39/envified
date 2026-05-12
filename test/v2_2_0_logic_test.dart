@@ -1,7 +1,7 @@
-import 'package:envified/src/audit_entry.dart';
-import 'package:envified/src/env_config_service.dart';
-import 'package:envified/src/env_model.dart';
-import 'package:envified/src/env_storage.dart';
+import 'package:envified/src/models/audit_entry.dart';
+import 'package:envified/src/service/env_config_service.dart';
+import 'package:envified/src/models/env.dart';
+import 'package:envified/src/storage/env_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:flutter/widgets.dart';
@@ -19,8 +19,8 @@ void main() {
 
   setUpAll(() {
     registerFallbackValue(Env.dev);
-    registerFallbackValue(
-        const EnvConfig(env: Env.dev, baseUrl: '', values: {}));
+    registerFallbackValue(EnvConfig(
+        env: Env.dev, baseUrl: '', values: const {}, loadedAt: DateTime.now()));
     registerFallbackValue(
         AuditEntry(timestamp: DateTime.now(), action: 'test'));
   });

@@ -1,5 +1,5 @@
+import 'package:envified/src/models/audit_entry.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:envified/envified.dart';
 
 void main() {
   group('AuditEntry toJson / fromJson roundtrip', () {

@@ -2,9 +2,9 @@ import 'package:crypto/crypto.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
-import 'env_model.dart';
-import 'env_storage.dart';
-import 'envified_exception.dart';
+import '../models/env.dart';
+import '../storage/env_storage.dart';
+import '../models/envified_exception.dart';
 
 /// Internal parser for `.env*` asset files.
 class EnvFileParser {

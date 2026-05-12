@@ -56,13 +56,16 @@
 /// | [EnvTrigger]                   | Sealed class defining the gesture to open the panel  |
 library envified;
 
-export 'src/env_model.dart' show Env, EnvConfig;
-export 'src/env_config_service.dart' show EnvConfigService;
-export 'src/envified_exception.dart'
-    show EnvifiedLockException, EnvifiedTamperException, EnvifiedUrlNotAllowedException;
-export 'src/audit_entry.dart' show AuditEntry;
-export 'src/env_gate.dart' show EnvGate;
+export 'src/models/env.dart' show Env, EnvConfig;
+export 'src/service/env_config_service.dart' show EnvConfigService;
+export 'src/models/envified_exception.dart'
+    show
+        EnvifiedLockException,
+        EnvifiedTamperException,
+        EnvifiedUrlNotAllowedException;
+export 'src/models/audit_entry.dart' show AuditEntry;
+export 'src/ui/env_gate.dart' show EnvGate;
 export 'src/ui/env_debug_panel.dart' show EnvDebugPanel;
 export 'src/ui/envified_overlay.dart' show EnvifiedOverlay;
 export 'src/ui/env_status_badge.dart' show EnvStatusBadge;
-export 'src/ui/env_trigger.dart' show EnvTrigger;
+export 'src/ui/env_trigger.dart' show EnvTrigger, EnvTriggerDetector;

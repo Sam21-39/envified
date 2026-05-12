@@ -21,6 +21,7 @@ class EnvDebugPanel extends StatefulWidget {
     super.key,
     required this.service,
     this.onRestart,
+    required this.showEnvKeys,
   });
 
   @override
@@ -29,10 +30,10 @@ class EnvDebugPanel extends StatefulWidget {
 
 class _EnvDebugPanelState extends State<EnvDebugPanel> {
   final TextEditingController _urlController = TextEditingController();
-  final bool _kvExpanded = true;
+  bool _kvExpanded = true;
   bool _auditExpanded = false;
   String? _errorMessage;
-  final String _configSearchQuery = '';
+  String _configSearchQuery = '';
   bool _showNewConfig = true;
   bool _showResetConfirm = false;
   Env? _pendingEnv;
@@ -163,7 +164,8 @@ class _EnvDebugPanelState extends State<EnvDebugPanel> {
   Widget build(BuildContext context) {
     return AnimatedCrossFade(
       duration: const Duration(milliseconds: 200),
-      crossFadeState: _showNewConfig ? CrossFadeState.showSecond : CrossFadeState.showFirst,
+      crossFadeState:
+          _showNewConfig ? CrossFadeState.showSecond : CrossFadeState.showFirst,
       firstChild: const SizedBox(height: 400),
       secondChild: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -185,9 +187,11 @@ class _EnvDebugPanelState extends State<EnvDebugPanel> {
 
             // Environment Card
             _buildCard(
-              title: 'Environment',
+              title: 'Active Environment',
               icon: Icons.layers_outlined,
-              child: _pendingEnv != null ? _buildConfirmSwitch(_pendingEnv!) : _buildEnvSwitcher(),
+              child: _pendingEnv != null
+                  ? _buildConfirmSwitch(_pendingEnv!)
+                  : _buildEnvSwitcher(),
             ),
 
             const SizedBox(height: 12),
@@ -224,10 +228,6 @@ class _EnvDebugPanelState extends State<EnvDebugPanel> {
               ),
             ),
 
-            /* 
-            // TODO: Fix configuration search and rendering in the next patch.
-            // Temporarily hidden to improve panel stability and UX.
-            
             // Config Values Card
             _buildCard(
               title: 'Configuration',
@@ -300,7 +300,6 @@ class _EnvDebugPanelState extends State<EnvDebugPanel> {
             ),
 
             const SizedBox(height: 12),
-            */
 
             // Audit Log Card
             FutureBuilder<List<AuditEntry>>(
@@ -314,7 +313,8 @@ class _EnvDebugPanelState extends State<EnvDebugPanel> {
                   expandable: true,
                   isExpanded: _auditExpanded,
                   onExpandToggle: (val) => setState(() => _auditExpanded = val),
-                  child: AuditLogViewer(entries: entries.reversed.take(20).toList()),
+                  child: AuditLogViewer(
+                      entries: entries.reversed.take(20).toList()),
                 );
               },
             ),
@@ -422,7 +422,8 @@ class _EnvDebugPanelState extends State<EnvDebugPanel> {
         children: [
           Row(
             children: [
-              const Icon(Icons.warning_amber_rounded, color: Colors.red, size: 18),
+              const Icon(Icons.warning_amber_rounded,
+                  color: Colors.red, size: 18),
               const SizedBox(width: 8),
               Text(
                 'Switch to ${env.label}?',
@@ -479,7 +480,8 @@ class _EnvDebugPanelState extends State<EnvDebugPanel> {
               SizedBox(width: 12),
               Text(
                 'Reset Everything?',
-                style: TextStyle(fontWeight: FontWeight.bold, color: Colors.red),
+                style:
+                    TextStyle(fontWeight: FontWeight.bold, color: Colors.red),
               ),
             ],
           ),
@@ -571,7 +573,8 @@ class _EnvDebugPanelState extends State<EnvDebugPanel> {
                 ),
               ),
             ),
-            if (isSensitive) const Icon(Icons.lock_outline, size: 12, color: Colors.grey),
+            if (isSensitive)
+              const Icon(Icons.lock_outline, size: 12, color: Colors.grey),
           ],
         ),
         const SizedBox(height: 6),
@@ -669,7 +672,8 @@ class _EnvButton extends StatelessWidget {
               ),
               if (isLocked) ...[
                 const SizedBox(width: 6),
-                Icon(Icons.lock, size: 12, color: isActive ? Colors.white : color),
+                Icon(Icons.lock,
+                    size: 12, color: isActive ? Colors.white : color),
               ],
             ],
           ),
@@ -740,7 +744,8 @@ class _SectionHeader extends StatelessWidget {
                       if (itemCount != null) ...[
                         const SizedBox(width: 8),
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 6, vertical: 2),
                           decoration: BoxDecoration(
                             color: Colors.grey.withOpacity(0.1),
                             borderRadius: BorderRadius.circular(10),
@@ -921,7 +926,10 @@ class _SensitiveValueDisplayState extends State<SensitiveValueDisplay> {
               SizedBox(width: 8),
               Text(
                 'Reveal & Copy?',
-                style: TextStyle(fontSize: 11, color: Colors.blue, fontWeight: FontWeight.bold),
+                style: TextStyle(
+                    fontSize: 11,
+                    color: Colors.blue,
+                    fontWeight: FontWeight.bold),
               ),
             ],
           ),
@@ -936,10 +944,12 @@ class _SensitiveValueDisplayState extends State<SensitiveValueDisplay> {
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
           decoration: BoxDecoration(
-            color: isDark ? Colors.white.withOpacity(0.05) : Colors.grey.shade50,
+            color:
+                isDark ? Colors.white.withOpacity(0.05) : Colors.grey.shade50,
             borderRadius: BorderRadius.circular(6),
             border: Border.all(
-              color: isDark ? Colors.white.withOpacity(0.1) : Colors.grey.shade200,
+              color:
+                  isDark ? Colors.white.withOpacity(0.1) : Colors.grey.shade200,
             ),
           ),
           child: Row(
@@ -955,7 +965,8 @@ class _SensitiveValueDisplayState extends State<SensitiveValueDisplay> {
               ),
               const Icon(Icons.visibility, size: 16, color: Colors.blue),
               const SizedBox(width: 4),
-              Text('Hide', style: TextStyle(fontSize: 10, color: Colors.grey.shade500)),
+              Text('Hide',
+                  style: TextStyle(fontSize: 10, color: Colors.grey.shade500)),
             ],
           ),
         ),
@@ -969,7 +980,8 @@ class _SensitiveValueDisplayState extends State<SensitiveValueDisplay> {
           color: isDark ? Colors.white.withOpacity(0.05) : Colors.grey.shade50,
           borderRadius: BorderRadius.circular(6),
           border: Border.all(
-            color: isDark ? Colors.white.withOpacity(0.1) : Colors.grey.shade200,
+            color:
+                isDark ? Colors.white.withOpacity(0.1) : Colors.grey.shade200,
           ),
         ),
         child: Row(
@@ -1007,7 +1019,8 @@ class _SensitiveValueDisplayState extends State<SensitiveValueDisplay> {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.visibility_off_outlined, size: 16, color: Colors.grey.shade600),
+            Icon(Icons.visibility_off_outlined,
+                size: 16, color: Colors.grey.shade600),
             const SizedBox(width: 8),
             Text(
               'Tap to reveal & copy',
@@ -1090,7 +1103,8 @@ class _UrlInputFieldState extends State<_UrlInputField> {
             : null,
         errorText: _error,
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
       ),
       onSubmitted: _error == null ? widget.onSubmit : null,
     );

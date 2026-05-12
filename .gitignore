@@ -23,6 +23,12 @@ out/
 
 # FVM Version Cache
 .fvm/
+tmp_home/
+.tmp_home/
+.flutter_tools_test/
+.temp_home/
+.home/
+
 
 # Flutter/Dart/Pub
 .dart_tool/

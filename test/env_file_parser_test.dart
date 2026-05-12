@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:envified/src/env_file_parser.dart';
-import 'package:envified/src/env_model.dart';
+import 'package:envified/src/parser/env_file_parser.dart';
+import 'package:envified/src/models/env.dart';
 import 'test_helper.dart';
 
 void main() {
