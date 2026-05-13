@@ -470,4 +470,53 @@ void main() {
       expect(history.length, lessThanOrEqualTo(5));
     });
   });
+  // ── Custom URL Override Priority ───────────────────────────────────────────
+
+  group('Custom URL Override Priority', () {
+    test('custom URL should persist across environment switching', () async {
+      await svc.init(
+        defaultEnv: Env.dev,
+        storage: envStorage,
+        bundle: bundle,
+        persistSelection: true,
+      );
+      await svc.setBaseUrl('https://custom-override.com');
+      await svc.switchTo(Env.staging);
+
+      expect(svc.current.value.env, Env.staging);
+      expect(svc.current.value.baseUrl, 'https://custom-override.com');
+      expect(svc.current.value.isBaseUrlOverridden, isTrue);
+    });
+
+    test('custom URL should be used even if it matches another environment URL',
+        () async {
+      await svc.init(
+        defaultEnv: Env.dev,
+        storage: envStorage,
+        bundle: bundle,
+      );
+
+      const stagingUrl = 'https://staging.api.example.com';
+      await svc.setBaseUrl(stagingUrl);
+      await svc.switchTo(Env.staging);
+
+      expect(svc.current.value.baseUrl, stagingUrl);
+      expect(svc.current.value.isBaseUrlOverridden, isTrue);
+    });
+
+    test('clearing override should revert to environment URL', () async {
+      await svc.init(
+        defaultEnv: Env.dev,
+        storage: envStorage,
+        bundle: bundle,
+      );
+
+      await svc.setBaseUrl('https://custom.com');
+      await svc.switchTo(Env.staging);
+      await svc.clearBaseUrlOverride();
+
+      expect(svc.current.value.baseUrl, 'https://staging.api.example.com');
+      expect(svc.current.value.isBaseUrlOverridden, isFalse);
+    });
+  });
 }

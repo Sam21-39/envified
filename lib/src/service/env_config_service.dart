@@ -219,9 +219,17 @@ class EnvConfigService {
 
     final merged = await _loadMerged(env);
 
-    // Reset override when switching environments.
-    final String baseUrl = _urls[env] ?? merged['BASE_URL'] ?? '';
-    const bool isOverridden = false;
+    // Preserve override when switching environments if one exists.
+    final String baseUrl;
+    final bool isOverridden;
+
+    if (current.value.isBaseUrlOverridden) {
+      baseUrl = current.value.baseUrl;
+      isOverridden = true;
+    } else {
+      baseUrl = _urls[env] ?? merged['BASE_URL'] ?? '';
+      isOverridden = false;
+    }
 
     current.value = EnvConfig(
       env: env,
