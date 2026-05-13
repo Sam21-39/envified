@@ -46,6 +46,7 @@ class EnvConfigService {
   Set<Env> _productionEnvs = {Env.prod};
   String _assetDir = '';
   AssetBundle? _bundle;
+  Map<String, String> _urlOverrides = <String, String>{};
 
   /// The environment that was active when init() was called.
   late Env _initialEnv;
@@ -125,6 +126,7 @@ class EnvConfigService {
     String? baseUrlOverride;
 
     if (_persistSelection) {
+      _urlOverrides = await _storage.loadOverrides();
       final stored = await _storage.loadConfig();
       if (stored != null) {
         // Find the matching discovered env (by name and filename)
@@ -133,11 +135,11 @@ class EnvConfigService {
           orElse: () => stored.env,
         );
         activeEnv = match;
-        if (stored.isBaseUrlOverridden) {
-          baseUrlOverride = stored.baseUrl;
-        }
       }
     }
+
+    // Check for explicit override in the map first.
+    baseUrlOverride = _urlOverrides[activeEnv.name];
 
     // Verify + load the environment-specific file.
     final String specificPath = '$_assetDir${activeEnv.assetFileName}';
@@ -161,7 +163,12 @@ class EnvConfigService {
       baseUrl = baseUrlOverride;
       isOverridden = true;
     } else {
-      baseUrl = _urls[activeEnv] ?? merged['BASE_URL'] ?? '';
+      final String? discoveredUrl = _urls[activeEnv];
+      if (discoveredUrl != null && discoveredUrl.isNotEmpty) {
+        baseUrl = discoveredUrl;
+      } else {
+        baseUrl = merged['BASE_URL'] ?? '';
+      }
       isOverridden = false;
     }
 
@@ -219,15 +226,21 @@ class EnvConfigService {
 
     final merged = await _loadMerged(env);
 
-    // Preserve override when switching environments if one exists.
+    // Apply per-environment override if it exists.
+    final String? override = _urlOverrides[env.name];
     final String baseUrl;
     final bool isOverridden;
 
-    if (current.value.isBaseUrlOverridden) {
-      baseUrl = current.value.baseUrl;
+    if (override != null && override.isNotEmpty) {
+      baseUrl = override;
       isOverridden = true;
     } else {
-      baseUrl = _urls[env] ?? merged['BASE_URL'] ?? '';
+      final String? discoveredUrl = _urls[env];
+      if (discoveredUrl != null && discoveredUrl.isNotEmpty) {
+        baseUrl = discoveredUrl;
+      } else {
+        baseUrl = merged['BASE_URL'] ?? '';
+      }
       isOverridden = false;
     }
 
@@ -333,6 +346,8 @@ class EnvConfigService {
     _onAfterSwitch?.call(current.value);
 
     if (_persistSelection) {
+      _urlOverrides[current.value.env.name] = url;
+      await _storage.saveOverrides(_urlOverrides);
       await _storage.saveConfig(current.value);
       await _storage.saveUrlToHistory(url);
     }
@@ -360,6 +375,8 @@ class EnvConfigService {
         (current.value.env != _initialEnv || restoredUrl != _initialBaseUrl);
 
     if (_persistSelection) {
+      _urlOverrides.remove(current.value.env.name);
+      await _storage.saveOverrides(_urlOverrides);
       await _storage.saveConfig(current.value);
     }
 
@@ -470,6 +487,7 @@ class EnvConfigService {
     _bundle = null;
     _onBeforeSwitch = null;
     _onAfterSwitch = null;
+    _urlOverrides = <String, String>{};
   }
 
   /// Reset the singleton instance for testing.

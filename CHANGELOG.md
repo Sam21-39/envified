@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- Per-environment URL overrides: Custom URLs are now tracked and persisted independently for each environment, ensuring they are remembered when switching back and forth.
+- Robust `BASE_URL` extraction: Improved the `.env` parser to handle whitespace, surrounding quotes, and comments more reliably.
+
+### Fixed
+
+- Fallback priority: Fixed a bug where an empty `BASE_URL` in a specific environment file would incorrectly block the fallback to the global `.env` value.
+- Persistence reliability: Enhanced `EnvStorage` to persist a dedicated map of overrides, preventing custom settings from being lost during app restarts or migrations.
+
 ## [3.2.1] - 2026-05-13
 
 ### Fixed
