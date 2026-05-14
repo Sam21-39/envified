@@ -42,18 +42,16 @@ It's not just a config switcher. It's **enterprise-grade security** meets **deve
 
 ---
 
-## 🚀 What's New in v3.2.1
+## 🚀 What's New in v3.2.2
 
-Building on the foundation of v3.0.0, we've added major improvements to privacy, safety, and UX:
+Building on the foundation of v3.2.0, we've improved reliability and persistence:
 
 | Feature | What it does |
 |---------|--------------|
-| 🕶️ **Auto-Sensitive Detection** | Keys ending in `_KEY` or `KEY` (e.g., `STRIPE_KEY`) are now **automatically** hidden. No manual tagging required. |
-| 🔒 **Robust Production Lock** | `allowProdSwitch: false` now correctly locks the UI *towards* production, preventing accidental "deployments" from your debug build. |
-| 📦 **Collapsible Config** | The Configuration section in the debug panel is now collapsible by default, keeping the UI clean and focused on your audit log. |
-| 🛡️ **Full-Screen EnvGate** | The PIN gate is now a full-screen modal with a dark scrim, better keyboard handling, and auto-dismissal. |
-| 🕒 **Formatted History** | Audit log timestamps are now local and human-readable (`MM-dd-YYYY HH:mm:ss`). |
-| 🎚️ **Badge Toggle** | New `isShowEnvLabel` flag allows you to hide the status badge while keeping the gesture trigger active. |
+| 🔄 **Per-Env Overrides** | Custom URLs are now tracked independently for each environment, ensuring they are remembered when switching back and forth. |
+| 🏗️ **Robust Extraction** | Improved `.env` parser handles whitespace, quotes, and comments more reliably for `BASE_URL` extraction. |
+| 🛡️ **Persistence 2.0** | Enhanced `EnvStorage` ensures custom settings aren't lost during app restarts or migrations. |
+| 🚥 **Smart Fallbacks** | Fixed priority logic where empty local values would incorrectly block global `.env` fallbacks. |
 
 ---
 
@@ -80,7 +78,7 @@ Building on the foundation of v3.0.0, we've added major improvements to privacy,
 
 ```yaml
 dependencies:
-  envified: ^3.2.1
+  envified: ^3.2.2
 ```
 
 Then run:

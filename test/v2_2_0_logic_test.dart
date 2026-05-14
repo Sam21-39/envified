@@ -40,7 +40,9 @@ void main() {
 
     // Mock storage
     when(() => storage.loadConfig()).thenAnswer((_) async => null);
+    when(() => storage.loadOverrides()).thenAnswer((_) async => {});
     when(() => storage.saveConfig(any())).thenAnswer((_) async => {});
+    when(() => storage.saveOverrides(any())).thenAnswer((_) async => {});
     when(() => storage.appendAudit(any())).thenAnswer((_) async => {});
     when(() => storage.saveUrlToHistory(any())).thenAnswer((_) async => {});
   });

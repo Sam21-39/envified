@@ -18,6 +18,7 @@ class EnvStorage {
   static const String _keyConfig = 'envified_config';
   static const String _kUrlHistoryKey = 'envified_url_history_v1';
   static const String _kAuditKey = 'envified_audit_v1';
+  static const String _kOverridesKey = 'envified_overrides_v1';
   static const int _kMaxAuditEntries = 50;
   static const int _kMaxUrlHistory = 5;
 
@@ -59,6 +60,7 @@ class EnvStorage {
     await _storage.delete(key: _keyConfig);
     await _storage.delete(key: _kUrlHistoryKey);
     await _storage.delete(key: _kAuditKey);
+    await _storage.delete(key: _kOverridesKey);
   }
 
   // ── Raw key-value (used by integrity hashes) ───────────────────────────────
@@ -163,5 +165,31 @@ class EnvStorage {
       // Corrupted data — return empty list.
     }
     return <AuditEntry>[];
+  }
+
+  // ── Overrides ──────────────────────────────────────────────────────────────
+
+  /// Persists the map of per-environment URL overrides.
+  Future<void> saveOverrides(Map<String, String> overrides) async {
+    await _storage.write(
+      key: _kOverridesKey,
+      value: jsonEncode(overrides),
+    );
+  }
+
+  /// Restores the map of per-environment URL overrides.
+  Future<Map<String, String>> loadOverrides() async {
+    try {
+      final String? raw = await _storage.read(key: _kOverridesKey);
+      if (raw == null || raw.isEmpty) return <String, String>{};
+
+      final dynamic decoded = jsonDecode(raw);
+      if (decoded is Map<String, dynamic>) {
+        return Map<String, String>.from(decoded);
+      }
+    } catch (_) {
+      // Corrupted data.
+    }
+    return <String, String>{};
   }
 }
