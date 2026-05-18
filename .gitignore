@@ -47,4 +47,4 @@ lib/generated_plugin_registrant.dart
 # Custom secure secrets and dynamically generated configs
 .env.secrets
 .env.secrets.*
-lib/core/config/secrets.g.dart
+**/secrets.g.dart

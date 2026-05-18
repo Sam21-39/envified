@@ -1,9 +1,9 @@
 import 'package:flutter/services.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:envified/core/config/app_config.dart';
-import 'package:envified/core/config/app_env.dart';
-import 'package:envified/core/config/env_validator.dart';
+import 'package:envified_example/core/config/app_config.dart';
+import 'package:envified_example/core/config/app_env.dart';
+import 'package:envified_example/core/config/env_validator.dart';
 
 class TestAssetBundle extends CachingAssetBundle {
   final Map<String, String> assets;

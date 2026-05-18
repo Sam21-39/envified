@@ -1,6 +1,6 @@
+import 'package:envified_example/core/config/app_env.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
-import 'app_env.dart';
 import 'secrets.g.dart';
 
 class AppConfig {
