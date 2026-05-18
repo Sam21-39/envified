@@ -27,9 +27,6 @@ dev_dependencies:
     sdk: flutter
   flutter_lints: ">=4.0.0 <5.0.0"
   mocktail: ">=1.0.0 <2.0.0"
-  build_runner: ^2.4.0
-  secrets_generator:
-    path: tools/secrets_generator
 
 funding:
   - https://paywithchai.in/appamania

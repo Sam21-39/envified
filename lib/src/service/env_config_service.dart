@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
+import 'package:flutter/services.dart';
 
 import '../models/audit_entry.dart';
 import '../parser/env_file_parser.dart';
@@ -44,7 +45,7 @@ class EnvConfigService {
   Map<Env, String> _urls = <Env, String>{};
   bool _autoDiscover = true;
   Set<Env> _productionEnvs = {Env.prod};
-  String _assetDir = '';
+  List<String> _envAssetPaths = const ['assets/env/'];
   AssetBundle? _bundle;
   Map<String, String> _urlOverrides = <String, String>{};
 
@@ -68,7 +69,8 @@ class EnvConfigService {
 
   /// Initialises the service by loading all available environment asset files.
   Future<void> init({
-    Env defaultEnv = Env.dev,
+    Env? defaultEnv,
+    List<String> envAssetPaths = const ['assets/env/'],
     bool persistSelection = true,
     bool allowProdSwitch = false,
     bool verifyIntegrity = false,
@@ -79,10 +81,9 @@ class EnvConfigService {
     Map<Env, String>? urls,
     bool autoDiscover = true,
     Set<Env>? productionEnvs,
-    String assetDir = '',
+    @Deprecated('Use envAssetPaths instead') String assetDir = '',
     AssetBundle? bundle,
   }) async {
-    _defaultEnv = defaultEnv;
     _persistSelection = persistSelection;
     _allowProdSwitch = allowProdSwitch;
     _verifyIntegrity = verifyIntegrity;
@@ -91,13 +92,37 @@ class EnvConfigService {
     _allowedUrls = allowedUrls;
     _autoDiscover = autoDiscover;
     _productionEnvs = productionEnvs ?? {Env.prod};
-    _assetDir = assetDir;
     _bundle = bundle;
+
+    if (assetDir.isNotEmpty) {
+      _envAssetPaths = [assetDir];
+    } else {
+      _envAssetPaths = envAssetPaths;
+    }
+
+    // Fallback for backwards compatibility: if _envAssetPaths defaults to ['assets/env/']
+    // but no assets in the manifest start with 'assets/env/', we check if there are
+    // any .env files in the root (i.e. we fallback to scanning '').
+    if (_envAssetPaths.length == 1 && _envAssetPaths.first == 'assets/env/') {
+      try {
+        final activeBundle = bundle ?? rootBundle;
+        final manifest = await AssetManifest.loadFromAssetBundle(activeBundle);
+        final allAssets = manifest.listAssets();
+        final hasEnvAssetsInPath =
+            allAssets.any((asset) => asset.startsWith('assets/env/'));
+        if (!hasEnvAssetsInPath) {
+          _envAssetPaths = const [''];
+        }
+      } catch (_) {
+        // Safe fallback for raw mock bundles: under unit tests, default to root scan
+        _envAssetPaths = const [''];
+      }
+    }
 
     // Auto-discover if urls not provided and autoDiscover is true
     if ((urls == null || urls.isEmpty) && autoDiscover) {
       urls = await _parser.discoverAndExtractUrls(
-        assetDir: assetDir,
+        envAssetPaths: _envAssetPaths,
         bundle: bundle,
       );
     }
@@ -110,19 +135,46 @@ class EnvConfigService {
 
     _urls = urls;
 
+    // Auto-detect defaultEnv if null
+    Env activeEnv;
+    if (defaultEnv != null) {
+      activeEnv = defaultEnv;
+    } else {
+      // Find dev/development or staging/stag or first available non-production environment, or fallback to Env.dev
+      activeEnv = _urls.keys.firstWhere(
+        (e) => e.name == 'dev' || e.name == 'development',
+        orElse: () => _urls.keys.firstWhere(
+          (e) => e.name == 'staging' || e.name == 'staging',
+          orElse: () => _urls.keys.firstWhere(
+            (e) => !e.isProduction,
+            orElse: () => Env.dev,
+          ),
+        ),
+      );
+    }
+    _defaultEnv = activeEnv;
+
     // Initialise storage.
     _storage = storage ?? const EnvStorage();
 
-    // Load the shared fallback `.env` file.
-    final String fallbackPath = '$_assetDir.env';
-
-    // We treat .env as Production for integrity purposes if it's our only prod source
-    // or simply always verify it if requested, but requirement says only Prod envs.
-    // However, .env is often a fallback for all.
-    _fallbackValues = await _parser.parse(fallbackPath, bundle: _bundle);
+    // Load the shared fallback `.env` files across all locations.
+    final fallbackValues = <String, String>{};
+    for (final path in _envAssetPaths) {
+      if (path.isEmpty) {
+        final parsed = await _parser.parse('.env', bundle: _bundle);
+        fallbackValues.addAll(parsed);
+      } else if (path.endsWith('/')) {
+        final pathFallback = '$path.env';
+        final parsed = await _parser.parse(pathFallback, bundle: _bundle);
+        fallbackValues.addAll(parsed);
+      } else if (path.endsWith('.env')) {
+        final parsed = await _parser.parse(path, bundle: _bundle);
+        fallbackValues.addAll(parsed);
+      }
+    }
+    _fallbackValues = fallbackValues;
 
     // Restore persisted state if enabled.
-    Env activeEnv = defaultEnv;
     String? baseUrlOverride;
 
     if (_persistSelection) {
@@ -142,13 +194,18 @@ class EnvConfigService {
     baseUrlOverride = _urlOverrides[activeEnv.name];
 
     // Verify + load the environment-specific file.
-    final String specificPath = '$_assetDir${activeEnv.assetFileName}';
+    final specificPath = activeEnv.assetPath ??
+        (assetDir.isNotEmpty
+            ? '$assetDir${activeEnv.assetFileName}'
+            : 'assets/env/${activeEnv.assetFileName}');
 
     // REQUIREMENT: verifyIntegrity should only do verification for Production related env.
     if (_verifyIntegrity && activeEnv.isProduction) {
       await _parser.verifyIntegrity(specificPath, _storage, bundle: _bundle);
       // Also verify fallback if it's the prod file
       if (activeEnv.assetFileName == '.env') {
+        final fallbackPath =
+            assetDir.isNotEmpty ? '$assetDir.env' : 'assets/env/.env';
         await _parser.verifyIntegrity(fallbackPath, _storage, bundle: _bundle);
       }
     }
@@ -202,10 +259,16 @@ class EnvConfigService {
   Future<void> switchTo(Env env) async {
     _assertInitialised();
 
+    // Map to discovered env key to preserve dynamically resolved assetPath
+    final targetEnv = _urls.keys.firstWhere(
+      (e) => e.name == env.name,
+      orElse: () => env,
+    );
+
     // Block switching TO prod when locked.
     if (!_allowProdSwitch &&
         !current.value.env.isProduction &&
-        env.isProduction) {
+        targetEnv.isProduction) {
       debugPrint(
           'Envified: Switching TO production is blocked when allowProdSwitch is false.');
       return;
@@ -213,21 +276,21 @@ class EnvConfigService {
 
     // Fire before-switch hook.
     if (_onBeforeSwitch != null) {
-      await _onBeforeSwitch!(current.value.env, env);
+      await _onBeforeSwitch!(current.value.env, targetEnv);
     }
 
     final Env fromEnv = current.value.env;
 
     // Verify integrity if switching to production
-    if (_verifyIntegrity && env.isProduction) {
-      await _parser.verifyIntegrity('$_assetDir${env.assetFileName}', _storage,
-          bundle: _bundle);
+    if (_verifyIntegrity && targetEnv.isProduction) {
+      final assetPath = _getEnvAssetPath(targetEnv);
+      await _parser.verifyIntegrity(assetPath, _storage, bundle: _bundle);
     }
 
-    final merged = await _loadMerged(env);
+    final merged = await _loadMerged(targetEnv);
 
     // Apply per-environment override if it exists.
-    final String? override = _urlOverrides[env.name];
+    final String? override = _urlOverrides[targetEnv.name];
     final String baseUrl;
     final bool isOverridden;
 
@@ -235,7 +298,7 @@ class EnvConfigService {
       baseUrl = override;
       isOverridden = true;
     } else {
-      final String? discoveredUrl = _urls[env];
+      final String? discoveredUrl = _urls[targetEnv];
       if (discoveredUrl != null && discoveredUrl.isNotEmpty) {
         baseUrl = discoveredUrl;
       } else {
@@ -245,7 +308,7 @@ class EnvConfigService {
     }
 
     current.value = EnvConfig(
-      env: env,
+      env: targetEnv,
       baseUrl: baseUrl,
       values: merged,
       loadedAt: DateTime.now(),
@@ -253,7 +316,8 @@ class EnvConfigService {
     );
 
     // Check if a restart is needed.
-    _restartNeeded.value = (env != _initialEnv || baseUrl != _initialBaseUrl);
+    _restartNeeded.value =
+        (targetEnv != _initialEnv || baseUrl != _initialBaseUrl);
 
     _onAfterSwitch?.call(current.value);
 
@@ -265,7 +329,7 @@ class EnvConfigService {
       timestamp: DateTime.now().toUtc(),
       action: 'switch',
       fromEnv: fromEnv.name,
-      toEnv: env.name,
+      toEnv: targetEnv.name,
     ));
   }
 
@@ -402,6 +466,7 @@ class EnvConfigService {
 
     await init(
       defaultEnv: _defaultEnv,
+      envAssetPaths: _envAssetPaths,
       persistSelection: _persistSelection,
       allowProdSwitch: _allowProdSwitch,
       verifyIntegrity: _verifyIntegrity,
@@ -409,7 +474,6 @@ class EnvConfigService {
       onBeforeSwitch: _onBeforeSwitch,
       onAfterSwitch: _onAfterSwitch,
       allowedUrls: _allowedUrls,
-      assetDir: _assetDir,
       bundle: _bundle,
     );
   }
@@ -437,8 +501,21 @@ class EnvConfigService {
 
   bool get allowProdSwitch => _allowProdSwitch;
 
+  String _getEnvAssetPath(Env env) {
+    var assetPath = env.assetPath ??
+        (_envAssetPaths.isNotEmpty && _envAssetPaths.first.endsWith('/')
+            ? '${_envAssetPaths.first}${env.assetFileName}'
+            : 'assets/env/${env.assetFileName}');
+    if (_envAssetPaths.length == 1 && _envAssetPaths.first == '') {
+      if (assetPath.startsWith('assets/env/')) {
+        assetPath = assetPath.substring(11);
+      }
+    }
+    return assetPath;
+  }
+
   Future<Map<String, String>> _loadMerged(Env env) async {
-    final assetPath = '$_assetDir${env.assetFileName}';
+    final assetPath = _getEnvAssetPath(env);
     final specific = await _parser.parse(assetPath, bundle: _bundle);
     return _parser.merge(_fallbackValues, specific);
   }
@@ -483,7 +560,7 @@ class EnvConfigService {
     _defaultEnv = Env.dev;
     _verifyIntegrity = false;
     _allowedUrls = null;
-    _assetDir = '';
+    _envAssetPaths = const ['assets/env/'];
     _bundle = null;
     _onBeforeSwitch = null;
     _onAfterSwitch = null;

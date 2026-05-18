@@ -675,6 +675,7 @@ class _SensitiveKvRowState extends State<_SensitiveKvRow> {
             value: widget.value,
             isSensitive: isSensitive,
             forceReveal: _revealed,
+            onRevealChanged: (revealed) => setState(() => _revealed = revealed),
           ),
         ],
       ),
@@ -923,14 +924,15 @@ class _RestartBanner extends StatelessWidget {
 class SensitiveValueDisplay extends StatefulWidget {
   final String value;
   final bool isSensitive;
-
   final bool forceReveal;
+  final ValueChanged<bool>? onRevealChanged;
 
   const SensitiveValueDisplay({
     super.key,
     required this.value,
     this.isSensitive = false,
     this.forceReveal = false,
+    this.onRevealChanged,
   });
 
   @override
@@ -962,6 +964,7 @@ class _SensitiveValueDisplayState extends State<SensitiveValueDisplay> {
       _revealed = true;
       _confirming = false;
     });
+    widget.onRevealChanged?.call(true);
 
     // Auto-hide after 5 seconds
     _hideTimer?.cancel();
@@ -976,6 +979,7 @@ class _SensitiveValueDisplayState extends State<SensitiveValueDisplay> {
       _revealed = false;
       _confirming = false;
     });
+    widget.onRevealChanged?.call(false);
   }
 
   @override

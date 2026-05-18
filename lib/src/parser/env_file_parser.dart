@@ -96,51 +96,78 @@ class EnvFileParser {
     return <String, String>{...fallback, ...specific};
   }
 
-  /// Discovers all `.env.*` files in the asset bundle.
+  /// Discovers all `.env.*` files in the asset bundle across flexible list paths.
   Future<Map<Env, String>> discoverAndExtractUrls({
-    String assetDir = '',
+    List<String> envAssetPaths = const ['assets/env/'],
     bool requireBaseUrl = false,
     AssetBundle? bundle,
   }) async {
     final activeBundle = bundle ?? rootBundle;
     final result = <Env, String>{};
-
     final envFileRegex = RegExp(r'\.env\.([a-z0-9]+)$');
+    final scannedPaths = <String>[];
 
     try {
       final manifest = await AssetManifest.loadFromAssetBundle(activeBundle);
       final allAssets = manifest.listAssets();
 
-      final assets = assetDir.isEmpty
-          ? allAssets
-          : allAssets.where((path) => path.startsWith(assetDir));
+      var pathsToScan = List<String>.from(envAssetPaths);
 
-      bool hasProdExplicit = allAssets.any((a) => a.endsWith('.env.prod'));
+      // Fallback for backwards compatibility: if we default to ['assets/env/']
+      // but no assets in the manifest start with 'assets/env/', we check if there are
+      // any .env files in the root (i.e. we fallback to scanning '').
+      if (pathsToScan.length == 1 && pathsToScan.first == 'assets/env/') {
+        final hasEnvAssetsInPath =
+            allAssets.any((asset) => asset.startsWith('assets/env/'));
+        if (!hasEnvAssetsInPath) {
+          pathsToScan = const [''];
+        }
+      }
 
-      for (final assetPath in assets) {
-        final fileName = assetPath.split('/').last;
+      for (final path in pathsToScan) {
+        scannedPaths.add(path);
 
-        // Determine if this is an environment file
-        final isProdNaked = fileName == '.env' && !hasProdExplicit;
-        final isEnvFile = isProdNaked || envFileRegex.hasMatch(fileName);
+        if (path.isEmpty || path.endsWith('/')) {
+          // Directory path (empty string represents root directory)
+          final dirAssets = allAssets.where((asset) => asset.startsWith(path));
+          bool hasProdExplicit = dirAssets.any((a) => a.endsWith('.env.prod'));
 
-        if (!isEnvFile) continue;
+          for (final assetPath in dirAssets) {
+            final fileName = assetPath.split('/').last;
+            final isProdNaked = fileName == '.env' && !hasProdExplicit;
+            final isEnvFile = isProdNaked || envFileRegex.hasMatch(fileName);
 
-        try {
-          final content = await activeBundle.loadString(assetPath);
-          final baseUrl = _extractBaseUrl(content);
+            if (!isEnvFile) continue;
 
-          final env = Env.fromFileName(fileName);
-          result[env] = baseUrl;
-        } catch (e) {
-          if (requireBaseUrl) rethrow;
+            try {
+              final content = await activeBundle.loadString(assetPath);
+              final baseUrl = _extractBaseUrl(content);
+              final env = Env.fromFileName(fileName, path: assetPath);
+              result[env] = baseUrl;
+            } catch (e) {
+              if (requireBaseUrl) rethrow;
+            }
+          }
+        } else {
+          // Direct file path
+          if (allAssets.contains(path)) {
+            final fileName = path.split('/').last;
+            try {
+              final content = await activeBundle.loadString(path);
+              final baseUrl = _extractBaseUrl(content);
+              final env = Env.fromFileName(fileName, path: path);
+              result[env] = baseUrl;
+            } catch (e) {
+              if (requireBaseUrl) rethrow;
+            }
+          }
         }
       }
 
       if (result.isEmpty) {
-        throw const EnvifiedMissingFileException(
-          'No environment files discovered. '
-          'Create at least .env, .env.dev, or .env.prod.',
+        throw EnvifiedMissingFileException(
+          'No .env.* files discovered. Scanned: ${scannedPaths.toString()}.\n'
+          'Register your .env files in pubspec.yaml under flutter.assets and pass their paths to envAssetPaths.',
         );
       }
 

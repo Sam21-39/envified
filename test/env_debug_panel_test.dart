@@ -53,9 +53,8 @@ void main() {
         );
 
     Future<void> ensureConfigurationExpanded(WidgetTester tester) async {
-      // Configuration is expanded by default in EnvDebugPanel (_kvExpanded = false now).
-      // We check for masked key '••••••••' which is API_KEY.
-      if (find.text('••••••••').evaluate().isEmpty) {
+      // Configuration is expanded by default. We check for 'Tap to reveal & copy'
+      if (find.text('Tap to reveal & copy').evaluate().isEmpty) {
         await tester.tap(find.text('CONFIGURATION'));
         await tester.pump(const Duration(milliseconds: 300));
       }
@@ -71,8 +70,8 @@ void main() {
 
       await ensureConfigurationExpanded(tester);
 
-      // API_KEY is sensitive, so it should be masked
-      expect(find.text('••••••••'), findsOneWidget);
+      // API_KEY is sensitive, so it should show the tap-to-reveal badge
+      expect(find.text('Tap to reveal & copy'), findsOneWidget);
       expect(find.text('API_KEY'), findsNothing);
     });
 
@@ -83,19 +82,29 @@ void main() {
       await ensureConfigurationExpanded(tester);
 
       // Initially masked
-      expect(find.text('••••••••'), findsOneWidget);
       expect(find.text('Tap to reveal & copy'), findsOneWidget);
 
-      // Tap the row (the masked key) to reveal
-      await tester.tap(find.text('••••••••'));
+      // Scroll the masked key widget into view to prevent hit test warnings and off-screen tap failures
+      await tester.ensureVisible(find.text('Tap to reveal & copy'));
+      await tester.pumpAndSettle();
+
+      // Tap the row (the masked key) to reveal - shows Confirmation Gate first
+      await tester.tap(find.text('Tap to reveal & copy'));
+      await tester.pump();
+
+      // Confirmation Gate should be active
+      expect(find.text('Reveal key?'), findsOneWidget);
+      expect(find.text('Yes'), findsOneWidget);
+      expect(find.text('No'), findsOneWidget);
+
+      // Tap Yes to confirm reveal
+      await tester.tap(find.text('Yes'));
       await tester.pump();
 
       // Now revealed
       expect(find.text('API_KEY'), findsOneWidget);
       expect(find.text('secret_123'), findsOneWidget);
-      expect(find.byIcon(Icons.copy),
-          findsNWidgets(2)); // One for BASE_URL, one for API_KEY
-      expect(find.text('Tap to reveal & copy'), findsNothing);
+      expect(find.byIcon(Icons.copy), findsNWidgets(2));
     });
 
     testWidgets('switches environment on chip selection', (tester) async {

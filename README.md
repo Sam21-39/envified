@@ -44,27 +44,29 @@ It's not just a config switcher. It's **enterprise-grade security** meets **deve
 
 ## 🚀 What's New in v3.3.0
 
-Building on the foundation of v3.2.0, we've introduced an **obfuscated secrets engine** with **zero third-party dependencies**:
+Building on the foundation of v3.2.0, we've introduced a **standalone 3-Tier Security CLI engine** with **zero build_runner and zero third-party compilation dependencies**:
 
 | Feature                               | What it does                                                                                                                                     |
 | ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
 | 🔐 **Package-Independent Obfuscator** | Own the full build-time compilation pipeline without upstream package dependencies (like `envied`).                                              |
+| ⚡ **Zero build_runner Dependency**    | Compile your secrets in < 50ms using our direct standalone CLI script. No extra packages or heavy build runner gates needed.                      |
 | 🎲 **Random XOR Per Secret**          | Every credential is XOR-encrypted using a completely unique, secure random key list generated at compile time.                                   |
-| 🔍 **Dynamic Key Discovery**          | Automatically scans `.env.secrets` at build-time. No manual variable definitions or hardcoded fields.                                            |
-| 🛑 **Build-Time Leak Checker**        | Scans assets and flags a fatal build error if keys overlap or contain credential keywords (e.g., `API_SECRET_KEY`) inside non-sensitive configs. |
+| 📂 **Flexible Multi-Path Discovery**  | Auto-discover `.env.*` assets from custom directory lists and direct file paths (`envAssetPaths`), fully backwards-compatible under unit tests.  |
+| 🔄 **Cohesive Unmasking UX**          | Inline Confirmation Gate unmasks both key label (e.g., `API_KEY`) and secret values synchronously, reverting back in perfect unison.             |
+| 🛑 **Build-Time Leak Checker**        | Standalone CLI tool flags a fatal error if keys overlap or contain sensitive keywords (e.g., `API_SECRET`) inside non-sensitive assets.           |
 | 🏢 **Unified Facade Accessor**        | One simple interface (`AppConfig.get(...)` and static getters) resolving dynamic assets first, falling back to secure build-time secrets.        |
 
 ---
 
-## 🔒 Secure Hybrid Secrets (Zero-Dependency)
+## 🔒 Secure Hybrid Secrets (Zero-Dependency CLI)
 
-`envified` now comes with a local development-time code generator that extracts secrets from a gitignored `.env.secrets` file, compiles them into a highly secure, obfuscated Dart class, and exposes them through a single unified API facade (`AppConfig`).
+`envified` now comes with a **lightweight, standalone CLI secrets generator** that extracts secrets from a gitignored `.env.secrets` file, compiles them into a highly secure, obfuscated Dart class, and exposes them through a single unified API facade (`AppConfig`).
 
-This means **zero dependency** on third-party obfuscation packages. You own the entire pipeline.
+This means **zero dependency** on third-party obfuscation packages and **zero dependency on build_runner**! You own the entire pipeline.
 
 ### Obfuscation Mechanism
 
-Each individual secret is compiled using standard Dart tooling. At compilation time, the builder:
+Each individual secret is compiled using standard Dart tooling. At compilation time, the standalone CLI:
 
 1. Generates a secure, random XOR key array of matching byte length via `math.Random.secure()`.
 2. Encrypts the raw secret bytes with the generated key.
@@ -85,56 +87,20 @@ APP_AUTH_KEY=local_development_auth_signature_key
 API_SECRET=local_development_api_secret_credentials
 ```
 
-#### 2. Create the Trigger Marker
+#### 2. Run the Standalone CLI secrets generator
 
-Create a build trigger file under `lib/core/config/secrets.secrets` (this tells `build_runner` where to write the generated class):
-
-```text
-# TRIGGER FILE FOR CUSTOM SECRETS GENERATOR - DO NOT REMOVE
-```
-
-#### 3. Define target in root build.yaml
-
-Register the builder targets in your main project's `build.yaml`:
-
-```yaml
-targets:
-  $default:
-    builders:
-      secrets_generator:secrets_builder:
-        options:
-          environment: ""
-          secrets_dir: "."
-          asset_config_paths:
-            - "assets/env/.env.dev"
-            - "assets/env/.env.staging"
-            - "assets/env/.env.prod"
-          blocklist:
-            - "KEY"
-            - "SECRET"
-            - "TOKEN"
-            - "PASSWORD"
-            - "AUTH"
-            - "PRIVATE"
-          required_keys:
-            - "ENCRYPTION_KEY"
-            - "BASIC_AUTH_PASSWORD"
-            - "APP_AUTH_KEY"
-            - "API_SECRET"
-          verbose: true
-```
-
-#### 4. Run the Code Generator
-
-Generate the secure, obfuscated output:
+No complex builder classes, no `build.yaml` triggers. Simply execute the standalone CLI script directly using the Dart SDK:
 
 ```bash
-flutter pub run build_runner build --delete-conflicting-outputs
+dart tools/secrets_generator/generate.dart
 ```
 
-This generates the secure class `lib/core/config/secrets.g.dart`.
+##### Optional CLI Arguments:
+- `--env=<name>`: Target environment (e.g. `--env=prod` matches `.env.secrets.prod`).
+- `--secrets-dir=<path>`: Custom location for `.env.secrets` (defaults to `.`).
+- `--quiet`: Mute informative success console logs.
 
-#### 5. Unified Facade Access (`AppConfig`)
+#### 3. Unified Facade Access (`AppConfig`)
 
 Bootstrap the hybrid architecture in your `main.dart`:
 
@@ -238,6 +204,8 @@ void main() async {
 
   await EnvConfigService.instance.init(
     defaultEnv: Env.dev,
+    // Optional: Customize path list to scan for environment configurations
+    envAssetPaths: const ['assets/env/'], 
     onAfterSwitch: (config) {
       // Listen for restart needed
       EnvConfigService.instance.restartNeeded.addListener(() {

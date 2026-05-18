@@ -1,7 +1,0 @@
-builders:
-  secrets_builder:
-    import: "package:secrets_generator/builder.dart"
-    builder_factories: ["secretsBuilder"]
-    build_extensions: {".secrets": [".g.dart"]}
-    auto_apply: dependents
-    build_to: source

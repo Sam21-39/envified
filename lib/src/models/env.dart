@@ -20,6 +20,9 @@ class Env {
   /// The exact filename in assets.
   final String assetFileName;
 
+  /// The full path of the asset file.
+  final String? assetPath;
+
   /// Whether this environment represents production.
   ///
   /// Integrity checks and production locks are enforced only when this is true.
@@ -31,6 +34,7 @@ class Env {
     required this.label,
     required this.assetFileName,
     this.isProduction = false,
+    this.assetPath,
   });
 
   /// Standard development environment.
@@ -38,6 +42,7 @@ class Env {
     name: 'dev',
     label: 'Dev',
     assetFileName: '.env.dev',
+    assetPath: 'assets/env/.env.dev',
   );
 
   /// Standard staging environment.
@@ -45,6 +50,7 @@ class Env {
     name: 'staging',
     label: 'Staging',
     assetFileName: '.env.staging',
+    assetPath: 'assets/env/.env.staging',
   );
 
   /// Standard production environment.
@@ -53,15 +59,16 @@ class Env {
     label: 'Production',
     assetFileName: '.env.prod',
     isProduction: true,
+    assetPath: 'assets/env/.env.prod',
   );
 
   /// Create an [Env] from a filename.
-  factory Env.fromFileName(String fileName) {
+  factory Env.fromFileName(String fileName, {String? path}) {
     // Strip leading path if present
     final name = fileName.split('/').last;
 
     if (name == '.env') {
-      return prod.copyWith(assetFileName: name);
+      return prod.copyWith(assetFileName: name, assetPath: path ?? '.env');
     }
 
     final extension = name.startsWith('.env.') ? name.substring(5) : name;
@@ -69,17 +76,20 @@ class Env {
 
     // Match Production aliases
     if (cleanName == 'prod' || cleanName == 'production') {
-      return prod.copyWith(assetFileName: name, name: cleanName);
+      return prod.copyWith(
+          assetFileName: name, name: cleanName, assetPath: path);
     }
 
     // Match Staging aliases
     if (cleanName == 'stag' || cleanName == 'staging') {
-      return staging.copyWith(assetFileName: name, name: cleanName);
+      return staging.copyWith(
+          assetFileName: name, name: cleanName, assetPath: path);
     }
 
     // Match Dev aliases
     if (cleanName == 'dev' || cleanName == 'development') {
-      return dev.copyWith(assetFileName: name, name: cleanName);
+      return dev.copyWith(
+          assetFileName: name, name: cleanName, assetPath: path);
     }
 
     return Env(
@@ -87,18 +97,26 @@ class Env {
       label: cleanName[0].toUpperCase() + cleanName.substring(1),
       assetFileName: name,
       isProduction: false,
+      assetPath: path,
     );
   }
 
   /// Creates a dynamic [Env] from a name.
-  factory Env.dynamic(String name) {
-    if (name == 'prod' || name == 'production') return prod;
-    if (name == 'stag' || name == 'staging') return staging;
-    if (name == 'dev' || name == 'development') return dev;
+  factory Env.dynamic(String name, {String? path}) {
+    if (name == 'prod' || name == 'production') {
+      return prod.copyWith(assetPath: path);
+    }
+    if (name == 'stag' || name == 'staging') {
+      return staging.copyWith(assetPath: path);
+    }
+    if (name == 'dev' || name == 'development') {
+      return dev.copyWith(assetPath: path);
+    }
     return Env(
       name: name,
       label: name[0].toUpperCase() + name.substring(1),
       assetFileName: '.env.$name',
+      assetPath: path,
     );
   }
 
@@ -108,12 +126,14 @@ class Env {
     String? label,
     String? assetFileName,
     bool? isProduction,
+    String? assetPath,
   }) {
     return Env(
       name: name ?? this.name,
       label: label ?? this.label,
       assetFileName: assetFileName ?? this.assetFileName,
       isProduction: isProduction ?? this.isProduction,
+      assetPath: assetPath ?? this.assetPath,
     );
   }
 
@@ -129,7 +149,8 @@ class Env {
   int get hashCode => name.hashCode ^ assetFileName.hashCode;
 
   @override
-  String toString() => 'Env(name: $name, isProduction: $isProduction)';
+  String toString() =>
+      'Env(name: $name, isProduction: $isProduction, path: $assetPath)';
 }
 
 /// An immutable snapshot of the active environment configuration.

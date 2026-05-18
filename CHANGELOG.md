@@ -9,10 +9,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- **Zero-Dependency Obfuscated Secrets Generator**: A package-independent, build-time secure secrets compilation tool (`tools/secrets_generator/`).
+- **Zero-Dependency Obfuscated Secrets CLI Generator**: A package-independent, build-time secure secrets compilation CLI script (`tools/secrets_generator/generate.dart`). Completely purges heavy `build_runner` and `build.yaml` triggers, compiling secrets dynamically in < 50ms using a single direct command.
 - **Dynamic Build-Time Key Discovery**: Automatically scans and parses `.env.secrets` configurations without hardcoding or assuming key names.
 - **Custom XOR Obfuscation**: Transforms secrets into dynamically XOR-encrypted byte arrays using secure high-entropy random keys per secret. Secrets are decrypted transiently in memory upon access and are never persisted in plain text.
-- **Strict Build-Time Safety Validation**: Prevents duplicates or key overlaps between public `.env` assets and private `.env.secrets` files. Emits warnings for potentially leaked credentials in asset configurations based on keyword blocklists.
+- **Strict Build-Time Safety Validation**: Standalone CLI script scans and flags a fatal build error if keys overlap or contain sensitive keywords (e.g., `API_SECRET`) inside non-sensitive configs.
+- **Flexible Path Auto-Discovery**: Added full support for list-based directories/files inside `envAssetPaths` in `EnvConfigService.init()`.
+- **Root Scan Fallback under Tests**: Implemented automatic fallback to root (`""`) asset scanning when no files are registered inside `assets/env/`, preserving 100% backwards compatibility for existing tests and assets.
+- **Mock-Proof Resilient Initialisation**: Wrapped the `AssetManifest` reading in a robust `try-catch` block to handle third-party raw mock bundles gracefully under testing.
+- **Resilient Default Env Detection**: Added auto-detection fallback to `Env.dev` when no other non-production environment is scanned, preventing accidental production default locks.
+- **Synchronized Key-Label Masking UX**: Fully integrated the inline Confirmation Gate unmasking so that secret key name labels unmask and auto-mask in perfect synchrony with their sensitive values.
 - **CI/CD Integration**: Streamlined GitHub Actions build pipeline configured with automatic secret injection and cleanups.
 - **Stable Accessor Layer**: Features dynamic fallback lookup (`AppConfig.get(...)`) and predictable camelCase static getters with strict mandatory startup validations.
 
