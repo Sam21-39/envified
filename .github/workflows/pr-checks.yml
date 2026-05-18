@@ -59,6 +59,35 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
+      - name: Generate mock secrets for static analysis
+        run: |
+          mkdir -p lib/core/config
+          cat << 'EOF' > lib/core/config/secrets.g.dart
+          // Mock secrets.g.dart for CI static analysis
+          class _SecretValues {
+            _SecretValues._();
+            static String get encryptionKey => '';
+            static String get basicAuthPassword => '';
+            static String get appAuthKey => '';
+            static String get apiSecret => '';
+          }
+          class AppSecrets {
+            AppSecrets._();
+            static final Map<String, String> _secretsMap = {
+              'ENCRYPTION_KEY': '',
+              'BASIC_AUTH_PASSWORD': '',
+              'APP_AUTH_KEY': '',
+              'API_SECRET': '',
+            };
+            static String get(String key) => _secretsMap[key] ?? '';
+            static bool contains(String key) => _secretsMap.containsKey(key);
+            static String get encryptionKey => '';
+            static String get basicAuthPassword => '';
+            static String get appAuthKey => '';
+            static String get apiSecret => '';
+          }
+          EOF
+
       - name: Verify formatting
         run: dart format --output=none --set-exit-if-changed .
 
