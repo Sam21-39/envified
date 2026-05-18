@@ -48,8 +48,8 @@ jobs:
       - name: Install Dependencies
         run: flutter pub get
 
-      - name: Run Builder (Compile obfuscated secrets.g.dart)
-        run: flutter pub run build_runner build --delete-conflicting-outputs
+      - name: Run Standalone CLI secrets generator
+        run: dart tools/secrets_generator/generate.dart --env=production
 
       - name: Build Obfuscated Release APK
         run: |
