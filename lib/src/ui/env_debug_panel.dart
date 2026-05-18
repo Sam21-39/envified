@@ -1,3 +1,4 @@
+// ignore_for_file: deprecated_member_use
 import 'dart:async';
 import 'dart:convert';
 import 'package:envified/envified.dart';
@@ -1048,6 +1049,50 @@ class _SensitiveValueDisplayState extends State<SensitiveValueDisplay> {
               icon: const Icon(Icons.copy, size: 16),
               tooltip: 'Copy',
               visualDensity: VisualDensity.compact,
+            ),
+          ],
+        ),
+      );
+    }
+
+    if (_confirming) {
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        decoration: BoxDecoration(
+          color: Colors.amber.withOpacity(0.12),
+          borderRadius: BorderRadius.circular(6),
+          border: Border.all(color: Colors.amber.withOpacity(0.3)),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.warning_amber_rounded, size: 14, color: Colors.amber),
+            const SizedBox(width: 6),
+            const Text(
+              'Reveal key?',
+              style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(width: 8),
+            TextButton(
+              onPressed: _hide,
+              style: TextButton.styleFrom(
+                padding: const EdgeInsets.symmetric(horizontal: 8),
+                minimumSize: Size.zero,
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              ),
+              child: const Text('No', style: TextStyle(fontSize: 11)),
+            ),
+            const SizedBox(width: 6),
+            ElevatedButton(
+              onPressed: _confirm,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.amber,
+                foregroundColor: Colors.black,
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                minimumSize: Size.zero,
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              ),
+              child: const Text('Yes', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
             ),
           ],
         ),
