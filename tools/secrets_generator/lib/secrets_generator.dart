@@ -54,6 +54,7 @@ class SecretsGenerator {
           final upperKey = entry.key.toUpperCase();
           for (final pattern in blocklist) {
             if (upperKey.contains(pattern)) {
+              // ignore: avoid_print
               print(
                   'WARNING BUILD LOG: Sensitive key pattern "$pattern" detected in non-sensitive asset at "$path" (Key: "${entry.key}").');
             }

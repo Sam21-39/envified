@@ -158,9 +158,15 @@ class EnvFileParser {
     final lines = content.split('\n');
     for (final line in lines) {
       final trimmed = line.trim();
-      if (trimmed.startsWith('BASE_URL=')) {
-        final value = trimmed.substring('BASE_URL='.length).trim();
-        return _stripQuotes(value);
+      if (trimmed.isEmpty || trimmed.startsWith('#')) continue;
+
+      final separatorIndex = trimmed.indexOf('=');
+      if (separatorIndex == -1) continue;
+
+      final key = trimmed.substring(0, separatorIndex).trim();
+      if (key == 'BASE_URL') {
+        final rawValue = trimmed.substring(separatorIndex + 1).trim();
+        return _stripQuotes(rawValue);
       }
     }
     return '';

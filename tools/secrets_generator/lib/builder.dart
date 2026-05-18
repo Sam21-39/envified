@@ -54,6 +54,7 @@ class _CustomSecretsBuilder implements Builder {
     final outputId = inputId.changeExtension('.g.dart');
 
     if (verbose) {
+      // ignore: avoid_print
       print(
           'Running Custom Secrets obfuscated builder for environment "$environment"...');
     }
@@ -75,6 +76,7 @@ class _CustomSecretsBuilder implements Builder {
       await buildStep.writeAsString(outputId, generatedSource);
 
       if (verbose) {
+        // ignore: avoid_print
         print(
             'Successfully wrote obfuscated secrets output to "${outputId.path}".');
       }
