@@ -111,7 +111,7 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   // Load runtime assets and validate build-time secrets
-  await AppConfig.init(AppEnvironment.dev);
+  await AppConfig.init(Env.dev);
 
   runApp(const MyApp());
 }
@@ -206,13 +206,12 @@ void main() async {
     defaultEnv: Env.dev,
     // Optional: Customize path list to scan for environment configurations
     envAssetPaths: const ['assets/env/'], 
-    onAfterSwitch: (config) {
-      // Listen for restart needed
-      EnvConfigService.instance.restartNeeded.addListener(() {
-        debugPrint('Dependencies must re-initialize');
-      });
-    },
   );
+
+  // Listen for restart needed (registered once at startup)
+  EnvConfigService.instance.restartNeeded.addListener(() {
+    debugPrint('Dependencies must re-initialize due to environment changes');
+  });
 
   runApp(const MyApp());
 }

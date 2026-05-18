@@ -3,7 +3,6 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:envified/envified.dart';
 import 'package:envified_example/core/config/app_config.dart';
 
 class FakeFlutterSecureStorage extends Fake implements FlutterSecureStorage {
