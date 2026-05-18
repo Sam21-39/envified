@@ -61,8 +61,8 @@ jobs:
 
       - name: Generate mock secrets for static analysis
         run: |
-          mkdir -p lib/core/config
-          cat << 'EOF' > lib/core/config/secrets.g.dart
+          mkdir -p example/lib/core/config
+          cat << 'EOF' > example/lib/core/config/secrets.g.dart
           // Mock secrets.g.dart for CI static analysis
           class _SecretValues {
             _SecretValues._();
@@ -93,7 +93,7 @@ jobs:
             static String get apiSecret => 'mock_secret';
           }
           EOF
-          dart format lib/core/config/secrets.g.dart
+          dart format example/lib/core/config/secrets.g.dart
 
       - name: Verify formatting
         run: dart format --output=none --set-exit-if-changed .
