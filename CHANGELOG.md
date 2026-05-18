@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.3.0] - 2026-05-18
+
+### Added
+
+- **Zero-Dependency Obfuscated Secrets Generator**: A package-independent, build-time secure secrets compilation tool (`tools/secrets_generator/`).
+- **Dynamic Build-Time Key Discovery**: Automatically scans and parses `.env.secrets` configurations without hardcoding or assuming key names.
+- **Custom XOR Obfuscation**: Transforms secrets into dynamically XOR-encrypted byte arrays using secure high-entropy random keys per secret. Secrets are decrypted transiently in memory upon access and are never persisted in plain text.
+- **Strict Build-Time Safety Validation**: Prevents duplicates or key overlaps between public `.env` assets and private `.env.secrets` files. Emits warnings for potentially leaked credentials in asset configurations based on keyword blocklists.
+- **CI/CD Integration**: Streamlined GitHub Actions build pipeline configured with automatic secret injection and cleanups.
+- **Stable Accessor Layer**: Features dynamic fallback lookup (`AppConfig.get(...)`) and predictable camelCase static getters with strict mandatory startup validations.
+
 ## [3.2.2] - 2026-05-14
 
 ### Added

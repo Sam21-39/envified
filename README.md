@@ -27,7 +27,7 @@ That's `envified`.
 
 - 🚀 **Swap dev ↔ prod in 200ms** — no rebuild, no hot reload
 - 🔄 **Smart Restart Detection** — know when dependencies need re-initialization
-- 🔒 **Prod lock by default** — prevent accidental data disasters  
+- 🔒 **Prod lock by default** — prevent accidental data disasters
 - 🔐 **Sensitive Data Protection** — automatic blurring of API keys and tokens
 - 🧪 **Override any URL** — test against local tunnels, PR branches, anywhere
 - 🛡️ **Premium PIN gate** — secure the debug panel with modern UI
@@ -42,33 +42,140 @@ It's not just a config switcher. It's **enterprise-grade security** meets **deve
 
 ---
 
-## 🚀 What's New in v3.2.2
+## 🚀 What's New in v3.3.0
 
-Building on the foundation of v3.2.0, we've improved reliability and persistence:
+Building on the foundation of v3.2.0, we've introduced an **obfuscated secrets engine** with **zero third-party dependencies**:
 
-| Feature | What it does |
-|---------|--------------|
-| 🔄 **Per-Env Overrides** | Custom URLs are now tracked independently for each environment, ensuring they are remembered when switching back and forth. |
-| 🏗️ **Robust Extraction** | Improved `.env` parser handles whitespace, quotes, and comments more reliably for `BASE_URL` extraction. |
-| 🛡️ **Persistence 2.0** | Enhanced `EnvStorage` ensures custom settings aren't lost during app restarts or migrations. |
-| 🚥 **Smart Fallbacks** | Fixed priority logic where empty local values would incorrectly block global `.env` fallbacks. |
+| Feature                               | What it does                                                                                                                                     |
+| ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 🔐 **Package-Independent Obfuscator** | Own the full build-time compilation pipeline without upstream package dependencies (like `envied`).                                              |
+| 🎲 **Random XOR Per Secret**          | Every credential is XOR-encrypted using a completely unique, secure random key list generated at compile time.                                   |
+| 🔍 **Dynamic Key Discovery**          | Automatically scans `.env.secrets` at build-time. No manual variable definitions or hardcoded fields.                                            |
+| 🛑 **Build-Time Leak Checker**        | Scans assets and flags a fatal build error if keys overlap or contain credential keywords (e.g., `API_SECRET_KEY`) inside non-sensitive configs. |
+| 🏢 **Unified Facade Accessor**        | One simple interface (`AppConfig.get(...)` and static getters) resolving dynamic assets first, falling back to secure build-time secrets.        |
+
+---
+
+## 🔒 Secure Hybrid Secrets (Zero-Dependency)
+
+`envified` now comes with a local development-time code generator that extracts secrets from a gitignored `.env.secrets` file, compiles them into a highly secure, obfuscated Dart class, and exposes them through a single unified API facade (`AppConfig`).
+
+This means **zero dependency** on third-party obfuscation packages. You own the entire pipeline.
+
+### Obfuscation Mechanism
+
+Each individual secret is compiled using standard Dart tooling. At compilation time, the builder:
+
+1. Generates a secure, random XOR key array of matching byte length via `math.Random.secure()`.
+2. Encrypts the raw secret bytes with the generated key.
+3. Emits both byte lists into a generated, private `secrets.g.dart` file.
+4. Reconstructs the string **transiently in memory** on demand via `String.fromCharCodes` upon retrieval—leaving **zero plain-text representation** inside compiled assembly binaries.
+
+### How to Set Up the Secrets Generator
+
+#### 1. Setup Local Secrets File
+
+Create a `.env.secrets` file in the root of your project (already registered in your `.gitignore` to keep it safe from commits):
+
+```env
+# .env.secrets
+ENCRYPTION_KEY=my_local_development_aes_key_256
+BASIC_AUTH_PASSWORD=local_development_basic_pass_123
+APP_AUTH_KEY=local_development_auth_signature_key
+API_SECRET=local_development_api_secret_credentials
+```
+
+#### 2. Create the Trigger Marker
+
+Create a build trigger file under `lib/core/config/secrets.secrets` (this tells `build_runner` where to write the generated class):
+
+```text
+# TRIGGER FILE FOR CUSTOM SECRETS GENERATOR - DO NOT REMOVE
+```
+
+#### 3. Define target in root build.yaml
+
+Register the builder targets in your main project's `build.yaml`:
+
+```yaml
+targets:
+  $default:
+    builders:
+      secrets_generator:secrets_builder:
+        options:
+          environment: ""
+          secrets_dir: "."
+          asset_config_paths:
+            - "assets/env/.env.dev"
+            - "assets/env/.env.staging"
+            - "assets/env/.env.prod"
+          blocklist:
+            - "KEY"
+            - "SECRET"
+            - "TOKEN"
+            - "PASSWORD"
+            - "AUTH"
+            - "PRIVATE"
+          required_keys:
+            - "ENCRYPTION_KEY"
+            - "BASIC_AUTH_PASSWORD"
+            - "APP_AUTH_KEY"
+            - "API_SECRET"
+          verbose: true
+```
+
+#### 4. Run the Code Generator
+
+Generate the secure, obfuscated output:
+
+```bash
+flutter pub run build_runner build --delete-conflicting-outputs
+```
+
+This generates the secure class `lib/core/config/secrets.g.dart`.
+
+#### 5. Unified Facade Access (`AppConfig`)
+
+Bootstrap the hybrid architecture in your `main.dart`:
+
+```dart
+import 'lib/core/config/app_config.dart';
+
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  // Load runtime assets and validate build-time secrets
+  await AppConfig.init(AppEnvironment.dev);
+
+  runApp(const MyApp());
+}
+```
+
+Now retrieve any value:
+
+```dart
+// Check runtime configurations first, and fall back to secure build-time secrets
+final baseUrl = AppConfig.get('BASE_URL'); // Resolves from dev asset
+final apiSecret = AppConfig.get('API_SECRET'); // Resolves from obfuscated secret
+final encryptionKey = AppConfig.encryptionKey; // Convenient typed getter
+```
 
 ---
 
 ## 📦 Features
 
-| Feature | What It Does | Why You Care |
-|---------|-------------|--------------|
-| **Smart Restart** | Detects when env changes require restart | Prevents connection/state caching bugs |
-| **Data Protection** | Blurs sensitive keys (API_KEY, etc.) | Security in screenshots & screen shares |
-| **Auto-Discovery** | Scans assets for `.env.*` files | Zero config; just add a file and it works |
-| **Alias Support** | Handles `dev`, `stag`, `production`, etc. | Follows industry standard naming conventions |
-| **Tamper Detection** | SHA-256 hashes `.env*` files | Catch rogue config changes on rooted devices |
-| **Access Gate** | Modern PIN dialog before opening panel | QA devices don't leak sensitive switches |
-| **URL Validation** | Live feedback on custom API URLs | Prevent typos and invalid endpoint formats |
-| **Audit Log** | Vertical timeline of every switch | "Who changed prod at 3pm?" |
-| **Status Badge** | Persistent `[DEV]` indicator in your app | Never forget what env you're testing |
-| **Gesture Triggers** | Tap N times, shake, or swipe edge to open | Access the panel your way |
+| Feature              | What It Does                              | Why You Care                                 |
+| -------------------- | ----------------------------------------- | -------------------------------------------- |
+| **Smart Restart**    | Detects when env changes require restart  | Prevents connection/state caching bugs       |
+| **Data Protection**  | Blurs sensitive keys (API_KEY, etc.)      | Security in screenshots & screen shares      |
+| **Auto-Discovery**   | Scans assets for `.env.*` files           | Zero config; just add a file and it works    |
+| **Alias Support**    | Handles `dev`, `stag`, `production`, etc. | Follows industry standard naming conventions |
+| **Tamper Detection** | SHA-256 hashes `.env*` files              | Catch rogue config changes on rooted devices |
+| **Access Gate**      | Modern PIN dialog before opening panel    | QA devices don't leak sensitive switches     |
+| **URL Validation**   | Live feedback on custom API URLs          | Prevent typos and invalid endpoint formats   |
+| **Audit Log**        | Vertical timeline of every switch         | "Who changed prod at 3pm?"                   |
+| **Status Badge**     | Persistent `[DEV]` indicator in your app  | Never forget what env you're testing         |
+| **Gesture Triggers** | Tap N times, shake, or swipe edge to open | Access the panel your way                    |
 
 ---
 
@@ -78,7 +185,7 @@ Building on the foundation of v3.2.0, we've improved reliability and persistence
 
 ```yaml
 dependencies:
-  envified: ^3.2.2
+  envified: ^3.3.0
 ```
 
 Then run:
@@ -168,7 +275,7 @@ MaterialApp(
 Two scenarios where production locking saves you:
 
 **Scenario A — Release builds**  
-**Set `allowProdSwitch: false` and pass `enabled: false` to `EnvifiedOverlay`. The panel is gone. The service ignores switch attempts. Your prod build is clean and your users have no idea any of this exists.
+\*\*Set `allowProdSwitch: false` and pass `enabled: false` to `EnvifiedOverlay`. The panel is gone. The service ignores switch attempts. Your prod build is clean and your users have no idea any of this exists.
 
 **Scenario B — The brave "always prod" setup**  
 Maybe you want the panel available in staging but default to Prod and lock it there:
@@ -220,11 +327,12 @@ final timeout = svc.getInt('API_TIMEOUT', fallback: 30);
 
 ## Troubleshooting
 
-### Q: "No .env.* files discovered"
+### Q: "No .env.\* files discovered"
 
 **Cause:** Asset files not registered in pubspec.yaml
 
 **Fix:**
+
 ```yaml
 flutter:
   assets:
@@ -253,10 +361,10 @@ final dio = Dio();
 
 Future<void> setupDio() async {
   await EnvConfigService.instance.init();
-  
+
   // Set initial base URL
   dio.options.baseUrl = EnvConfigService.instance.current.value.baseUrl;
-  
+
   // Listen for environment changes
   EnvConfigService.instance.current.addListener(() {
     dio.options.baseUrl = EnvConfigService.instance.current.value.baseUrl;
@@ -282,10 +390,10 @@ This package follows [Semantic Versioning](https://semver.org/):
 
 `envified` is free and open source, built with ☕ by **Sumit Pal** ([@appamania](https://appamania.in)).
 
-| Tier | Link | What it buys |
-|---|---|---|
-| ☕ A sip of chai | [₹20](https://paywithchai.in/appamania) | You liked the package |
-| 🍵 A full cup | [₹50](https://paywithchai.in/appamania) | It saved you real time |
+| Tier                  | Link                                     | What it buys             |
+| --------------------- | ---------------------------------------- | ------------------------ |
+| ☕ A sip of chai      | [₹20](https://paywithchai.in/appamania)  | You liked the package    |
+| 🍵 A full cup         | [₹50](https://paywithchai.in/appamania)  | It saved you real time   |
 | 🚀 Keep the lights on | [₹100](https://paywithchai.in/appamania) | You ship with it in prod |
 
 [![Buy me a Chai](https://img.shields.io/badge/☕%20Buy%20me%20a%20Chai-FF5722?style=for-the-badge&logo=upi&logoColor=white)](https://paywithchai.in/appamania)
