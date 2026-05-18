@@ -64,6 +64,7 @@ export 'src/models/envified_exception.dart'
         EnvifiedTamperException,
         EnvifiedUrlNotAllowedException;
 export 'src/models/audit_entry.dart' show AuditEntry;
+export 'src/storage/env_storage.dart' show EnvStorage;
 export 'src/ui/env_gate.dart' show EnvGate;
 export 'src/ui/env_debug_panel.dart' show EnvDebugPanel;
 export 'src/ui/envified_overlay.dart' show EnvifiedOverlay;

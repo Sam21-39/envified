@@ -29,13 +29,6 @@ jobs:
           mkdir -p example/lib/core/config
           cat << 'EOF' > example/lib/core/config/secrets.g.dart
           // Mock secrets.g.dart for CI static analysis
-          class _SecretValues {
-            _SecretValues._();
-            static String get encryptionKey => 'mock_key';
-            static String get basicAuthPassword => 'mock_password';
-            static String get appAuthKey => 'mock_app_key';
-            static String get apiSecret => 'mock_secret';
-          }
           class AppSecrets {
             AppSecrets._();
             static final Map<String, String> _secretsMap = {

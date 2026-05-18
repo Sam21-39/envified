@@ -105,7 +105,7 @@ dart run envified
 Bootstrap the hybrid architecture in your `main.dart`:
 
 ```dart
-import 'lib/core/config/app_config.dart';
+import 'package:my_app/core/config/app_config.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();

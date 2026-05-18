@@ -86,7 +86,7 @@ packages:
     source: hosted
     version: "3.0.2"
   flutter_secure_storage:
-    dependency: transitive
+    dependency: "direct dev"
     description:
       name: flutter_secure_storage
       sha256: "8b302d17096ba88f911b7eb317c71d5e691da60a259549f42b38c658d1776d87"

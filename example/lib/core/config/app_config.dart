@@ -1,15 +1,20 @@
-import 'package:envified_example/core/config/app_env.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
+import 'package:envified/envified.dart';
 import 'secrets.g.dart';
 
 class AppConfig {
   AppConfig._();
 
   /// Bootstraps configurations. Must be called in `main.dart` before `runApp()`.
-  static Future<void> init(AppEnvironment env,
-      {AssetBundle? customBundle}) async {
-    await AppEnv.instance.initialize(env, customBundle: customBundle);
+  static Future<void> init(Env defaultEnv,
+      {AssetBundle? bundle, EnvStorage? storage}) async {
+    await EnvConfigService.instance.init(
+      defaultEnv: defaultEnv,
+      allowProdSwitch: false, // 🔒 Lock production by default
+      bundle: bundle,
+      storage: storage,
+    );
     _validateMandatorySecrets();
   }
 
@@ -32,9 +37,9 @@ class AppConfig {
 
   /// Unified accessor. Checks runtime configurations first and falls back to build secrets.
   static String get(String key) {
-    final runtimeMap = AppEnv.instance.config.rawPairs;
-    if (runtimeMap.containsKey(key)) {
-      return runtimeMap[key]!;
+    final activeConfig = EnvConfigService.instance.current.value;
+    if (activeConfig.values.containsKey(key)) {
+      return activeConfig.values[key]!;
     }
     return AppSecrets.get(key);
   }
@@ -45,14 +50,16 @@ class AppConfig {
   static String get appAuthKey => AppSecrets.appAuthKey;
   static String get apiSecret => AppSecrets.apiSecret;
 
-  static AppEnvironment get environment => AppEnv.instance.config.environment;
-  static String get environmentName => AppEnv.instance.config.environmentName;
-  static String get baseUrl => AppEnv.instance.config.baseUrl;
+  static Env get environment => EnvConfigService.instance.current.value.env;
+  static String get environmentName =>
+      EnvConfigService.instance.current.value.env.label;
+  static String get baseUrl => EnvConfigService.instance.current.value.baseUrl;
 
   static bool isFeatureEnabled(String flagName) {
-    return AppEnv.instance.config.featureFlags[flagName] ?? false;
+    final activeConfig = EnvConfigService.instance.current.value;
+    return activeConfig.values[flagName]?.toLowerCase() == 'true';
   }
 
-  static ValueListenable<RuntimeConfig?> get configNotifier =>
-      AppEnv.instance.configNotifier;
+  static ValueListenable<EnvConfig> get configNotifier =>
+      EnvConfigService.instance.current;
 }

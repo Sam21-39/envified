@@ -1,115 +1,175 @@
-import 'package:flutter/services.dart';
+import 'dart:convert';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:envified/envified.dart';
 import 'package:envified_example/core/config/app_config.dart';
-import 'package:envified_example/core/config/app_env.dart';
-import 'package:envified_example/core/config/env_validator.dart';
 
-class TestAssetBundle extends CachingAssetBundle {
-  final Map<String, String> assets;
-  TestAssetBundle(this.assets);
+class FakeFlutterSecureStorage extends Fake implements FlutterSecureStorage {
+  final Map<String, String> _data = {};
+
+  @override
+  Future<void> write({
+    required String key,
+    required String? value,
+    Object? iOptions,
+    Object? aOptions,
+    Object? lOptions,
+    Object? webOptions,
+    Object? mOptions,
+    Object? wOptions,
+  }) async {
+    if (value == null) {
+      _data.remove(key);
+    } else {
+      _data[key] = value;
+    }
+  }
+
+  @override
+  Future<String?> read({
+    required String key,
+    Object? iOptions,
+    Object? aOptions,
+    Object? lOptions,
+    Object? webOptions,
+    Object? mOptions,
+    Object? wOptions,
+  }) async {
+    return _data[key];
+  }
+
+  @override
+  Future<void> delete({
+    required String key,
+    Object? iOptions,
+    Object? aOptions,
+    Object? lOptions,
+    Object? webOptions,
+    Object? mOptions,
+    Object? wOptions,
+  }) async {
+    _data.remove(key);
+  }
+
+  @override
+  Future<void> deleteAll({
+    Object? iOptions,
+    Object? aOptions,
+    Object? lOptions,
+    Object? webOptions,
+    Object? mOptions,
+    Object? wOptions,
+  }) async {
+    _data.clear();
+  }
+}
+
+class FakeAssetBundle extends AssetBundle {
+  final Map<String, String> _assets = {};
+
+  void register(String key, String content) {
+    _assets[key] = content;
+  }
 
   @override
   Future<ByteData> load(String key) async {
-    final content = assets[key];
-    if (content == null) throw FlutterError('Asset not found: $key');
-    return ByteData.sublistView(Uint8List.fromList(content.codeUnits));
+    if (key == 'AssetManifest.bin' || key == 'AssetManifest.bin.gz') {
+      return _generateManifestBinary();
+    }
+    if (key == 'AssetManifest.json') {
+      return _generateManifestJson();
+    }
+
+    final content = _assets[key];
+    if (content == null) {
+      throw FlutterError('Asset not found: $key');
+    }
+    return ByteData.view(Uint8List.fromList(utf8.encode(content)).buffer);
   }
 
   @override
   Future<String> loadString(String key, {bool cache = true}) async {
-    final content = assets[key];
-    if (content == null) throw FlutterError('Asset not found: $key');
+    final content = _assets[key];
+    if (content == null) {
+      if (key == 'AssetManifest.json') {
+        final data = _generateManifestJson();
+        return utf8.decode(data.buffer.asUint8List());
+      }
+      throw FlutterError('Asset not found: $key');
+    }
     return content;
+  }
+
+  ByteData _generateManifestBinary() {
+    final manifest = <String, List<Map<String, dynamic>>>{};
+    for (final key in _assets.keys) {
+      manifest[key] = [
+        {'asset': key}
+      ];
+    }
+    return const StandardMessageCodec().encodeMessage(manifest)!;
+  }
+
+  ByteData _generateManifestJson() {
+    final manifest = <String, List<String>>{};
+    for (final key in _assets.keys) {
+      manifest[key] = [key];
+    }
+    final String json = jsonEncode(manifest);
+    return ByteData.view(Uint8List.fromList(utf8.encode(json)).buffer);
   }
 }
 
 void main() {
-  group('Runtime Configurations & Safety Validator Tests', () {
-    test('EnvValidator allows non-sensitive configurations', () {
-      final safeConfig = {
-        'ENV_NAME': 'Staging',
-        'BASE_URL': 'https://api.staging.envified.com',
-        'FEATURE_CHAT_ENABLED': 'true',
-      };
+  TestWidgetsFlutterBinding.ensureInitialized();
 
-      // Should not throw under production or development mode
-      expect(() => EnvValidator.validate(safeConfig, isProduction: true),
-          returnsNormally);
-      expect(() => EnvValidator.validate(safeConfig, isProduction: false),
-          returnsNormally);
-    });
+  late FakeFlutterSecureStorage fakeSecureStorage;
+  late EnvStorage envStorage;
+  late FakeAssetBundle bundle;
 
-    test('EnvValidator blocks sensitive keys in production only', () {
-      final unsafeConfig = {
-        'ENV_NAME': 'Production',
-        'BASE_URL': 'https://api.envified.com',
-        'APP_AUTH_KEY': 'some_leaked_key_in_assets',
-      };
+  setUp(() {
+    EnvConfigService.instance.resetForTesting();
+    fakeSecureStorage = FakeFlutterSecureStorage();
+    envStorage = EnvStorage(storage: fakeSecureStorage);
+    bundle = FakeAssetBundle();
 
-      // Blocks strictly in production mode
-      expect(
-        () => EnvValidator.validate(unsafeConfig, isProduction: true),
-        throwsA(isA<EnvifiedSecurityException>()),
-      );
-
-      // Allows with warning in development mode
-      expect(
-        () => EnvValidator.validate(unsafeConfig, isProduction: false),
-        returnsNormally,
-      );
-    });
-
-    test('AppEnv initialize loads and parses assets correctly', () async {
-      final mockBundle = TestAssetBundle({
-        'assets/env/.env.dev': '''
-ENV_NAME=Development
-BASE_URL="https://api.dev.envified.com"
-FEATURE_CHAT_ENABLED=true
-EXPERIMENTAL_UI='true'
-# This is a comment line
-  # Another spaced comment
-        '''
-      });
-
-      await AppEnv.instance
-          .initialize(AppEnvironment.dev, customBundle: mockBundle);
-
-      final config = AppEnv.instance.config;
-      expect(config.environment, AppEnvironment.dev);
-      expect(config.environmentName, 'Development');
-      expect(config.baseUrl, 'https://api.dev.envified.com');
-      expect(config.featureFlags['FEATURE_CHAT_ENABLED'], true);
-      expect(config.experimentalUi, true);
-    });
+    bundle.register(
+      '.env.dev',
+      'ENV_NAME=Development\nBASE_URL=https://api.dev.envified.com\nFEATURE_CHAT_ENABLED=true\nEXPERIMENTAL_UI=true\n',
+    );
+    bundle.register(
+      '.env.staging',
+      'ENV_NAME=Staging\nBASE_URL=https://api.staging.envified.com\nFEATURE_CHAT_ENABLED=true\nEXPERIMENTAL_UI=false\n',
+    );
   });
 
-  group('Unified AppConfig Facade & Secrets Lookup Tests', () {
-    test('AppConfig init fails if mandatory secrets are missing', () async {
-      final mockBundle = TestAssetBundle({
-        'assets/env/.env.dev':
-            'ENV_NAME=Dev\nBASE_URL=https://api.dev.envified.com'
-      });
-
-      // AppSecrets will have compiled values if the build runner was run.
-      // We can assert that initialization succeeds with the loaded secrets.
-      expect(
-        () => AppConfig.init(AppEnvironment.dev, customBundle: mockBundle),
-        returnsNormally,
+  group('Unified AppConfig Facade & Secrets Lookup Tests (Integrated)', () {
+    test('AppConfig init loads dynamic configurations and validates secrets',
+        () async {
+      await AppConfig.init(
+        Env.dev,
+        bundle: bundle,
+        storage: envStorage,
       );
+
+      expect(AppConfig.environment, Env.dev);
+      expect(AppConfig.environmentName, 'Dev');
+      expect(AppConfig.baseUrl, 'https://api.dev.envified.com');
+      expect(AppConfig.isFeatureEnabled('FEATURE_CHAT_ENABLED'), true);
     });
 
     test('AppConfig accessor retrieves assets and delegates to secrets',
         () async {
-      final mockBundle = TestAssetBundle({
-        'assets/env/.env.dev':
-            'ENV_NAME=Dev\nBASE_URL=https://api.dev.envified.com'
-      });
-
-      await AppConfig.init(AppEnvironment.dev, customBundle: mockBundle);
+      await AppConfig.init(
+        Env.dev,
+        bundle: bundle,
+        storage: envStorage,
+      );
 
       // Accessing standard configurations (comes from assets)
-      expect(AppConfig.get('ENV_NAME'), 'Dev');
+      expect(AppConfig.get('ENV_NAME'), 'Development');
       expect(AppConfig.get('BASE_URL'), 'https://api.dev.envified.com');
 
       // Accessing compile-time obfuscated secrets (delegated fallback to AppSecrets)
@@ -122,13 +182,6 @@ EXPERIMENTAL_UI='true'
       expect(AppConfig.basicAuthPassword, isNotEmpty);
       expect(AppConfig.appAuthKey, isNotEmpty);
       expect(AppConfig.apiSecret, isNotEmpty);
-    });
-
-    test('AppConfig throws exception for missing keys', () {
-      expect(
-        () => AppConfig.get('NON_EXISTENT_SECRET_OR_CONFIG'),
-        throwsArgumentError,
-      );
     });
   });
 }

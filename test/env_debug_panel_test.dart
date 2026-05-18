@@ -1,6 +1,5 @@
 import 'package:envified/envified.dart';
 import 'package:envified/src/parser/env_file_parser.dart';
-import 'package:envified/src/storage/env_storage.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'test_helper.dart';
