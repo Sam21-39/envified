@@ -33,25 +33,31 @@ jobs:
           // Mock secrets.g.dart for CI static analysis
           class _SecretValues {
             _SecretValues._();
-            static String get encryptionKey => '';
-            static String get basicAuthPassword => '';
-            static String get appAuthKey => '';
-            static String get apiSecret => '';
+            static String get encryptionKey => 'mock_key';
+            static String get basicAuthPassword => 'mock_password';
+            static String get appAuthKey => 'mock_app_key';
+            static String get apiSecret => 'mock_secret';
           }
           class AppSecrets {
             AppSecrets._();
             static final Map<String, String> _secretsMap = {
-              'ENCRYPTION_KEY': '',
-              'BASIC_AUTH_PASSWORD': '',
-              'APP_AUTH_KEY': '',
-              'API_SECRET': '',
+              'ENCRYPTION_KEY': 'mock_key',
+              'BASIC_AUTH_PASSWORD': 'mock_password',
+              'APP_AUTH_KEY': 'mock_app_key',
+              'API_SECRET': 'mock_secret',
             };
-            static String get(String key) => _secretsMap[key] ?? '';
+            static String get(String key) {
+              final val = _secretsMap[key];
+              if (val == null) {
+                throw ArgumentError('Secret key "$key" not found');
+              }
+              return val;
+            }
             static bool contains(String key) => _secretsMap.containsKey(key);
-            static String get encryptionKey => '';
-            static String get basicAuthPassword => '';
-            static String get appAuthKey => '';
-            static String get apiSecret => '';
+            static String get encryptionKey => 'mock_key';
+            static String get basicAuthPassword => 'mock_password';
+            static String get appAuthKey => 'mock_app_key';
+            static String get apiSecret => 'mock_secret';
           }
           EOF
           dart format lib/core/config/secrets.g.dart
