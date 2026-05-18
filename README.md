@@ -87,16 +87,16 @@ APP_AUTH_KEY=local_development_auth_signature_key
 API_SECRET=local_development_api_secret_credentials
 ```
 
-#### 2. Run the Standalone CLI secrets generator
+#### 2. Run the Standalone CLI Secrets Generator
 
-No complex builder classes, no `build.yaml` triggers. Simply execute the standalone CLI script directly using the Dart SDK:
+No complex builder classes, no `build.yaml` triggers. Simply execute the built-in compiler command directly using the Dart SDK:
 
 ```bash
-dart tools/secrets_generator/generate.dart
+dart run envified
 ```
 
 ##### Optional CLI Arguments:
-- `--env=<name>`: Target environment (e.g. `--env=prod` matches `.env.secrets.prod`).
+- `--env=<name>`: Target environment (e.g. `dart run envified --env=prod` matches `.env.secrets.prod`).
 - `--secrets-dir=<path>`: Custom location for `.env.secrets` (defaults to `.`).
 - `--quiet`: Mute informative success console logs.
 

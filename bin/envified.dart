@@ -1,6 +1,6 @@
 // ignore_for_file: avoid_print
 import 'dart:io';
-import 'lib/secrets_generator.dart';
+import 'package:envified/src/secrets/secrets_generator.dart';
 
 void main(List<String> args) {
   // Parse command line arguments and environment variables

@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- **Zero-Dependency Obfuscated Secrets CLI Generator**: A package-independent, build-time secure secrets compilation CLI script (`tools/secrets_generator/generate.dart`). Completely purges heavy `build_runner` and `build.yaml` triggers, compiling secrets dynamically in < 50ms using a single direct command.
+- **Zero-Dependency Obfuscated Secrets CLI Generator**: A package-independent, build-time secure secrets compilation CLI executable. Completely purges heavy `build_runner` and `build.yaml` triggers. It is embedded directly as a built-in Dart tool (`bin/envified.dart`), allowing developers to compile obfuscated secrets dynamically in < 50ms using the simple, easy-to-remember command `dart run envified`!
 - **Dynamic Build-Time Key Discovery**: Automatically scans and parses `.env.secrets` configurations without hardcoding or assuming key names.
 - **Custom XOR Obfuscation**: Transforms secrets into dynamically XOR-encrypted byte arrays using secure high-entropy random keys per secret. Secrets are decrypted transiently in memory upon access and are never persisted in plain text.
 - **Strict Build-Time Safety Validation**: Standalone CLI script scans and flags a fatal build error if keys overlap or contain sensitive keywords (e.g., `API_SECRET`) inside non-sensitive configs.

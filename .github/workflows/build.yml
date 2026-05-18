@@ -49,7 +49,7 @@ jobs:
         run: flutter pub get
 
       - name: Run Standalone CLI secrets generator
-        run: dart tools/secrets_generator/generate.dart --env=production
+        run: dart run envified --env=production
 
       - name: Build Obfuscated Release APK
         run: |
