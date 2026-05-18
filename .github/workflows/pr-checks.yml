@@ -87,6 +87,7 @@ jobs:
             static String get apiSecret => '';
           }
           EOF
+          dart format lib/core/config/secrets.g.dart
 
       - name: Verify formatting
         run: dart format --output=none --set-exit-if-changed .

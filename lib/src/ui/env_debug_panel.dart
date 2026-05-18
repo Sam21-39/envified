@@ -1066,7 +1066,8 @@ class _SensitiveValueDisplayState extends State<SensitiveValueDisplay> {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.warning_amber_rounded, size: 14, color: Colors.amber),
+            const Icon(Icons.warning_amber_rounded,
+                size: 14, color: Colors.amber),
             const SizedBox(width: 6),
             const Text(
               'Reveal key?',
@@ -1088,11 +1089,13 @@ class _SensitiveValueDisplayState extends State<SensitiveValueDisplay> {
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.amber,
                 foregroundColor: Colors.black,
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 minimumSize: Size.zero,
                 tapTargetSize: MaterialTapTargetSize.shrinkWrap,
               ),
-              child: const Text('Yes', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+              child: const Text('Yes',
+                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
             ),
           ],
         ),

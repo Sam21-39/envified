@@ -119,8 +119,6 @@ class AuditLogViewer extends StatelessWidget {
     );
   }
 
-
-
   Color _actionColor(String action) => switch (action) {
         'switch' => Colors.blue,
         'setBaseUrl' => Colors.amber,
