@@ -181,124 +181,127 @@ class _PinOverlayState extends State<_PinOverlay>
 
           // Dialog content
           Center(
-            child: ScaleTransition(
-              scale: _scaleAnim,
-              child: Container(
-                width: 340,
-                padding: const EdgeInsets.all(28),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF1A1F2E),
-                  borderRadius: BorderRadius.circular(28),
-                  border: Border.all(
-                    // ignore: deprecated_member_use
-                    color: Colors.white.withOpacity(0.1),
-                    width: 1.5,
-                  ),
-                  boxShadow: [
-                    BoxShadow(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: ScaleTransition(
+                scale: _scaleAnim,
+                child: Container(
+                  constraints: const BoxConstraints(maxWidth: 340),
+                  padding: const EdgeInsets.all(28),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF1A1F2E),
+                    borderRadius: BorderRadius.circular(28),
+                    border: Border.all(
                       // ignore: deprecated_member_use
-                      color: Colors.black.withOpacity(0.5),
-                      blurRadius: 40,
-                      spreadRadius: 10,
+                      color: Colors.white.withOpacity(0.1),
+                      width: 1.5,
                     ),
-                  ],
-                ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    // Icon
-                    Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
+                    boxShadow: [
+                      BoxShadow(
                         // ignore: deprecated_member_use
-                        color: Colors.blue.withOpacity(0.1),
-                        shape: BoxShape.circle,
+                        color: Colors.black.withOpacity(0.5),
+                        blurRadius: 40,
+                        spreadRadius: 10,
                       ),
-                      child: const Icon(
-                        Icons.lock_person_rounded,
-                        color: Colors.blue,
-                        size: 32,
-                      ),
-                    ),
-                    const SizedBox(height: 24),
-
-                    const Text(
-                      'Access Restricted',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                        letterSpacing: 0.5,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'Enter the secure PIN to continue',
-                      style: TextStyle(
-                        // ignore: deprecated_member_use
-                        color: Colors.white.withOpacity(0.5),
-                        fontSize: 13,
-                      ),
-                    ),
-                    const SizedBox(height: 32),
-
-                    // Input Fields
-                    Stack(
-                      alignment: Alignment.center,
-                      children: [
-                        _buildPinFields(),
-                        // The actual TextField (invisible but interactive)
-                        SizedBox(
-                          width: double.infinity,
-                          height: 56,
-                          child: TextField(
-                            controller: widget.pinController,
-                            focusNode: widget.pinFocusNode,
-                            autofocus: true,
-                            showCursor: false,
-                            cursorWidth: 0,
-                            enableInteractiveSelection: false,
-                            keyboardType: TextInputType.number,
-                            maxLength: widget.correctPin.length,
-                            style: const TextStyle(
-                              color: Colors.transparent,
-                              fontSize: 1, // Minimize visible text
-                            ),
-                            decoration: const InputDecoration(
-                              counterText: '',
-                              border: InputBorder.none,
-                              enabledBorder: InputBorder.none,
-                              focusedBorder: InputBorder.none,
-                            ),
-                            inputFormatters: [
-                              FilteringTextInputFormatter.digitsOnly,
-                            ],
-                            onSubmitted: (_) => _verify(),
-                          ),
+                    ],
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      // Icon
+                      Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          // ignore: deprecated_member_use
+                          color: Colors.blue.withOpacity(0.1),
+                          shape: BoxShape.circle,
                         ),
-                      ],
-                    ),
+                        child: const Icon(
+                          Icons.lock_person_rounded,
+                          color: Colors.blue,
+                          size: 32,
+                        ),
+                      ),
+                      const SizedBox(height: 24),
 
-                    const SizedBox(height: 32),
+                      const Text(
+                        'Access Restricted',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Enter the secure PIN to continue',
+                        style: TextStyle(
+                          // ignore: deprecated_member_use
+                          color: Colors.white.withOpacity(0.5),
+                          fontSize: 13,
+                        ),
+                      ),
+                      const SizedBox(height: 32),
 
-                    // Cancel button
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        TextButton(
-                          onPressed: () => widget.onClose(false),
-                          child: Text(
-                            'Cancel',
-                            style: TextStyle(
-                              // ignore: deprecated_member_use
-                              color: Colors.white.withOpacity(0.4),
-                              fontWeight: FontWeight.w600,
+                      // Input Fields
+                      Stack(
+                        alignment: Alignment.center,
+                        children: [
+                          _buildPinFields(),
+                          // The actual TextField (invisible but interactive)
+                          SizedBox(
+                            width: double.infinity,
+                            height: 56,
+                            child: TextField(
+                              controller: widget.pinController,
+                              focusNode: widget.pinFocusNode,
+                              autofocus: true,
+                              showCursor: false,
+                              cursorWidth: 0,
+                              enableInteractiveSelection: false,
+                              keyboardType: TextInputType.number,
+                              maxLength: widget.correctPin.length,
+                              style: const TextStyle(
+                                color: Colors.transparent,
+                                fontSize: 1, // Minimize visible text
+                              ),
+                              decoration: const InputDecoration(
+                                counterText: '',
+                                border: InputBorder.none,
+                                enabledBorder: InputBorder.none,
+                                focusedBorder: InputBorder.none,
+                              ),
+                              inputFormatters: [
+                                FilteringTextInputFormatter.digitsOnly,
+                              ],
+                              onSubmitted: (_) => _verify(),
                             ),
                           ),
-                        ),
-                      ],
-                    ),
-                  ],
+                        ],
+                      ),
+
+                      const SizedBox(height: 32),
+
+                      // Cancel button
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          TextButton(
+                            onPressed: () => widget.onClose(false),
+                            child: Text(
+                              'Cancel',
+                              style: TextStyle(
+                                // ignore: deprecated_member_use
+                                color: Colors.white.withOpacity(0.4),
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -312,53 +315,64 @@ class _PinOverlayState extends State<_PinOverlay>
     final length = widget.correctPin.length;
     final text = widget.pinController.text;
 
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: List.generate(length, (index) {
-        final isFocused = text.length == index;
-        final hasValue = text.length > index;
-        final char = hasValue ? text[index] : '';
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        const double gap = 8.0;
+        final double cellWidth =
+            ((constraints.maxWidth - gap * (length - 1)) / length)
+                .clamp(32.0, 52.0);
 
-        return Container(
-          width: 42,
-          height: 52,
-          alignment: Alignment.center,
-          decoration: BoxDecoration(
-            color: _isError
-                // ignore: deprecated_member_use
-                ? Colors.red.withOpacity(0.1)
-                // ignore: deprecated_member_use
-                : Colors.white.withOpacity(0.05),
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(
-              color: _isError
-                  ? Colors.red
-                  : isFocused
-                      ? Colors.blue
+        return Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: List.generate(length, (index) {
+            final isFocused = text.length == index;
+            final hasValue = text.length > index;
+
+            return Padding(
+              padding: EdgeInsets.only(right: index < length - 1 ? gap : 0),
+              child: Container(
+                width: cellWidth,
+                height: 52,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: _isError
                       // ignore: deprecated_member_use
-                      : Colors.white.withOpacity(0.1),
-              width: isFocused ? 2 : 1.5,
-            ),
-            boxShadow: [
-              if (isFocused && !_isError)
-                BoxShadow(
-                  // ignore: deprecated_member_use
-                  color: Colors.blue.withOpacity(0.2),
-                  blurRadius: 8,
-                  spreadRadius: 1,
+                      ? Colors.red.withOpacity(0.1)
+                      // ignore: deprecated_member_use
+                      : Colors.white.withOpacity(0.05),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: _isError
+                        ? Colors.red
+                        : isFocused
+                            ? Colors.blue
+                            // ignore: deprecated_member_use
+                            : Colors.white.withOpacity(0.1),
+                    width: isFocused ? 2 : 1.5,
+                  ),
+                  boxShadow: [
+                    if (isFocused && !_isError)
+                      BoxShadow(
+                        // ignore: deprecated_member_use
+                        color: Colors.blue.withOpacity(0.2),
+                        blurRadius: 8,
+                        spreadRadius: 1,
+                      ),
+                  ],
                 ),
-            ],
-          ),
-          child: Text(
-            char.isEmpty ? '' : '•', // Use dot for obscure or char for visible
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 24,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
+                child: Text(
+                  hasValue ? '•' : '',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            );
+          }),
         );
-      }),
+      },
     );
   }
 }

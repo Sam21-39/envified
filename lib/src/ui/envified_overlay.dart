@@ -38,7 +38,7 @@ import 'package:flutter/material.dart';
 /// ## Auto-lock
 ///
 /// The panel automatically closes (and re-requires authentication) whenever
-/// the app is hidden or paused ([AppLifecycleState.hidden] /
+/// the app is backgrounded ([AppLifecycleState.hidden] /
 /// [AppLifecycleState.paused]).
 ///
 /// When [enabled] is `false` the widget is a transparent pass-through with
@@ -187,7 +187,7 @@ class _OverlayContentState extends State<_OverlayContent>
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.paused ||
-        state == AppLifecycleState.inactive) {
+        state == AppLifecycleState.hidden) {
       _closePanel();
     }
   }
@@ -350,6 +350,19 @@ class _OverlayContentState extends State<_OverlayContent>
 
   @override
   Widget build(BuildContext context) {
+    final mq = MediaQuery.of(context);
+    final safeTop = mq.padding.top;
+    final safeBottom = mq.padding.bottom;
+    // FAB sits 24px above the safe area; mini FAB is 40px tall.
+    // Panel bottom is FAB bottom + FAB height + 8px gap.
+    const double fabBottomMargin = 24.0;
+    final double fabBottom = fabBottomMargin + safeBottom;
+    const double miniFabHeight = 40.0;
+    const double gap = 8.0;
+    final double panelBottom = fabBottom + miniFabHeight + gap;
+    final double panelMaxHeight =
+        mq.size.height - safeTop - panelBottom - 16.0; // 16px top clearance
+
     return widget.trigger.build(
       onOpen: _requestOpen,
       isActive: !_isOpen && _gateEntry == null,
@@ -367,27 +380,21 @@ class _OverlayContentState extends State<_OverlayContent>
             Positioned(
               left: 16,
               right: 16,
-              bottom: 80, // Above the FAB
-              child: SafeArea(
-                child: Material(
-                  elevation: 8,
+              bottom: panelBottom,
+              child: Material(
+                elevation: 8,
+                borderRadius: BorderRadius.circular(16),
+                child: ClipRRect(
                   borderRadius: BorderRadius.circular(16),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(16),
-                    child: Container(
-                      color: Theme.of(context).canvasColor,
-                      constraints: BoxConstraints(
-                        maxHeight: MediaQuery.of(context).size.height -
-                            MediaQuery.of(context).padding.top -
-                            120, // 80 (bottom) + 40 (top margin)
-                      ),
-                      child: SingleChildScrollView(
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        child: EnvDebugPanel(
-                          service: widget.service,
-                          onRestart: widget.onRestart,
-                          showEnvKeys: widget.showEnvKeys,
-                        ),
+                  child: Container(
+                    color: Theme.of(context).colorScheme.surface,
+                    constraints: BoxConstraints(maxHeight: panelMaxHeight),
+                    child: SingleChildScrollView(
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      child: EnvDebugPanel(
+                        service: widget.service,
+                        onRestart: widget.onRestart,
+                        showEnvKeys: widget.showEnvKeys,
                       ),
                     ),
                   ),
@@ -397,7 +404,7 @@ class _OverlayContentState extends State<_OverlayContent>
           if (widget.isShowEnvLabel) EnvStatusBadge(service: widget.service),
           if (widget.showFab)
             Positioned(
-              bottom: 24,
+              bottom: fabBottom,
               right: 16,
               child: _EnvFab(
                 service: widget.service,
