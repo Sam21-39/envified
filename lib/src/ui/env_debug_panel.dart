@@ -455,11 +455,15 @@ class _EnvDebugPanelState extends State<EnvDebugPanel> {
               const Icon(Icons.warning_amber_rounded,
                   color: Colors.red, size: 18),
               const SizedBox(width: 8),
-              Text(
-                'Switch to ${env.label}?',
-                style: const TextStyle(
-                  fontWeight: FontWeight.bold,
-                  color: Colors.red,
+              Expanded(
+                child: Text(
+                  'Switch to ${env.label}?',
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: Colors.red,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                  maxLines: 1,
                 ),
               ),
             ],
@@ -470,20 +474,18 @@ class _EnvDebugPanelState extends State<EnvDebugPanel> {
             style: TextStyle(fontSize: 12),
           ),
           const SizedBox(height: 12),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.end,
+          Wrap(
+            alignment: WrapAlignment.end,
+            spacing: 8,
+            runSpacing: 4,
             children: [
               TextButton(
                 onPressed: () => setState(() => _pendingEnv = null),
                 child: const Text('Cancel'),
               ),
-              const SizedBox(width: 8),
-              FilledButton(
+              TextButton(
                 onPressed: () => _performSwitch(env),
-                style: FilledButton.styleFrom(
-                  backgroundColor: Colors.red,
-                  visualDensity: VisualDensity.compact,
-                ),
+                style: TextButton.styleFrom(foregroundColor: Colors.red),
                 child: const Text('Confirm Switch'),
               ),
             ],
@@ -552,10 +554,14 @@ class _EnvDebugPanelState extends State<EnvDebugPanel> {
             children: [
               Icon(Icons.refresh_rounded, color: Colors.red, size: 20),
               SizedBox(width: 12),
-              Text(
-                'Reset Everything?',
-                style:
-                    TextStyle(fontWeight: FontWeight.bold, color: Colors.red),
+              Expanded(
+                child: Text(
+                  'Reset Everything?',
+                  style:
+                      TextStyle(fontWeight: FontWeight.bold, color: Colors.red),
+                  overflow: TextOverflow.ellipsis,
+                  maxLines: 1,
+                ),
               ),
             ],
           ),
@@ -565,20 +571,18 @@ class _EnvDebugPanelState extends State<EnvDebugPanel> {
             style: TextStyle(fontSize: 13, height: 1.4),
           ),
           const SizedBox(height: 16),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.end,
+          Wrap(
+            alignment: WrapAlignment.end,
+            spacing: 8,
+            runSpacing: 4,
             children: [
               TextButton(
                 onPressed: () => setState(() => _showResetConfirm = false),
                 child: const Text('Cancel'),
               ),
-              const SizedBox(width: 8),
-              FilledButton(
+              TextButton(
                 onPressed: _reset,
-                style: FilledButton.styleFrom(
-                  backgroundColor: Colors.red,
-                  visualDensity: VisualDensity.compact,
-                ),
+                style: TextButton.styleFrom(foregroundColor: Colors.red),
                 child: const Text('Confirm Reset'),
               ),
             ],
@@ -752,12 +756,16 @@ class _EnvButton extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 8),
-              Text(
-                env.label,
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  color: isActive ? Colors.white : color,
+              Flexible(
+                child: Text(
+                  env.label,
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: isActive ? Colors.white : color,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                  maxLines: 1,
                 ),
               ),
               if (isLocked) ...[
