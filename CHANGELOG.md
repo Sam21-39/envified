@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.3.1] - 2026-06-04
+
+### Fixed
+
+- **Overlay panel safe-area positioning**: Removed incorrectly placed `SafeArea` from inside the `Positioned` panel widget, which was adding double insets and displacing content. FAB and panel `bottom` offsets now correctly account for the device's safe-area bottom inset, so neither is clipped by the home indicator on modern iOS/Android devices.
+- **Panel height calculation**: `maxHeight` now subtracts both `safeTop` and `safeBottom`, preventing the panel from overflowing the screen on notched devices.
+- **Panel closes on keyboard focus (iOS)**: `AppLifecycleState.inactive` was incorrectly included in the auto-lock trigger, causing the panel to close whenever the keyboard appeared. Auto-lock now fires only on `paused` / `hidden` (true backgrounding), matching the documented behaviour.
+- **PIN dialog overflow on narrow screens**: The gate dialog container used a hard `width: 340`, which overflowed on screens narrower than ~356 px. It now uses `constraints: BoxConstraints(maxWidth: 340)` with 16 px horizontal gutters.
+- **PIN field cells overflow with long PINs**: Fixed PIN digit boxes used a fixed `width: 42`. For PINs longer than 6 digits the row overflowed. Cells now use `LayoutBuilder` to compute a fluid width clamped between 32–52 px, fitting any PIN length on any screen width.
+- **URL history chips overflow**: Long URLs in the recent-overrides chip list had no width cap, causing horizontal overflow. Each chip is now capped at 200 px with `TextOverflow.ellipsis`.
+- **Configuration detail row overflow**: `_buildConfigDetailRow` used two unconstrained `Text` widgets in a `spaceBetween` row. The label is now `Expanded` and the value uses `Flexible` with `overflow: TextOverflow.ellipsis`, preventing the "Production Envs" row from overflowing when multiple environments are listed.
+
 ## [3.3.0] - 2026-05-18
 
 ### Added
