@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.3.2] - 2026-06-04
+
+### Fixed
+
+- **Confirm-switch dialog header overflow**: The "Switch to \<env\>?" title `Text` in the production-switch confirmation was unconstrained inside its `Row`, causing overflow with longer environment labels. It is now wrapped in `Expanded` with `TextOverflow.ellipsis`.
+- **Reset-confirm dialog header overflow**: The "Reset Everything?" title `Text` had the same unconstrained-`Row` issue. Fixed with `Expanded` + `TextOverflow.ellipsis`; the `Row` is now fully `const`.
+- **Environment switcher button label overflow**: `_EnvButton`'s label `Text` inside `Row(mainAxisSize: MainAxisSize.min)` could overflow the button bounds when an environment label was wide relative to the available panel width. The label is now wrapped in `Flexible` with `TextOverflow.ellipsis`.
+- **Confirm-switch and reset-confirm button rows**: Changed action-button rows from `Row(mainAxisAlignment: end)` to `Wrap(alignment: end)` so buttons stack vertically on very narrow panels instead of overflowing horizontally.
+- **Confirm-switch and reset-confirm action buttons**: Replaced `FilledButton` with `TextButton` (red foreground) for a lighter, consistent style that avoids the filled-button minimum-size constraints contributing to row overflow.
+
 ## [3.3.1] - 2026-06-04
 
 ### Fixed
