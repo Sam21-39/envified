@@ -99,3 +99,51 @@ class EnvifiedMissingFileException implements Exception {
   @override
   String toString() => 'EnvifiedMissingFileException: $message';
 }
+
+/// Exception thrown when the native platform layer returns an error.
+///
+/// Wraps a [PlatformException] from the `in.appamania.envified/channel`
+/// method channel into a typed Dart exception.
+class EnvifiedNativeException implements Exception {
+  /// The platform error code, e.g. `ENVIFIED_KEY_NOT_FOUND`.
+  final String code;
+
+  /// Human-readable description of the error.
+  final String message;
+
+  const EnvifiedNativeException({required this.code, required this.message});
+
+  @override
+  String toString() => 'EnvifiedNativeException[$code]: $message';
+}
+
+/// Exception thrown when an environment switch fails mid-lifecycle and is
+/// rolled back.
+///
+/// [failedAdapter] identifies which service adapter caused the failure.
+class EnvifiedSwitchException implements Exception {
+  /// The name of the adapter that threw during [reinitialize].
+  final String failedAdapter;
+
+  /// The underlying error.
+  final Object cause;
+
+  const EnvifiedSwitchException({
+    required this.failedAdapter,
+    required this.cause,
+  });
+
+  @override
+  String toString() =>
+      'EnvifiedSwitchException: adapter "$failedAdapter" failed — $cause';
+}
+
+/// Exception thrown when key rotation fails or produces an inconsistent state.
+class EnvifiedKeyRotationException implements Exception {
+  final String message;
+
+  const EnvifiedKeyRotationException(this.message);
+
+  @override
+  String toString() => 'EnvifiedKeyRotationException: $message';
+}

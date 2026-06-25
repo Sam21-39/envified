@@ -5,6 +5,41 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.0.0-alpha.1] - 2026-06-25
+
+### Breaking Changes
+
+- Converted from pure-Dart package to a **Flutter plugin** — Android and iOS native code is now required; this is not a pure-Dart package anymore.
+- Removed all three runtime Dart dependencies: `crypto`, `flutter_secure_storage`, `sensors_plus`.
+- `EnvFileParser` and `SecretsGenerator` deleted — replaced by the `envified` CLI tool (`tool/envified_cli/`).
+- `bin/envified.dart` removed — use `dart run tool/envified_cli/bin/envified.dart <command>` or `dart pub global activate envified`.
+- Asset-bundle `.env.*` files are **no longer read at runtime**; secrets are encrypted at build time and stored in the native Keystore/Keychain.
+- `EnvTrigger.shake()` default shake detector removed (`sensors_plus` gone); supply a custom `EnvTriggerDetector` or use the long-press fallback.
+
+### Added
+
+- **Android Keystore** — AES-256-GCM keys generated in StrongBox (API 28+) with silent TEE fallback; `minSdkVersion 23`.
+- **iOS CryptoKit + Keychain** — `AES.GCM.seal/open` with `SymmetricKey` stored in Keychain (`kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly`); `ios.deployment_target 14.0`.
+- **Method channel** `in.appamania.envified/channel` with 16 methods covering crypto, secret storage, config persistence, audit logging, key rotation, and device security level query.
+- `EnvifiedChannel` — typed async Dart wrapper; re-throws `PlatformException` as `EnvifiedNativeException`.
+- `SecretHandle` — opaque Tier-2 reference; `resolve(channel, action)` decrypts transiently and never stores plaintext in a Dart field.
+- `EnvTier` enum — `runtime`, `secret`, `remote`.
+- `TierResolver` — routes keys to tiers via `envified.yaml` `key_types` map and sensitive-pattern heuristics.
+- `AppConfig` facade — `init()`, `get()`, `getBool()`, `getInt()`, `getDouble()`, `getUri()`, `getList()`, `configNotifier`, `baseUrl`.
+- `EnvifiedServiceAdapter` abstract interface — `initialize`, `reinitialize`, `dispose`.
+- **8-step `switchTo()` lifecycle** in `EnvConfigService` with automatic adapter rollback on failure; throws `EnvifiedSwitchException` with the failing adapter name.
+- `EnvStorage` rewritten to delegate all persistence to the native layer via `EnvifiedChannel`.
+- New exception types: `EnvifiedNativeException`, `EnvifiedSwitchException`, `EnvifiedKeyRotationException`.
+- **CLI tool** at `tool/envified_cli/`:
+  - `envified setup` — scaffolds `envified.yaml` and `.gitignore` rules.
+  - `envified scan` — dry-run discovery of `.env.*` files (never touches Flutter asset bundle).
+  - `envified build --env=<name>` / `--all` — encrypts secrets with AES-256-GCM (HKDF-SHA256 per-env key derivation from `ENVIFIED_MASTER_KEY`), writes `lib/src/generated/envified_registry.<env>.g.dart` and `.envified.lock`.
+  - `envified check` — validates `.envified.lock` hashes against current files; CI gate.
+- `ENVIFIED_MASTER_KEY` resolution order: env var → `~/.envified_key` → interactive prompt.
+- `.envified.lock` — commit this file; contains SHA-256 per environment source file for drift detection.
+- `EnvifiedTestHarness` in `test/helpers/` — in-memory channel mock for unit tests using `TestDefaultBinaryMessengerBinding`.
+- Zero `build_runner` dependency at any stage.
+
 ## [3.3.2] - 2026-06-04
 
 ### Fixed

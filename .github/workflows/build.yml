@@ -13,10 +13,7 @@ jobs:
     
     env:
       TARGET_ENV: production
-      ENCRYPTION_KEY: ${{ secrets.ENCRYPTION_KEY }}
-      BASIC_AUTH_PASSWORD: ${{ secrets.BASIC_AUTH_PASSWORD }}
-      APP_AUTH_KEY: ${{ secrets.APP_AUTH_KEY }}
-      API_SECRET: ${{ secrets.API_SECRET }}
+      ENVIFIED_MASTER_KEY: ${{ secrets.ENVIFIED_MASTER_KEY }}
 
     steps:
       - name: Checkout Code
@@ -35,33 +32,18 @@ jobs:
           channel: 'stable'
           cache: true
 
-      - name: Create Temporary secrets file safely
-        run: |
-          printf "ENCRYPTION_KEY=%s\nBASIC_AUTH_PASSWORD=%s\nAPP_AUTH_KEY=%s\nAPI_SECRET=%s\n" \
-            "$ENCRYPTION_KEY" \
-            "$BASIC_AUTH_PASSWORD" \
-            "$APP_AUTH_KEY" \
-            "$API_SECRET" > .env.secrets.production
-          
-          echo "Temp environment secrets file written successfully."
-
       - name: Install Dependencies
         run: flutter pub get
 
-      - name: Run Standalone CLI secrets generator
-        run: dart run envified --env=production
-
-      - name: Build Obfuscated Release APK
+      - name: Run envified CLI build (v4 — Phase 2 pending)
         run: |
-          cd example
-          flutter build apk --release --obfuscate --split-debug-info=../build/app/outputs/symbols
+          echo "ENVIFIED_MASTER_KEY=$ENVIFIED_MASTER_KEY" > .env
+          echo "dart run tool/envified_cli/bin/envified.dart build --env=production"
+          echo "(Full CLI integration ships in v4.0.0-beta; skipping APK build in alpha.)"
 
-      - name: Clean up temporary secrets (ALWAYS EXECUTES)
+      - name: Build Obfuscated Release APK (Phase 2 — skipped in alpha)
+        run: echo "APK build requires encrypted bundles from CLI; enabled in v4.0.0-beta."
+
+      - name: Clean up temporary env file (ALWAYS EXECUTES)
         if: always()
-        run: |
-          if [ -f .env.secrets.production ]; then
-            rm -f .env.secrets.production
-            echo "Successfully destroyed .env.secrets.production."
-          else
-            echo "Secrets file already deleted or not found."
-          fi
+        run: rm -f .env

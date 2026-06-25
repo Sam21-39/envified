@@ -1,0 +1,13 @@
+# envified .pubignore
+# The CLI tool is a separate Dart package; it is not part of the published Flutter plugin.
+tool/
+
+# Build artifacts
+build/
+
+# Flutter asset placeholder — not shipped with the plugin
+assets/
+
+# Example screenshots / large binaries (the example/ directory itself is kept)
+example/assets/gifs/
+example/assets/images/

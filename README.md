@@ -1,4 +1,4 @@
-# 🌿 envified
+# envified
 
 [![pub package](https://img.shields.io/pub/v/envified.svg)](https://pub.dev/packages/envified)
 [![pub points](https://img.shields.io/pub/points/envified?color=blue)](https://pub.dev/packages/envified/score)
@@ -6,218 +6,139 @@
 [![Dart CI](https://github.com/Sam21-39/envified/actions/workflows/ci.yml/badge.svg)](https://github.com/Sam21-39/envified/actions/workflows/ci.yml)
 [![Sponsor](https://img.shields.io/badge/Sponsor-Appamania-EA4AAA?style=flat&logo=buy-me-a-coffee&logoColor=white)](https://paywithchai.in/appamania)
 
-> **Stop rebuilding. Start switching.** ⚡  
-> Runtime environment magic for Flutter apps. No hot reload needed.
+> **Stop rebuilding. Start switching.**
+> Runtime environment switching for Flutter — hardware-backed secrets, zero asset-bundle exposure.
 
 ---
 
 ## The Problem
 
-You're a Flutter developer. Every time you need to test a different API endpoint—local dev server, staging, production—you rebuild the app. With `--dart-define` flags. Or `.env` files baked into the binary. Or multiple entry points. It's tedious. It's error-prone. It breaks flow.
+You're a Flutter developer. Every time you need to test a different API endpoint you rebuild the app. Secrets baked into asset bundles are trivially extractable with `unzip`. XOR-obfuscated Dart strings reconstruct on the heap. Neither approach is secure.
 
-**What if you could swap environments in 0.2 seconds? No rebuild. No compilation. Just tap, tap, done.**
-
-That's `envified`.
+**envified v4 fixes the root cause: secrets never leave the native Keystore/Keychain.**
 
 ---
 
 ## What is envified?
 
-`envified` is a **production-grade environment manager** for Flutter that lives entirely at runtime.
+`envified` is a **production-grade Flutter plugin** for runtime environment management with native-layer security.
 
-- 🚀 **Swap dev ↔ prod in 200ms** — no rebuild, no hot reload
-- 🔄 **Smart Restart Detection** — know when dependencies need re-initialization
-- 🔒 **Prod lock by default** — prevent accidental data disasters
-- 🔐 **Sensitive Data Protection** — automatic blurring of API keys and tokens
-- 🧪 **Override any URL** — test against local tunnels, PR branches, anywhere
-- 🛡️ **Premium PIN gate** — secure the debug panel with modern UI
-- 📋 **Full audit trail** — visual timeline of every switch and URL change
-- ⚙️ **Zero production overhead** — stripped out entirely in release builds
-- 🎨 **Enterprise UX** — premium card-based design with dark mode support
-
-It's not just a config switcher. It's **enterprise-grade security** meets **developer quality of life**.
-
-> [!NOTE]  
-> **Security Note:** While `envified` encrypts the active configuration state and overrides on the device (via Keychain/Keystore), the base `.env` files stored in your Flutter assets remain plaintext. Never store high-stakes production secrets directly in `.env` files; they should be fetched at runtime from a secure vault or used for non-sensitive configuration only.
+- **AES-256-GCM** — secrets encrypted at build time, decrypted on-device only
+- **Android Keystore** — StrongBox (API 28+) with silent TEE fallback
+- **iOS CryptoKit + Keychain** — `SymmetricKey` stored behind `kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly`
+- **Zero asset-bundle exposure** — no `.env.*` files in your APK/IPA
+- **Runtime env switching** — swap dev/staging/prod in ~200ms, no rebuild
+- **Adapter-aware lifecycle** — 8-step `switchTo()` with automatic rollback
+- **CLI tooling** — `envified setup`, `build`, `scan`, `check`; no `build_runner`
+- **Prod lock by default** — prevent accidental data disasters
+- **Full audit trail** — visual timeline of every switch
 
 ---
 
-## 🚀 What's New in v3.3.0
+## What's New in v4.0.0-alpha
 
-Building on the foundation of v3.2.0, we've introduced a **standalone 3-Tier Security CLI engine** with **zero build_runner and zero third-party compilation dependencies**:
+| What changed | Details |
+|---|---|
+| Pure-Dart → Flutter plugin | Native Android (Kotlin) + iOS (Swift) required |
+| XOR obfuscation → AES-256-GCM | Hardware-backed keys via Keystore / Keychain |
+| Asset bundle → zero-exposure | No `.env.*` files shipped in the binary |
+| build_runner → CLI tool | `dart run tool/envified_cli/bin/envified.dart build --env=dev` |
+| `flutter_secure_storage` → method channel | `in.appamania.envified/channel` (16 native methods) |
+| New: `SecretHandle` | Tier-2 opaque reference — plaintext never stored in Dart heap |
+| New: `EnvTier` | `runtime` / `secret` / `remote` routing |
+| New: `AppConfig` facade | `AppConfig.get()`, `getBool()`, `getInt()`, `configNotifier` |
 
-| Feature                               | What it does                                                                                                                                     |
-| ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
-| 🔐 **Package-Independent Obfuscator** | Own the full build-time compilation pipeline without upstream package dependencies (like `envied`).                                              |
-| ⚡ **Zero build_runner Dependency**    | Compile your secrets in < 50ms using our direct standalone CLI script. No extra packages or heavy build runner gates needed.                      |
-| 🎲 **Random XOR Per Secret**          | Every credential is XOR-encrypted using a completely unique, secure random key list generated at compile time.                                   |
-| 📂 **Flexible Multi-Path Discovery**  | Auto-discover `.env.*` assets from custom directory lists and direct file paths (`envAssetPaths`), fully backwards-compatible under unit tests.  |
-| 🔄 **Cohesive Unmasking UX**          | Inline Confirmation Gate unmasks both key label (e.g., `API_KEY`) and secret values synchronously, reverting back in perfect unison.             |
-| 🛑 **Build-Time Leak Checker**        | Standalone CLI tool flags a fatal error if keys overlap or contain sensitive keywords (e.g., `API_SECRET`) inside non-sensitive assets.           |
-| 🏢 **Unified Facade Accessor**        | One simple interface (`AppConfig.get(...)` and static getters) resolving dynamic assets first, falling back to secure build-time secrets.        |
+See [CHANGELOG.md](./CHANGELOG.md) for the full list and breaking changes.
 
 ---
 
-## 🔒 Secure Hybrid Secrets (Zero-Dependency CLI)
+## Security Architecture
 
-`envified` now comes with a **lightweight, standalone CLI secrets generator** that extracts secrets from a gitignored `.env.secrets` file, compiles them into a highly secure, obfuscated Dart class, and exposes them through a single unified API facade (`AppConfig`).
-
-This means **zero dependency** on third-party obfuscation packages and **zero dependency on build_runner**! You own the entire pipeline.
-
-### Obfuscation Mechanism
-
-Each individual secret is compiled using standard Dart tooling. At compilation time, the standalone CLI:
-
-1. Generates a secure, random XOR key array of matching byte length via `math.Random.secure()`.
-2. Encrypts the raw secret bytes with the generated key.
-3. Emits both byte lists into a generated, private `secrets.g.dart` file.
-4. Reconstructs the string **transiently in memory** on demand via `String.fromCharCodes` upon retrieval—leaving **zero plain-text representation** inside compiled assembly binaries.
-
-### How to Set Up the Secrets Generator
-
-#### 1. Setup Local Secrets File
-
-Create a `.env.secrets` file in the root of your project (already registered in your `.gitignore` to keep it safe from commits):
-
-```env
-# .env.secrets
-ENCRYPTION_KEY=my_local_development_aes_key_256
-BASIC_AUTH_PASSWORD=local_development_basic_pass_123
-APP_AUTH_KEY=local_development_auth_signature_key
-API_SECRET=local_development_api_secret_credentials
 ```
-
-#### 2. Run the Standalone CLI Secrets Generator
-
-No complex builder classes, no `build.yaml` triggers. Simply execute the built-in compiler command directly using the Dart SDK:
-
-```bash
-dart run envified
-```
-
-##### Optional CLI Arguments:
-- `--env=<name>`: Target environment (e.g. `dart run envified --env=prod` matches `.env.secrets.prod`).
-- `--secrets-dir=<path>`: Custom location for `.env.secrets` (defaults to `.`).
-- `--quiet`: Mute informative success console logs.
-
-#### 3. Unified Facade Access (`AppConfig`)
-
-Bootstrap the hybrid architecture in your `main.dart`:
-
-```dart
-import 'package:my_app/core/config/app_config.dart';
-
-void main() async {
-  WidgetsFlutterBinding.ensureInitialized();
-
-  // Load runtime assets and validate build-time secrets
-  await AppConfig.init(Env.dev);
-
-  runApp(const MyApp());
-}
-```
-
-Now retrieve any value:
-
-```dart
-// Check runtime configurations first, and fall back to secure build-time secrets
-final baseUrl = AppConfig.get('BASE_URL'); // Resolves from dev asset
-final apiSecret = AppConfig.get('API_SECRET'); // Resolves from obfuscated secret
-final encryptionKey = AppConfig.encryptionKey; // Convenient typed getter
+.env.dev (never committed)
+        │
+        ▼
+ envified build CLI
+  HKDF-SHA256(ENVIFIED_MASTER_KEY, env) → 32-byte AES key
+  AES-256-GCM encrypt each value
+  write lib/src/generated/envified_registry.dev.g.dart (ciphertext + iv, base64)
+  write .envified.lock (SHA-256 per source file)
+        │
+        ▼  (at runtime on device)
+ EnvifiedChannel.initialize(env: 'dev')
+  Android: generateKey() → Android Keystore (StrongBox / TEE)
+  iOS:     generateKey() → CryptoKit SymmetricKey in Keychain
+        │
+        ▼
+ EnvConfigService.init()
+  reads generated registry
+  decrypts via channel → native AES-GCM
+  Tier-1 (runtime) values available as Dart Strings
+  Tier-2 (secret) values wrapped in SecretHandle — never a String
 ```
 
 ---
 
-## 📦 Features
+## Quick Start
 
-| Feature              | What It Does                              | Why You Care                                 |
-| -------------------- | ----------------------------------------- | -------------------------------------------- |
-| **Smart Restart**    | Detects when env changes require restart  | Prevents connection/state caching bugs       |
-| **Data Protection**  | Blurs sensitive keys (API_KEY, etc.)      | Security in screenshots & screen shares      |
-| **Auto-Discovery**   | Scans assets for `.env.*` files           | Zero config; just add a file and it works    |
-| **Alias Support**    | Handles `dev`, `stag`, `production`, etc. | Follows industry standard naming conventions |
-| **Tamper Detection** | SHA-256 hashes `.env*` files              | Catch rogue config changes on rooted devices |
-| **Access Gate**      | Modern PIN dialog before opening panel    | QA devices don't leak sensitive switches     |
-| **URL Validation**   | Live feedback on custom API URLs          | Prevent typos and invalid endpoint formats   |
-| **Audit Log**        | Vertical timeline of every switch         | "Who changed prod at 3pm?"                   |
-| **Status Badge**     | Persistent `[DEV]` indicator in your app  | Never forget what env you're testing         |
-| **Gesture Triggers** | Tap N times, shake, or swipe edge to open | Access the panel your way                    |
-
----
-
-## Quick Start (3 Steps)
-
-### 1️⃣ Install
+### 1. Add the plugin
 
 ```yaml
+# pubspec.yaml
 dependencies:
-  envified: ^3.3.0
+  envified: ^4.0.0-alpha.1
 ```
-
-Then run:
 
 ```bash
 flutter pub get
 ```
 
-No build_runner. No code gen. No magic incantations. Just a package that installs like a normal package. Revolutionary, we know.
+### 2. Run one-time setup
 
----
-
-### 2. Create Your Environment Files
-
-Drop these into `assets/env/`:
-
-```text
-assets/
-└── env/
-    ├── .env.dev
-    ├── .env.staging   ← optional, but you probably want it
-    └── .env.prod
+```bash
+dart run tool/envified_cli/bin/envified.dart setup
 ```
 
-Each file is a plain `.env` file. Nothing exotic:
+This creates `envified.yaml` and appends `.gitignore` rules for secret files.
+
+### 3. Create your environment files
 
 ```env
-# .env.dev
-BASE_URL=https://dev.api.myapp.com
-API_KEY=sk_test_51Mz...
-
-# .env.prod
-BASE_URL=https://api.myapp.com
-API_KEY=sk_live_92A...
+# .env.dev  (gitignored — never commit)
+BASE_URL=https://dev.api.example.com
+API_KEY=sk_test_abc123
 ```
 
-Register in `pubspec.yaml`:
+### 4. Build encrypted registry
 
-```yaml
-flutter:
-  assets:
-    - assets/env/
+```bash
+# Set your master key once (CI: set ENVIFIED_MASTER_KEY env var)
+export ENVIFIED_MASTER_KEY=your-256-bit-hex-key
+
+dart run tool/envified_cli/bin/envified.dart build --env=dev
 ```
 
-### 3️⃣ Initialize
+Outputs `lib/src/generated/envified_registry.dev.g.dart` (ciphertext only, no plaintext).
+
+### 5. Initialize in `main.dart`
 
 ```dart
+import 'package:envified/envified.dart';
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  await EnvConfigService.instance.init(
+  await AppConfig.init(
+    envs: [Env.dev, Env.staging, Env.prod],
     defaultEnv: Env.dev,
-    // Optional: Customize path list to scan for environment configurations
-    envAssetPaths: const ['assets/env/'], 
+    allowProdSwitch: false,
   );
-
-  // Listen for restart needed (registered once at startup)
-  EnvConfigService.instance.restartNeeded.addListener(() {
-    debugPrint('Dependencies must re-initialize due to environment changes');
-  });
 
   runApp(const MyApp());
 }
 ```
 
-Wrap your app with the overlay:
+### 6. Wrap your app with the debug overlay
 
 ```dart
 MaterialApp(
@@ -225,154 +146,180 @@ MaterialApp(
     service: EnvConfigService.instance,
     enabled: kDebugMode,
     gate: EnvGate(pin: '1234'),
-    onRestart: () {
-      // Trigger a hard restart (e.g. using phoenix or SystemNavigator)
-      SystemNavigator.pop();
-    },
+    onRestart: () => SystemNavigator.pop(),
     child: child!,
   ),
   home: const MyHomePage(),
 )
 ```
 
----
-
-## 🔒 Production Locking — The Guardian Angel
-
-Two scenarios where production locking saves you:
-
-**Scenario A — Release builds**  
-\*\*Set `allowProdSwitch: false` and pass `enabled: false` to `EnvifiedOverlay`. The panel is gone. The service ignores switch attempts. Your prod build is clean and your users have no idea any of this exists.
-
-**Scenario B — The brave "always prod" setup**  
-Maybe you want the panel available in staging but default to Prod and lock it there:
+### 7. Read values
 
 ```dart
-await EnvConfigService.instance.init(
+final url    = AppConfig.get('BASE_URL');
+final flag   = AppConfig.getBool('FEATURE_X', fallback: false);
+final timeout = AppConfig.getInt('TIMEOUT', fallback: 30);
+```
+
+---
+
+## CLI Reference
+
+| Command | What it does |
+|---|---|
+| `envified setup` | Create `envified.yaml` + `.gitignore` rules |
+| `envified scan` | Dry-run: discover `.env.*` files without writing anything |
+| `envified build --env=<name>` | Encrypt env file, write registry + `.envified.lock` |
+| `envified build --all` | Encrypt all discovered environments |
+| `envified check` | Validate `.envified.lock` hashes; use as CI gate |
+
+All commands accept `--project-root <path>` to run outside the current directory.
+
+### CI/CD integration
+
+```yaml
+# .github/workflows/build.yml
+- name: Build envified secrets
+  env:
+    ENVIFIED_MASTER_KEY: ${{ secrets.ENVIFIED_MASTER_KEY }}
+  run: dart run tool/envified_cli/bin/envified.dart build --all
+
+- name: Validate lock
+  run: dart run tool/envified_cli/bin/envified.dart check
+```
+
+---
+
+## Tier System
+
+| Tier | Dart representation | Storage |
+|---|---|---|
+| `EnvTier.runtime` | `String` (in memory) | Decrypted at init, freed on switch |
+| `EnvTier.secret` | `SecretHandle` (opaque) | Plaintext never in Dart heap; resolved transiently |
+| `EnvTier.remote` | Fetched at runtime | Custom `WebSecretProvider` (v4.1) |
+
+Configure tier routing in `envified.yaml`:
+
+```yaml
+key_types:
+  API_KEY: secret      # wrapped as SecretHandle
+  BASE_URL: runtime    # plain String
+  WEBHOOK_SECRET: secret
+```
+
+Keys matching `sensitive_key_patterns` (`API_KEY`, `SECRET`, `TOKEN`, etc.) default to `secret` tier automatically.
+
+---
+
+## Adapter-Aware Switching
+
+Register service adapters before `init()` to have them re-pointed when the environment changes:
+
+```dart
+EnvConfigService.instance
+  ..registerAdapter(FirebaseAdapter())
+  ..registerAdapter(SupabaseAdapter());
+
+await AppConfig.init(defaultEnv: Env.dev, ...);
+```
+
+`switchTo()` runs an 8-step lifecycle: validate → hooks → native init → adapter reinitialize → (rollback on failure) → update state → persist → hooks. If any adapter fails, the switch is atomically rolled back and `EnvifiedSwitchException` is thrown with the failing adapter name.
+
+---
+
+## Migration from v3
+
+| v3 | v4 |
+|---|---|
+| `assets/env/.env.dev` (in asset bundle) | `.env.dev` (gitignored, CLI-encrypted) |
+| `dart run envified` (XOR obfuscator) | `dart run tool/envified_cli/bin/envified.dart build --env=dev` |
+| `flutter_secure_storage` (runtime dep) | Native Keystore/Keychain via method channel |
+| `EnvConfigService.instance.init(envAssetPaths: ...)` | `AppConfig.init(envs: ..., defaultEnv: ...)` |
+| `svc.get('KEY')` | `AppConfig.get('KEY')` (same signature) |
+| `EnvifiedOverlay(...)` | Same — no change required |
+
+**Step-by-step migration:**
+
+1. Remove `assets/env/` from `pubspec.yaml flutter.assets`.
+2. Move your `.env.*` files out of `assets/` (they no longer belong there).
+3. Add them to `.gitignore`.
+4. Run `envified setup` then `envified build --all`.
+5. Replace `EnvConfigService.instance.init(...)` with `AppConfig.init(...)` in `main.dart`.
+6. Run `fvm flutter pub get && fvm flutter build apk` — verify no `.env` files in the APK.
+
+---
+
+## Production Locking
+
+```dart
+await AppConfig.init(
   defaultEnv: Env.prod,
-  allowProdSwitch: false, // once you're in Prod, you stay in Prod
+  allowProdSwitch: false,  // panel greyed out in prod; switch throws EnvifiedLockException
 );
 ```
 
-Now, if anyone (your QA lead, your over-curious intern, your past self at 11 PM) tries to switch away, they get a loud `EnvifiedLockException` and a UI that has already greyed out the controls. The audit log records the attempt. The blame is documented.
+---
+
+## Reading Values
 
 ```dart
-// Catching the exception if you need to handle it gracefully:
-try {
-  await EnvConfigService.instance.switchTo(Env.dev);
-} on EnvifiedLockException catch (e) {
-  showDialog(
-    context: context,
-    builder: (_) => AlertDialog(
-      title: const Text('Nice try.'),
-      content: Text(e.message),
-    ),
-  );
-}
+AppConfig.get('API_URL')                          // String?
+AppConfig.getBool('FEATURE_FLAG', fallback: false) // bool
+AppConfig.getInt('TIMEOUT', fallback: 30)          // int
+AppConfig.getDouble('RATE', fallback: 1.0)         // double
+AppConfig.getUri('BASE_URL')                       // Uri?
+AppConfig.baseUrl                                  // shorthand for BASE_URL
+AppConfig.configNotifier                           // ValueNotifier<EnvConfig>
 ```
 
 ---
 
-## 🔍 Reading Values
+## Testing
 
-Once initialized, getting a value is a single line:
-
-```dart
-final svc = EnvConfigService.instance;
-
-// String (use .get)
-final apiUrl = svc.get('API_URL');
-
-// Boolean (use .getBool)
-final debugMode = svc.getBool('DEBUG', fallback: false);
-
-// Integer (use .getInt)
-final timeout = svc.getInt('API_TIMEOUT', fallback: 30);
-```
-
----
-
-## Troubleshooting
-
-### Q: "No .env.\* files discovered"
-
-**Cause:** Asset files not registered in pubspec.yaml
-
-**Fix:**
-
-```yaml
-flutter:
-  assets:
-    - assets/env/
-```
-
-Run: `flutter clean && flutter pub get`
-
-### Q: Environment switches but API still hits old endpoint
-
-**Cause:** HTTP client cached the URL at startup
-
-**Fix:** Tap "Restart now" in the debug panel to re-initialize or listen to `restartNeeded`.
-
----
-
-## Integration with HTTP Clients
-
-### Dio
+Use `EnvifiedTestHarness` in `test/helpers/` to mock the native channel:
 
 ```dart
-import 'package:dio/dio.dart';
-import 'package:envified/envified.dart';
+import 'package:flutter_test/flutter_test.dart';
+import '../helpers/envified_test_harness.dart';
 
-final dio = Dio();
+void main() {
+  late EnvifiedTestHarness harness;
 
-Future<void> setupDio() async {
-  await EnvConfigService.instance.init();
+  setUp(() {
+    TestWidgetsFlutterBinding.ensureInitialized();
+    harness = EnvifiedTestHarness()..register();
+  });
 
-  // Set initial base URL
-  dio.options.baseUrl = EnvConfigService.instance.current.value.baseUrl;
+  tearDown(() => harness.reset());
 
-  // Listen for environment changes
-  EnvConfigService.instance.current.addListener(() {
-    dio.options.baseUrl = EnvConfigService.instance.current.value.baseUrl;
+  test('reads stored secret', () async {
+    // harness provides an in-memory XOR cipher — no native code needed
   });
 }
 ```
 
 ---
 
-## API Stability & Versioning
+## Support & Sponsorship
 
-### Semantic Versioning
+`envified` is free and open source, built with care by **Sumit Pal** ([@appamania](https://appamania.in)).
 
-This package follows [Semantic Versioning](https://semver.org/):
+| Tier | Link | What it buys |
+|---|---|---|
+| A sip of chai | [₹20](https://paywithchai.in/appamania) | You liked the package |
+| A full cup | [₹50](https://paywithchai.in/appamania) | It saved you real time |
+| Keep the lights on | [₹100](https://paywithchai.in/appamania) | You ship with it in prod |
 
-- **MAJOR** (1.0.0) — Breaking changes to public API
-- **MINOR** (0.1.0) — New features, backwards compatible
-- **PATCH** (0.0.1) — Bug fixes, backwards compatible
+[![Buy me a Chai](https://img.shields.io/badge/Buy%20me%20a%20Chai-FF5722?style=for-the-badge&logo=upi&logoColor=white)](https://paywithchai.in/appamania)
 
----
-
-## 💚 Support & Sponsorship
-
-`envified` is free and open source, built with ☕ by **Sumit Pal** ([@appamania](https://appamania.in)).
-
-| Tier                  | Link                                     | What it buys             |
-| --------------------- | ---------------------------------------- | ------------------------ |
-| ☕ A sip of chai      | [₹20](https://paywithchai.in/appamania)  | You liked the package    |
-| 🍵 A full cup         | [₹50](https://paywithchai.in/appamania)  | It saved you real time   |
-| 🚀 Keep the lights on | [₹100](https://paywithchai.in/appamania) | You ship with it in prod |
-
-[![Buy me a Chai](https://img.shields.io/badge/☕%20Buy%20me%20a%20Chai-FF5722?style=for-the-badge&logo=upi&logoColor=white)](https://paywithchai.in/appamania)
-
-## 🤝 Contributing
+## Contributing
 
 We welcome all contributions! Please read [CONTRIBUTING.md](./CONTRIBUTING.md) before opening a PR.
 
-- 🐛 [Report a Bug](https://github.com/Sam21-39/envified/issues/new?template=bug_report.md)
-- 💡 [Request a Feature](https://github.com/Sam21-39/envified/issues/new?template=feature_request.md)
-- 🔀 [Open a Pull Request](https://github.com/Sam21-39/envified/pulls)
+- [Report a Bug](https://github.com/Sam21-39/envified/issues/new?template=bug_report.md)
+- [Request a Feature](https://github.com/Sam21-39/envified/issues/new?template=feature_request.md)
+- [Open a Pull Request](https://github.com/Sam21-39/envified/pulls)
 
-## 📄 License
+## License
 
 MIT © [Appamania](https://appamania.in)

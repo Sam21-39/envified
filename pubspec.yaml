@@ -1,8 +1,9 @@
 name: envified
 description: >-
-  Runtime environment switching for Flutter. Load .env files,
-  switch dev/staging/prod at runtime — no rebuild required.
-version: 3.3.2
+  Production-grade Flutter environment manager with native AES-256-GCM security.
+  Android Keystore / iOS Keychain backed secrets, zero asset-bundle exposure,
+  runtime environment switching with adapter-aware lifecycle and CLI tooling.
+version: 4.0.0-alpha.1
 repository: https://github.com/Sam21-39/envified
 issue_tracker: https://github.com/Sam21-39/envified/issues
 documentation: https://pub.dev/documentation/envified/latest/
@@ -15,12 +16,18 @@ platforms:
   android:
   ios:
 
+flutter:
+  plugin:
+    platforms:
+      android:
+        package: in.appamania.envified
+        pluginClass: EnvifiedPlugin
+      ios:
+        pluginClass: EnvifiedPlugin
+
 dependencies:
   flutter:
     sdk: flutter
-  crypto: ">=3.0.0 <4.0.0"
-  flutter_secure_storage: ">=9.0.0 <11.0.0"
-  sensors_plus: ">=5.0.0 <8.0.0"
 
 dev_dependencies:
   flutter_test:
@@ -34,6 +41,6 @@ funding:
 topics:
   - environment
   - configuration
-  - dotenv
+  - security
+  - plugin
   - debugging
-  - sponsorship
