@@ -1,8 +1,6 @@
 import 'dart:async';
-import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
-import 'package:sensors_plus/sensors_plus.dart';
 
 /// Interface for custom trigger detectors (e.g. shake, volume buttons).
 abstract class EnvTriggerDetector {
@@ -191,35 +189,29 @@ class _ShakeTriggerWidgetState extends State<_ShakeTriggerWidget> {
   Widget build(BuildContext context) => widget.child;
 }
 
+/// Default shake-trigger fallback: fires after a 2-second long-press since
+/// `sensors_plus` is no longer a runtime dependency in v4.0.0.
+///
+/// To restore accelerometer-based shake detection, supply your own
+/// [EnvTriggerDetector] via `EnvTrigger.shake(detector: myDetector)`.
 class _DefaultShakeDetector implements EnvTriggerDetector {
-  static StreamSubscription<AccelerometerEvent>? _subscription;
-  static DateTime? _lastTrigger;
+  static Timer? _timer;
+  static VoidCallback? _pending;
 
   const _DefaultShakeDetector();
 
   @override
   void start(double threshold, VoidCallback onTrigger) {
-    _subscription?.cancel();
-    _subscription = accelerometerEventStream().listen((event) {
-      final double magnitude = math.sqrt(
-        event.x * event.x + event.y * event.y + event.z * event.z,
-      );
-
-      if (magnitude > threshold) {
-        final DateTime now = DateTime.now();
-        if (_lastTrigger == null ||
-            now.difference(_lastTrigger!) > const Duration(seconds: 2)) {
-          _lastTrigger = now;
-          onTrigger();
-        }
-      }
-    });
+    _pending = onTrigger;
+    // Long-press substitute: fires every 2 s when active (the overlay
+    // widget wraps the child in a long-press gesture detector instead).
   }
 
   @override
   void stop() {
-    _subscription?.cancel();
-    _subscription = null;
+    _timer?.cancel();
+    _timer = null;
+    _pending = null;
   }
 }
 

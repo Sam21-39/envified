@@ -1,0 +1,18 @@
+name: envified_cli
+description: CLI tooling for envified — discovery, AES-256-GCM encryption, build injection.
+version: 4.0.0-alpha.1
+publish_to: none
+
+environment:
+  sdk: ">=3.0.0 <4.0.0"
+
+dependencies:
+  args: ">=2.4.0 <3.0.0"
+  path: ">=1.8.0 <2.0.0"
+  yaml: ">=3.1.0 <4.0.0"
+  crypto: ">=3.0.0 <4.0.0"
+  pointycastle: ">=3.7.0 <4.0.0"
+
+dev_dependencies:
+  test: ">=1.24.0 <2.0.0"
+  lints: ">=3.0.0 <4.0.0"

@@ -1,7 +1,9 @@
-/// envified — Runtime environment switching for Flutter.
+/// envified — Runtime environment switching for Flutter with native AES-256-GCM security.
 ///
-/// Load `.env` files, switch dev/staging/prod/custom at runtime, override
-/// base URLs, and lock production config — no rebuild required.
+/// v4.0.0: `.env.*` files are never bundled as Flutter assets. All config is
+/// pre-compiled by the `envified` CLI into a hardware-backed native registry
+/// (Android Keystore / iOS Keychain). Secrets never materialise as Dart heap
+/// strings.
 ///
 /// ## Quick start
 ///
@@ -11,17 +13,9 @@
 /// void main() async {
 ///   WidgetsFlutterBinding.ensureInitialized();
 ///
-///   await EnvConfigService.instance.init(
+///   await AppConfig.init(
 ///     defaultEnv: Env.dev,
-///     persistSelection: true,
 ///     allowProdSwitch: false,
-///     verifyIntegrity: true,
-///     onBeforeSwitch: (from, to) async {
-///       debugPrint('Switching: ${from.name} → ${to.name}');
-///     },
-///     onAfterSwitch: (config) {
-///       debugPrint('Active env: ${config.env.longLabel}');
-///     },
 ///   );
 ///
 ///   runApp(
@@ -29,7 +23,7 @@
 ///       builder: (context, child) => EnvifiedOverlay(
 ///         service: EnvConfigService.instance,
 ///         enabled: kDebugMode,
-///         gate: EnvGate(pin: '1234'),
+///         gate: const EnvGate(pin: '1234'),
 ///         trigger: const EnvTrigger.tap(count: 7),
 ///         child: child ?? const SizedBox.shrink(),
 ///       ),
@@ -40,31 +34,61 @@
 ///
 /// ## Public API
 ///
-/// | Symbol                         | Purpose                                              |
-/// |-------------------------------|------------------------------------------------------|
-/// | [Env]                          | Enum of supported environments                       |
-/// | [EnvConfig]                    | Immutable snapshot of the active configuration       |
-/// | [EnvConfigService]             | Singleton service — init, switch, get, setBaseUrl    |
-/// | [EnvifiedLockException]        | Thrown when the production lock blocks an action     |
-/// | [EnvifiedTamperException]      | Thrown when a .env file hash mismatches baseline     |
-/// | [EnvifiedUrlNotAllowedException] | Thrown when setBaseUrl rejects a non-allowlisted URL|
-/// | [AuditEntry]                   | A single record in the encrypted audit log           |
-/// | [EnvDebugPanel]                | Standalone debug widget for manual placement         |
-/// | [EnvifiedOverlay]              | Floating-button overlay wrapper                      |
-/// | [EnvStatusBadge]               | Persistent env indicator badge with pulse animation  |
-/// | [EnvGate]                      | PIN / biometric access gate for the debug panel      |
-/// | [EnvTrigger]                   | Sealed class defining the gesture to open the panel  |
+/// | Symbol                           | Purpose                                              |
+/// |----------------------------------|------------------------------------------------------|
+/// | [AppConfig]                      | Facade: `init`, `get`, `getBool`, `getInt`, …        |
+/// | [EnvConfigService]               | Singleton service — switch, adapters, lifecycle      |
+/// | [Env]                            | Environment identity (name, isProduction, …)         |
+/// | [EnvConfig]                      | Immutable config snapshot                            |
+/// | [EnvTier]                        | Tier routing: runtime / secret / remote              |
+/// | [SecretHandle]                   | Opaque Tier-2 secret reference (never a Dart String) |
+/// | [TierResolver]                   | Routes keys to tiers from envified.yaml config       |
+/// | [EnvifiedServiceAdapter]         | Interface for Firebase / Supabase / Maps adapters    |
+/// | [EnvifiedLockException]          | Production lock violation                            |
+/// | [EnvifiedTamperException]        | GCM tag / integrity failure                          |
+/// | [EnvifiedUrlNotAllowedException] | URL not in allowlist                                 |
+/// | [EnvifiedSwitchException]        | Adapter failure during switchTo (with rollback)      |
+/// | [EnvifiedNativeException]        | Typed wrapper for PlatformException from channel     |
+/// | [AuditEntry]                     | Single record in the audit log                       |
+/// | [EnvDebugPanel]                  | Standalone debug widget                              |
+/// | [EnvifiedOverlay]                | Floating-button overlay wrapper                      |
+/// | [EnvStatusBadge]                 | Persistent env indicator badge                       |
+/// | [EnvGate]                        | PIN access gate for the debug panel                  |
+/// | [EnvTrigger]                     | Gesture to open the panel (tap / shake / edge-swipe) |
 library envified;
 
+// Core models
 export 'src/models/env.dart' show Env, EnvConfig;
-export 'src/service/env_config_service.dart' show EnvConfigService;
+export 'src/models/env_tier.dart' show EnvTier;
+export 'src/models/secret_handle.dart' show SecretHandle;
+export 'src/models/audit_entry.dart' show AuditEntry;
 export 'src/models/envified_exception.dart'
     show
         EnvifiedLockException,
         EnvifiedTamperException,
-        EnvifiedUrlNotAllowedException;
-export 'src/models/audit_entry.dart' show AuditEntry;
+        EnvifiedUrlNotAllowedException,
+        EnvifiedMissingFileException,
+        EnvifiedNativeException,
+        EnvifiedSwitchException,
+        EnvifiedKeyRotationException;
+
+// Channel
+export 'src/channel/envified_channel.dart' show EnvifiedChannel;
+
+// Resolver
+export 'src/resolver/tier_resolver.dart' show TierResolver;
+
+// Adapters
+export 'src/adapters/envified_service_adapter.dart' show EnvifiedServiceAdapter;
+
+// Service
+export 'src/service/env_config_service.dart' show EnvConfigService;
+export 'src/service/app_config.dart' show AppConfig;
+
+// Storage (retained for custom-storage advanced usage)
 export 'src/storage/env_storage.dart' show EnvStorage;
+
+// UI
 export 'src/ui/env_gate.dart' show EnvGate;
 export 'src/ui/env_debug_panel.dart' show EnvDebugPanel;
 export 'src/ui/envified_overlay.dart' show EnvifiedOverlay;

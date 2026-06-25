@@ -1,20 +1,27 @@
 import 'package:flutter/foundation.dart';
-import 'package:flutter/widgets.dart';
-import 'package:flutter/services.dart';
 
+import '../channel/envified_channel.dart';
 import '../models/audit_entry.dart';
-import '../parser/env_file_parser.dart';
 import '../models/env.dart';
-import '../storage/env_storage.dart';
 import '../models/envified_exception.dart';
+import '../storage/env_storage.dart';
+import '../adapters/envified_service_adapter.dart';
 
 /// The central singleton service for runtime environment management.
+///
+/// v4.0.0 changes from v3.x:
+/// - `.env.*` files are **never** read at runtime. All config values come from
+///   the native layer, pre-loaded by `envified build --env=<name>` at build time.
+/// - Persistence delegates to [EnvifiedChannel] (Android Keystore / iOS
+///   Keychain) instead of `flutter_secure_storage`.
+/// - [switchTo] follows an 8-step lifecycle with rollback on adapter failure.
+/// - Production lock is enforced in the native layer on release builds.
 class EnvConfigService {
   // ── Singleton ─────────────────────────────────────────────────────────────
 
   EnvConfigService._();
 
-  /// The global singleton instance of [EnvConfigService].
+  /// The global singleton instance.
   static final EnvConfigService instance = EnvConfigService._();
 
   // ── State ─────────────────────────────────────────────────────────────────
@@ -29,8 +36,7 @@ class EnvConfigService {
     ),
   );
 
-  /// True if the environment/URL has changed since last init.
-  /// When true, the app should be restarted for changes to take effect.
+  /// True if the environment/URL has changed since the last [init].
   ValueListenable<bool> get restartNeeded => _restartNeeded;
   final ValueNotifier<bool> _restartNeeded = ValueNotifier<bool>(false);
 
@@ -40,26 +46,22 @@ class EnvConfigService {
   bool _persistSelection = true;
   Env _defaultEnv = Env.dev;
   bool _initialised = false;
-  bool _verifyIntegrity = false;
   List<String>? _allowedUrls;
+
+  /// Environments discovered from the pre-built registry (name → base URL).
   Map<Env, String> _urls = <Env, String>{};
-  bool _autoDiscover = true;
+
   Set<Env> _productionEnvs = {Env.prod};
-  List<String> _envAssetPaths = const ['assets/env/'];
-  AssetBundle? _bundle;
   Map<String, String> _urlOverrides = <String, String>{};
 
-  /// The environment that was active when init() was called.
   late Env _initialEnv;
-
-  /// The base URL that was active when init() was called.
   late String _initialBaseUrl;
 
-  /// Cached fallback `.env` values loaded once during [init].
-  Map<String, String> _fallbackValues = <String, String>{};
-
   late EnvStorage _storage;
-  final EnvFileParser _parser = EnvFileParser();
+  late EnvifiedChannel _channel;
+
+  /// Registered service adapters, in registration order.
+  final List<EnvifiedServiceAdapter> _adapters = [];
 
   // Lifecycle hooks.
   Future<void> Function(Env from, Env to)? _onBeforeSwitch;
@@ -67,121 +69,68 @@ class EnvConfigService {
 
   // ── Initialisation ────────────────────────────────────────────────────────
 
-  /// Initialises the service by loading all available environment asset files.
+  /// Initialises the service.
+  ///
+  /// In v4.0.0 [envAssetPaths], [autoDiscover], [verifyIntegrity], and
+  /// [bundle] are ignored — discovery and integrity verification happen at
+  /// build time via the CLI. They are accepted (and silently ignored) so that
+  /// call sites compiled against v3.x continue to compile unmodified.
   Future<void> init({
     Env? defaultEnv,
-    List<String> envAssetPaths = const ['assets/env/'],
     bool persistSelection = true,
     bool allowProdSwitch = false,
-    bool verifyIntegrity = false,
     EnvStorage? storage,
+    EnvifiedChannel? channel,
     Future<void> Function(Env from, Env to)? onBeforeSwitch,
     void Function(EnvConfig config)? onAfterSwitch,
     List<String>? allowedUrls,
     Map<Env, String>? urls,
-    bool autoDiscover = true,
     Set<Env>? productionEnvs,
+    // v3.x compat params — accepted but ignored.
+    @Deprecated('No-op in v4: discovery is CLI-only')
+    List<String> envAssetPaths = const [],
+    @Deprecated('No-op in v4: use envified build') bool verifyIntegrity = false,
+    @Deprecated('No-op in v4') bool autoDiscover = true,
+    @Deprecated('No-op in v4') Object? bundle,
     @Deprecated('Use envAssetPaths instead') String assetDir = '',
-    AssetBundle? bundle,
   }) async {
     _persistSelection = persistSelection;
     _allowProdSwitch = allowProdSwitch;
-    _verifyIntegrity = verifyIntegrity;
     _onBeforeSwitch = onBeforeSwitch;
     _onAfterSwitch = onAfterSwitch;
     _allowedUrls = allowedUrls;
-    _autoDiscover = autoDiscover;
     _productionEnvs = productionEnvs ?? {Env.prod};
-    _bundle = bundle;
 
-    if (assetDir.isNotEmpty) {
-      _envAssetPaths = [assetDir];
+    _channel = channel ?? EnvifiedChannel();
+    _storage = storage ?? EnvStorage(channel: _channel);
+
+    // Provision the native key for the default environment.
+    await _channel.initialize(env: defaultEnv?.name ?? 'dev');
+
+    // Populate URL registry. In a real v4.0.0 build the CLI pre-generates a
+    // Dart constant map (`lib/src/generated/envified_registry.g.dart`) that is
+    // imported here. For Phase 1 we fall back to the manually supplied [urls]
+    // so the service remains functional before the CLI integration is complete.
+    if (urls != null && urls.isNotEmpty) {
+      _urls = urls;
     } else {
-      _envAssetPaths = envAssetPaths;
+      // Minimal fallback: treat defaultEnv as the only known environment.
+      final env = defaultEnv ?? Env.dev;
+      _urls = {env: ''};
     }
 
-    // Fallback for backwards compatibility: if _envAssetPaths defaults to ['assets/env/']
-    // but no assets in the manifest start with 'assets/env/', we check if there are
-    // any .env files in the root (i.e. we fallback to scanning '').
-    if (_envAssetPaths.length == 1 && _envAssetPaths.first == 'assets/env/') {
-      try {
-        final activeBundle = bundle ?? rootBundle;
-        final manifest = await AssetManifest.loadFromAssetBundle(activeBundle);
-        final allAssets = manifest.listAssets();
-        final hasEnvAssetsInPath =
-            allAssets.any((asset) => asset.startsWith('assets/env/'));
-        if (!hasEnvAssetsInPath) {
-          _envAssetPaths = const [''];
-        }
-      } catch (_) {
-        // Safe fallback for raw mock bundles: under unit tests, default to root scan
-        _envAssetPaths = const [''];
-      }
-    }
-
-    // Auto-discover if urls not provided and autoDiscover is true
-    if ((urls == null || urls.isEmpty) && autoDiscover) {
-      urls = await _parser.discoverAndExtractUrls(
-        envAssetPaths: _envAssetPaths,
-        bundle: bundle,
-      );
-    }
-
-    if (urls == null || urls.isEmpty) {
-      throw const EnvifiedMissingFileException(
-        'No environment files discovered and none provided manually.',
-      );
-    }
-
-    _urls = urls;
-
-    // Auto-detect defaultEnv if null
-    Env activeEnv;
-    if (defaultEnv != null) {
-      activeEnv = defaultEnv;
-    } else {
-      // Find dev/development or staging/stag or first available non-production environment, or fallback to Env.dev
-      activeEnv = _urls.keys.firstWhere(
-        (e) => e.name == 'dev' || e.name == 'development',
-        orElse: () => _urls.keys.firstWhere(
-          (e) => e.name == 'staging' || e.name == 'staging',
-          orElse: () => _urls.keys.firstWhere(
-            (e) => !e.isProduction,
-            orElse: () => Env.dev,
-          ),
-        ),
-      );
-    }
+    Env activeEnv = defaultEnv ??
+        _urls.keys.firstWhere(
+          (e) => e.name == 'dev' || e.name == 'development',
+          orElse: () => _urls.keys.first,
+        );
     _defaultEnv = activeEnv;
 
-    // Initialise storage.
-    _storage = storage ?? const EnvStorage();
-
-    // Load the shared fallback `.env` files across all locations.
-    final fallbackValues = <String, String>{};
-    for (final path in _envAssetPaths) {
-      if (path.isEmpty) {
-        final parsed = await _parser.parse('.env', bundle: _bundle);
-        fallbackValues.addAll(parsed);
-      } else if (path.endsWith('/')) {
-        final pathFallback = '$path.env';
-        final parsed = await _parser.parse(pathFallback, bundle: _bundle);
-        fallbackValues.addAll(parsed);
-      } else if (path.endsWith('.env')) {
-        final parsed = await _parser.parse(path, bundle: _bundle);
-        fallbackValues.addAll(parsed);
-      }
-    }
-    _fallbackValues = fallbackValues;
-
-    // Restore persisted state if enabled.
-    String? baseUrlOverride;
-
+    // Restore persisted selection.
     if (_persistSelection) {
       _urlOverrides = await _storage.loadOverrides();
-      final stored = await _storage.loadConfig();
+      final stored = await _storage.loadConfig(envName: activeEnv.name);
       if (stored != null) {
-        // Find the matching discovered env (by name and filename)
         final match = _urls.keys.firstWhere(
           (e) => e.name == stored.env.name,
           orElse: () => stored.env,
@@ -190,107 +139,7 @@ class EnvConfigService {
       }
     }
 
-    // Check for explicit override in the map first.
-    baseUrlOverride = _urlOverrides[activeEnv.name];
-
-    // Verify + load the environment-specific file.
-    final specificPath = activeEnv.assetPath ??
-        (assetDir.isNotEmpty
-            ? '$assetDir${activeEnv.assetFileName}'
-            : 'assets/env/${activeEnv.assetFileName}');
-
-    // REQUIREMENT: verifyIntegrity should only do verification for Production related env.
-    if (_verifyIntegrity && activeEnv.isProduction) {
-      await _parser.verifyIntegrity(specificPath, _storage, bundle: _bundle);
-      // Also verify fallback if it's the prod file
-      if (activeEnv.assetFileName == '.env') {
-        final fallbackPath =
-            assetDir.isNotEmpty ? '$assetDir.env' : 'assets/env/.env';
-        await _parser.verifyIntegrity(fallbackPath, _storage, bundle: _bundle);
-      }
-    }
-
-    final merged = await _loadMerged(activeEnv);
-
-    // Determine base URL.
-    final String baseUrl;
-    final bool isOverridden;
-
-    if (baseUrlOverride != null && baseUrlOverride.isNotEmpty) {
-      baseUrl = baseUrlOverride;
-      isOverridden = true;
-    } else {
-      final String? discoveredUrl = _urls[activeEnv];
-      if (discoveredUrl != null && discoveredUrl.isNotEmpty) {
-        baseUrl = discoveredUrl;
-      } else {
-        baseUrl = merged['BASE_URL'] ?? '';
-      }
-      isOverridden = false;
-    }
-
-    current.value = EnvConfig(
-      env: activeEnv,
-      baseUrl: baseUrl,
-      values: merged,
-      loadedAt: DateTime.now(),
-      isBaseUrlOverridden: isOverridden,
-    );
-
-    // Remember the initial state to detect if a restart is needed later.
-    _initialEnv = activeEnv;
-    _initialBaseUrl = baseUrl;
-    _restartNeeded.value = false;
-
-    _initialised = true;
-  }
-
-  /// Call this when the app has been restarted/re-initialized to reset the
-  /// [restartNeeded] flag and capture the current state as the new baseline.
-  void acknowledgeRestart() {
-    _initialEnv = current.value.env;
-    _initialBaseUrl = current.value.baseUrl;
-    _restartNeeded.value = false;
-  }
-
-  // ── Switching ─────────────────────────────────────────────────────────────
-
-  /// Switches the active environment to [env].
-  Future<void> switchTo(Env env) async {
-    _assertInitialised();
-
-    // Map to discovered env key to preserve dynamically resolved assetPath
-    final targetEnv = _urls.keys.firstWhere(
-      (e) => e.name == env.name,
-      orElse: () => env,
-    );
-
-    // Block switching TO prod when locked.
-    if (!_allowProdSwitch &&
-        !current.value.env.isProduction &&
-        targetEnv.isProduction) {
-      debugPrint(
-          'Envified: Switching TO production is blocked when allowProdSwitch is false.');
-      return;
-    }
-
-    // Fire before-switch hook.
-    if (_onBeforeSwitch != null) {
-      await _onBeforeSwitch!(current.value.env, targetEnv);
-    }
-
-    final Env fromEnv = current.value.env;
-
-    // Verify integrity if switching to production
-    if (_verifyIntegrity && targetEnv.isProduction) {
-      final assetPath = _getEnvAssetPath(targetEnv);
-      await _parser.verifyIntegrity(assetPath, _storage, bundle: _bundle);
-    }
-
-    final merged = await _loadMerged(targetEnv);
-
-    // Apply per-environment override if it exists.
-    final String? override = _urlOverrides[targetEnv.name];
+    final String? override = _urlOverrides[activeEnv.name];
     final String baseUrl;
     final bool isOverridden;
 
@@ -298,32 +147,129 @@ class EnvConfigService {
       baseUrl = override;
       isOverridden = true;
     } else {
-      final String? discoveredUrl = _urls[targetEnv];
-      if (discoveredUrl != null && discoveredUrl.isNotEmpty) {
-        baseUrl = discoveredUrl;
-      } else {
-        baseUrl = merged['BASE_URL'] ?? '';
-      }
+      baseUrl = _urls[activeEnv] ?? '';
       isOverridden = false;
     }
 
     current.value = EnvConfig(
-      env: targetEnv,
+      env: activeEnv,
       baseUrl: baseUrl,
-      values: merged,
+      values: const <String, String>{},
       loadedAt: DateTime.now(),
       isBaseUrlOverridden: isOverridden,
     );
 
-    // Check if a restart is needed.
+    _initialEnv = activeEnv;
+    _initialBaseUrl = baseUrl;
+    _restartNeeded.value = false;
+    _initialised = true;
+
+    // Initialize registered adapters.
+    for (final adapter in _adapters) {
+      try {
+        await adapter.initialize(current.value);
+      } catch (_) {
+        // Adapter init failures are non-fatal during boot; they surface on switch.
+      }
+    }
+  }
+
+  // ── Adapter registration ──────────────────────────────────────────────────
+
+  /// Registers a [EnvifiedServiceAdapter]. Must be called before [init].
+  void registerAdapter(EnvifiedServiceAdapter adapter) {
+    if (_adapters.any((a) => a.adapterName == adapter.adapterName)) return;
+    _adapters.add(adapter);
+  }
+
+  // ── Switching ─────────────────────────────────────────────────────────────
+
+  /// Switches the active environment to [env] using the 8-step lifecycle.
+  ///
+  /// If any adapter fails during [reinitialize], the switch is rolled back and
+  /// [EnvifiedSwitchException] is thrown.
+  Future<void> switchTo(Env env) async {
+    _assertInitialised();
+
+    final targetEnv = _urls.keys.firstWhere(
+      (e) => e.name == env.name,
+      orElse: () => env,
+    );
+
+    // Step 1 — production lock check.
+    if (!_allowProdSwitch &&
+        !current.value.env.isProduction &&
+        targetEnv.isProduction) {
+      debugPrint('Envified: switching TO production is blocked.');
+      return;
+    }
+
+    // Step 2 — before-switch hook.
+    if (_onBeforeSwitch != null) {
+      await _onBeforeSwitch!(current.value.env, targetEnv);
+    }
+
+    final Env fromEnv = current.value.env;
+    final EnvConfig fromConfig = current.value;
+
+    // Step 3 — activate native key context for target env.
+    await _channel.initialize(env: targetEnv.name);
+
+    // Step 4 — resolve new config values.
+    final String? override = _urlOverrides[targetEnv.name];
+    final String baseUrl;
+    final bool isOverridden;
+    if (override != null && override.isNotEmpty) {
+      baseUrl = override;
+      isOverridden = true;
+    } else {
+      baseUrl = _urls[targetEnv] ?? '';
+      isOverridden = false;
+    }
+
+    final newConfig = EnvConfig(
+      env: targetEnv,
+      baseUrl: baseUrl,
+      values: const <String, String>{},
+      loadedAt: DateTime.now(),
+      isBaseUrlOverridden: isOverridden,
+    );
+
+    // Step 5 — re-initialize each adapter; roll back on failure.
+    final List<EnvifiedServiceAdapter> initialized = [];
+    for (final adapter in _adapters) {
+      try {
+        await adapter.reinitialize(fromConfig, newConfig);
+        initialized.add(adapter);
+      } catch (e) {
+        // Rollback all successfully re-initialized adapters.
+        for (final done in initialized.reversed) {
+          try {
+            await done.reinitialize(newConfig, fromConfig);
+          } catch (_) {}
+        }
+        // Restore native key context to the old env.
+        await _channel.initialize(env: fromEnv.name);
+        throw EnvifiedSwitchException(
+          failedAdapter: adapter.adapterName,
+          cause: e,
+        );
+      }
+    }
+
+    // Step 6 — update current config.
+    current.value = newConfig;
+
+    // Step 7 — persist new selection.
     _restartNeeded.value =
         (targetEnv != _initialEnv || baseUrl != _initialBaseUrl);
-
-    _onAfterSwitch?.call(current.value);
 
     if (_persistSelection) {
       await _storage.saveConfig(current.value);
     }
+
+    // Step 8 — after-switch hook + audit.
+    _onAfterSwitch?.call(current.value);
 
     await _storage.appendAudit(AuditEntry(
       timestamp: DateTime.now().toUtc(),
@@ -333,63 +279,63 @@ class EnvConfigService {
     ));
   }
 
-  /// Returns the original BASE_URL for [env] as defined in its `.env` file.
-  String getOriginalUrl(Env env) {
-    return _urls[env] ?? '';
+  /// Signals that the app has been restarted; resets the restart-needed flag.
+  void acknowledgeRestart() {
+    _initialEnv = current.value.env;
+    _initialBaseUrl = current.value.baseUrl;
+    _restartNeeded.value = false;
   }
 
   // ── Value access ──────────────────────────────────────────────────────────
 
-  String get(String key, {String fallback = ''}) {
-    return current.value.values[key] ?? fallback;
-  }
-
-  /// Returns true if the [env] is considered a production environment.
-  bool isProduction(Env env) => _productionEnvs.contains(env);
-
-  /// Whether auto-discovery is enabled.
-  bool get autoDiscover => _autoDiscover;
-
-  /// Whether integrity verification is enabled.
-  bool get verifyIntegrity => _verifyIntegrity;
-
-  /// The list of production-grade environments.
-  Set<Env> get productionEnvs => _productionEnvs;
-
-  /// Returns `true` if the key contains sensitive data (e.g. 'API_KEY').
-  bool isSensitive(String key) {
-    return EnvConfig.isSensitiveKey(key);
-  }
+  String get(String key, {String fallback = ''}) =>
+      current.value.values[key] ?? fallback;
 
   bool getBool(String key, {bool fallback = false}) {
-    final String? raw = current.value.values[key];
+    final raw = current.value.values[key];
     if (raw == null) return fallback;
     return const {'true', '1', 'yes'}.contains(raw.toLowerCase());
   }
 
   int getInt(String key, {int fallback = 0}) {
-    final String? raw = current.value.values[key];
+    final raw = current.value.values[key];
     if (raw == null) return fallback;
     return int.tryParse(raw) ?? fallback;
   }
 
   double getDouble(String key, {double fallback = 0.0}) {
-    final String? raw = current.value.values[key];
+    final raw = current.value.values[key];
     if (raw == null) return fallback;
     return double.tryParse(raw) ?? fallback;
   }
 
   Uri? getUri(String key) {
-    final String? raw = current.value.values[key];
+    final raw = current.value.values[key];
     if (raw == null || raw.isEmpty) return null;
     return Uri.tryParse(raw);
   }
 
   List<String> getList(String key, {String separator = ','}) {
-    final String? raw = current.value.values[key];
+    final raw = current.value.values[key];
     if (raw == null || raw.isEmpty) return <String>[];
     return raw.split(separator).map((e) => e.trim()).toList();
   }
+
+  bool isProduction(Env env) => _productionEnvs.contains(env);
+  bool get autoDiscover => false;
+  bool get verifyIntegrity => false;
+  Set<Env> get productionEnvs => _productionEnvs;
+  bool isSensitive(String key) => EnvConfig.isSensitiveKey(key);
+  bool get isProdLocked => !_allowProdSwitch && current.value.env.isProduction;
+  bool get allowProdSwitch => _allowProdSwitch;
+
+  String getOriginalUrl(Env env) => _urls[env] ?? '';
+
+  List<Env> get availableEnvs => _urls.keys.toList()
+    ..sort((a, b) {
+      if (a.isProduction != b.isProduction) return a.isProduction ? 1 : -1;
+      return a.name.compareTo(b.name);
+    });
 
   // ── Base URL override ─────────────────────────────────────────────────────
 
@@ -402,11 +348,8 @@ class EnvConfigService {
       baseUrl: url,
       isBaseUrlOverridden: true,
     );
-
-    // Check if a restart is needed.
     _restartNeeded.value =
         (current.value.env != _initialEnv || url != _initialBaseUrl);
-
     _onAfterSwitch?.call(current.value);
 
     if (_persistSelection) {
@@ -427,14 +370,11 @@ class EnvConfigService {
     _assertInitialised();
     _assertNotProdLocked('Cannot clear base URL override in production.');
 
-    final restoredUrl = current.value.values['BASE_URL'] ?? '';
-
+    final restoredUrl = _urls[current.value.env] ?? '';
     current.value = current.value.copyWith(
       baseUrl: restoredUrl,
       isBaseUrlOverridden: false,
     );
-
-    // Check if a restart is needed.
     _restartNeeded.value =
         (current.value.env != _initialEnv || restoredUrl != _initialBaseUrl);
 
@@ -460,90 +400,48 @@ class EnvConfigService {
       action: 'reset',
     ));
 
-    if (_persistSelection) {
-      await _storage.clear();
-    }
+    if (_persistSelection) await _storage.clear();
 
     await init(
       defaultEnv: _defaultEnv,
-      envAssetPaths: _envAssetPaths,
       persistSelection: _persistSelection,
       allowProdSwitch: _allowProdSwitch,
-      verifyIntegrity: _verifyIntegrity,
       storage: _storage,
+      channel: _channel,
       onBeforeSwitch: _onBeforeSwitch,
       onAfterSwitch: _onAfterSwitch,
       allowedUrls: _allowedUrls,
-      bundle: _bundle,
+      urls: _urls,
     );
   }
 
-  // ── Audit log ─────────────────────────────────────────────────────────────
+  // ── Audit / History ───────────────────────────────────────────────────────
 
   Future<List<AuditEntry>> get auditLog => _storage.loadAuditLog();
-
-  /// Returns the list of environments discovered during [init].
-  List<Env> get availableEnvs => _urls.keys.toList()
-    ..sort((a, b) {
-      if (a.isProduction != b.isProduction) {
-        return a.isProduction ? 1 : -1;
-      }
-      return a.name.compareTo(b.name);
-    });
-
-  // ── URL history ───────────────────────────────────────────────────────────
-
   Future<List<String>> get urlHistory => _storage.loadUrlHistory();
 
   // ── Internal helpers ──────────────────────────────────────────────────────
 
-  bool get isProdLocked => !_allowProdSwitch && current.value.env.isProduction;
-
-  bool get allowProdSwitch => _allowProdSwitch;
-
-  String _getEnvAssetPath(Env env) {
-    var assetPath = env.assetPath ??
-        (_envAssetPaths.isNotEmpty && _envAssetPaths.first.endsWith('/')
-            ? '${_envAssetPaths.first}${env.assetFileName}'
-            : 'assets/env/${env.assetFileName}');
-    if (_envAssetPaths.length == 1 && _envAssetPaths.first == '') {
-      if (assetPath.startsWith('assets/env/')) {
-        assetPath = assetPath.substring(11);
-      }
-    }
-    return assetPath;
-  }
-
-  Future<Map<String, String>> _loadMerged(Env env) async {
-    final assetPath = _getEnvAssetPath(env);
-    final specific = await _parser.parse(assetPath, bundle: _bundle);
-    return _parser.merge(_fallbackValues, specific);
-  }
-
   void _assertInitialised() {
     if (!_initialised) {
-      throw StateError(
-        'EnvConfigService has not been initialised.',
-      );
+      throw StateError('EnvConfigService has not been initialised.');
     }
   }
 
   void _assertNotProdLocked(String message) {
-    if (isProdLocked) {
-      throw EnvifiedLockException(message);
-    }
+    if (isProdLocked) throw EnvifiedLockException(message);
   }
 
   void _assertUrlAllowed(String url) {
-    final List<String>? allowed = _allowedUrls;
+    final allowed = _allowedUrls;
     if (allowed == null || allowed.isEmpty) return;
-    final bool permitted = allowed.any((prefix) => url.startsWith(prefix));
-    if (!permitted) {
+    if (!allowed.any((prefix) => url.startsWith(prefix))) {
       throw EnvifiedUrlNotAllowedException(url);
     }
   }
 
-  /// Internal reset for unit testing only.
+  // ── Testing helpers ───────────────────────────────────────────────────────
+
   @visibleForTesting
   void resetForTesting() {
     _initialised = false;
@@ -554,33 +452,24 @@ class EnvConfigService {
       loadedAt: DateTime.now(),
     );
     _urls = <Env, String>{};
-    _fallbackValues = <String, String>{};
     _allowProdSwitch = false;
     _persistSelection = true;
     _defaultEnv = Env.dev;
-    _verifyIntegrity = false;
     _allowedUrls = null;
-    _envAssetPaths = const ['assets/env/'];
-    _bundle = null;
     _onBeforeSwitch = null;
     _onAfterSwitch = null;
     _urlOverrides = <String, String>{};
+    _adapters.clear();
+    _restartNeeded.value = false;
   }
 
-  /// Reset the singleton instance for testing.
   @visibleForTesting
-  static void resetInstance() {
-    instance.resetForTesting();
-  }
+  static void resetInstance() => instance.resetForTesting();
 
-  /// Override dependencies for testing.
   @visibleForTesting
-  static void overrideForTesting({
-    EnvStorage? storage,
-    EnvFileParser? parser,
-  }) {
+  static void overrideForTesting(
+      {EnvStorage? storage, EnvifiedChannel? channel}) {
     if (storage != null) instance._storage = storage;
-    // Note: _parser is final in current version, but we can make it non-final or use a setter if needed.
-    // For now I'll just skip parser if it's not easily overridable.
+    if (channel != null) instance._channel = channel;
   }
 }

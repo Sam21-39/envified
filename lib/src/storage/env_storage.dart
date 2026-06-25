@@ -1,195 +1,137 @@
 import 'dart:convert';
 
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-
+import '../channel/envified_channel.dart';
 import '../models/audit_entry.dart';
 import '../models/env.dart';
 
-/// Internal wrapper for [FlutterSecureStorage] to persist environment settings.
+/// Persistence layer for environment config, audit log, URL history, and
+/// per-environment URL overrides.
 ///
-/// Uses AES encryption (on Android) and Keychain (on iOS) to ensure that
-/// even runtime configuration overrides and audit logs are stored securely.
-///
-/// In addition to the main [EnvConfig], this class manages:
-/// - A URL history list (max 5 entries) under [_kUrlHistoryKey].
-/// - An audit log (max [_kMaxAuditEntries] entries) under [_kAuditKey].
-/// - Arbitrary raw key-value pairs used by [EnvFileParser.verifyIntegrity].
+/// All storage is delegated to the native method channel ([EnvifiedChannel]),
+/// which uses Android Keystore / iOS Keychain-backed encrypted storage.
+/// There is no dependency on `flutter_secure_storage`.
 class EnvStorage {
-  static const String _keyConfig = 'envified_config';
-  static const String _kUrlHistoryKey = 'envified_url_history_v1';
-  static const String _kAuditKey = 'envified_audit_v1';
-  static const String _kOverridesKey = 'envified_overrides_v1';
   static const int _kMaxAuditEntries = 50;
   static const int _kMaxUrlHistory = 5;
+  static const String _kUrlHistoryKey = 'url_history';
+  static const String _kOverridesKey = 'url_overrides';
 
-  final FlutterSecureStorage _storage;
+  final EnvifiedChannel _channel;
 
-  /// Creates an [EnvStorage] instance.
-  const EnvStorage({
-    FlutterSecureStorage storage = const FlutterSecureStorage(),
-  }) : _storage = storage;
+  const EnvStorage({required EnvifiedChannel channel}) : _channel = channel;
 
   // ── Config ─────────────────────────────────────────────────────────────────
 
-  /// Persists the [config] to secure storage.
+  /// Persists [config] via the native channel.
   Future<void> saveConfig(EnvConfig config) async {
-    final String json = jsonEncode(config.toJson());
-    await _storage.write(key: _keyConfig, value: json);
+    await _channel.persistConfig(
+      configJson: jsonEncode(config.toJson()),
+      env: config.env.name,
+    );
   }
 
-  /// Restores the [EnvConfig] from secure storage.
-  ///
-  /// Returns `null` if no configuration is persisted.
-  Future<EnvConfig?> loadConfig() async {
+  /// Restores the [EnvConfig] from native storage. Returns null if none exists.
+  Future<EnvConfig?> loadConfig({required String envName}) async {
     try {
-      final String? json = await _storage.read(key: _keyConfig);
+      final json = await _channel.loadConfig(env: envName);
       if (json == null || json.isEmpty) return null;
-
       final dynamic map = jsonDecode(json);
-      if (map is Map<String, dynamic>) {
-        return EnvConfig.fromJson(map);
-      }
+      if (map is Map<String, dynamic>) return EnvConfig.fromJson(map);
     } catch (_) {
-      // If parsing fails or storage is corrupted, return null to fallback to defaults.
+      // Corrupted or missing — fall back to defaults.
     }
     return null;
   }
 
-  /// Clears all persisted environment settings, URL history, and audit log.
+  /// Clears all persisted state (config, overrides, audit log, URL history).
   Future<void> clear() async {
-    await _storage.delete(key: _keyConfig);
-    await _storage.delete(key: _kUrlHistoryKey);
-    await _storage.delete(key: _kAuditKey);
-    await _storage.delete(key: _kOverridesKey);
+    await _channel.clearConfig();
   }
 
-  // ── Raw key-value (used by integrity hashes) ───────────────────────────────
+  // ── Raw key-value (used by integrity hashes & misc metadata) ──────────────
 
-  /// Reads a raw string value for [key] from secure storage.
-  ///
-  /// Returns `null` if the key does not exist.
+  /// Reads a raw string value from native storage. Returns null if not found.
   Future<String?> readRaw(String key) async {
-    try {
-      return await _storage.read(key: key);
-    } catch (_) {
-      return null;
-    }
+    return _channel.loadConfig(env: 'raw_$key');
   }
 
-  /// Writes a raw [value] string under [key] in secure storage.
+  /// Writes a raw string value to native storage.
   Future<void> writeRaw(String key, String value) async {
-    await _storage.write(key: key, value: value);
+    await _channel.persistConfig(configJson: value, env: 'raw_$key');
   }
 
   // ── URL History ────────────────────────────────────────────────────────────
 
-  /// Prepends [url] to the persisted URL history list.
-  ///
-  /// - Deduplicates: if [url] already appears in the list it is moved to the
-  ///   front rather than added again.
-  /// - Trims: the list is capped at 5 items. Older entries are discarded.
-  /// - Persists: the updated list is written to secure storage under
-  ///   [_kUrlHistoryKey] as a JSON array of strings.
+  /// Prepends [url] to the URL history, deduplicating and capping at 5 items.
   Future<void> saveUrlToHistory(String url) async {
-    final List<String> history = await loadUrlHistory();
-
-    // Move to front if already present, otherwise prepend.
+    final history = await loadUrlHistory();
     history.remove(url);
     history.insert(0, url);
-
-    // Enforce maximum size.
-    final List<String> trimmed = history.take(_kMaxUrlHistory).toList();
-
-    await _storage.write(
-      key: _kUrlHistoryKey,
-      value: jsonEncode(trimmed),
+    final trimmed = history.take(_kMaxUrlHistory).toList();
+    await _channel.persistConfig(
+      configJson: jsonEncode(trimmed),
+      env: _kUrlHistoryKey,
     );
   }
 
-  /// Returns the list of recently used URLs, newest first.
-  ///
-  /// Returns an empty list if no history has been saved or if parsing fails.
+  /// Returns URL history, newest first. Empty list on failure.
   Future<List<String>> loadUrlHistory() async {
     try {
-      final String? raw = await _storage.read(key: _kUrlHistoryKey);
+      final raw = await _channel.loadConfig(env: _kUrlHistoryKey);
       if (raw == null || raw.isEmpty) return <String>[];
-
       final dynamic decoded = jsonDecode(raw);
-      if (decoded is List<dynamic>) {
-        return decoded.whereType<String>().toList();
-      }
-    } catch (_) {
-      // Corrupted data — return empty list.
-    }
+      if (decoded is List) return decoded.whereType<String>().toList();
+    } catch (_) {}
     return <String>[];
   }
 
   // ── Audit Log ──────────────────────────────────────────────────────────────
 
-  /// Appends [entry] to the secure audit log.
-  ///
-  /// Entries are stored as a JSON array. Once the log reaches
-  /// [_kMaxAuditEntries] the oldest entry is dropped.
+  /// Appends [entry] to the audit log. Oldest entry dropped when over 50.
   Future<void> appendAudit(AuditEntry entry) async {
-    final List<AuditEntry> existing = await loadAuditLog();
-    existing.insert(0, entry);
-
-    // Enforce maximum log size.
-    final List<AuditEntry> trimmed = existing.take(_kMaxAuditEntries).toList();
-
-    final List<Map<String, dynamic>> jsonList =
-        trimmed.map((e) => e.toJson()).toList();
-
-    await _storage.write(
-      key: _kAuditKey,
-      value: jsonEncode(jsonList),
-    );
+    await _channel.appendAuditEntry(entryJson: jsonEncode(entry.toJson()));
   }
 
-  /// Returns all persisted [AuditEntry] records, newest first.
-  ///
-  /// Returns an empty list if no log exists or if parsing fails.
+  /// Returns all audit entries, newest first.
   Future<List<AuditEntry>> loadAuditLog() async {
     try {
-      final String? raw = await _storage.read(key: _kAuditKey);
-      if (raw == null || raw.isEmpty) return <AuditEntry>[];
-
-      final dynamic decoded = jsonDecode(raw);
-      if (decoded is List<dynamic>) {
-        return decoded
-            .whereType<Map<String, dynamic>>()
-            .map(AuditEntry.fromJson)
-            .toList();
-      }
+      final entries = await _channel.loadAuditLog();
+      return entries
+          .map((e) {
+            try {
+              final dynamic m = jsonDecode(e);
+              if (m is Map<String, dynamic>) return AuditEntry.fromJson(m);
+            } catch (_) {}
+            return null;
+          })
+          .whereType<AuditEntry>()
+          .toList()
+          .reversed
+          .take(_kMaxAuditEntries)
+          .toList();
     } catch (_) {
-      // Corrupted data — return empty list.
+      return <AuditEntry>[];
     }
-    return <AuditEntry>[];
   }
 
   // ── Overrides ──────────────────────────────────────────────────────────────
 
-  /// Persists the map of per-environment URL overrides.
+  /// Persists per-environment URL overrides map.
   Future<void> saveOverrides(Map<String, String> overrides) async {
-    await _storage.write(
-      key: _kOverridesKey,
-      value: jsonEncode(overrides),
+    await _channel.persistConfig(
+      configJson: jsonEncode(overrides),
+      env: _kOverridesKey,
     );
   }
 
-  /// Restores the map of per-environment URL overrides.
+  /// Loads per-environment URL overrides map.
   Future<Map<String, String>> loadOverrides() async {
     try {
-      final String? raw = await _storage.read(key: _kOverridesKey);
+      final raw = await _channel.loadConfig(env: _kOverridesKey);
       if (raw == null || raw.isEmpty) return <String, String>{};
-
       final dynamic decoded = jsonDecode(raw);
-      if (decoded is Map<String, dynamic>) {
-        return Map<String, String>.from(decoded);
-      }
-    } catch (_) {
-      // Corrupted data.
-    }
+      if (decoded is Map) return Map<String, String>.from(decoded);
+    } catch (_) {}
     return <String, String>{};
   }
 }

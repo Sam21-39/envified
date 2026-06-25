@@ -4,14 +4,11 @@ import 'package:envified/envified.dart';
 import 'package:http/http.dart' as http;
 
 void main() async {
-  // 1. Ensure Flutter is initialized
   WidgetsFlutterBinding.ensureInitialized();
 
-  // 2. Initialize the EnvConfigService before runApp
-  await EnvConfigService.instance.init(
+  await AppConfig.init(
     defaultEnv: Env.staging,
-    allowProdSwitch: false, // 🔒 Lock production by default
-    verifyIntegrity: false,
+    allowProdSwitch: false,
     onAfterSwitch: (config) {
       debugPrint('Environment changed: ${config.env.name}');
     },

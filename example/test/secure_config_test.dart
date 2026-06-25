@@ -131,7 +131,7 @@ void main() {
   setUp(() {
     EnvConfigService.instance.resetForTesting();
     fakeSecureStorage = FakeFlutterSecureStorage();
-    envStorage = EnvStorage(storage: fakeSecureStorage);
+    envStorage = EnvStorage(storage: fakeSecureStorage, channel: EnvifiedChannel());
     bundle = FakeAssetBundle();
 
     bundle.register(
