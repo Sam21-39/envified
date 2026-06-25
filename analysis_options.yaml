@@ -1,4 +1,6 @@
 analyzer:
+  exclude:
+    - tool/**
   errors:
     deprecated_member_use: ignore
     unused_field: ignore
